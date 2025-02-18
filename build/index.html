@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+    <title>Web Demo</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='138.48601' height='183.2437' viewBox='0,0,138.48601,183.2437'%3E%3Cg transform='translate(-170.77834,-91.8886)'%3E%3Cg data-paper-data='%7B&quot;isPaintingLayer&quot;:true%7D' fill-rule='nonzero' stroke-linejoin='miter' stroke-miterlimit='10' stroke-dasharray='' stroke-dashoffset='0' style='mix-blend-mode: normal'%3E%3Cpath d='M221.27834,97.91486c12.256,-4.99377 26.495,-4.12966 39,-1.02626c10.626,2.78732 20.503,9.80693 27.5,17.95952c5.626,6.59679 8.014,16.04966 9,24.6302c1.251,10.89271 -3.456,21.96603 -2.5,32.84027c1.426,16.18717 11.215,31.51537 10,47.72102c-1.036,13.74981 -6.191,29.66297 -17,38.48469c-12.116,9.5832 -29.395,12.68866 -45,11.28884c-16.96,-1.52605 -36.202,-6.62758 -47.157,-20.284c-13.223,-16.47145 -18.312,-39.77162 -19.343,-61.30355c-0.999,-20.93772 2.615,-42.69338 12,-61.06237c6.964,-13.61127 19.886,-23.73223 33.5,-29.24836z' fill='%23bf3800' stroke='%237d2300' stroke-width='10' stroke-linecap='round'/%3E%3Cpath d='M200.84793,129c0,-0.9665 0.7835,-1.75 1.75,-1.75c0.9665,0 1.75,0.7835 1.75,1.75c0,0.9665 -0.7835,1.75 -1.75,1.75c-0.9665,0 -1.75,-0.7835 -1.75,-1.75z' fill='%237e6257' stroke='none' stroke-width='0.5' stroke-linecap='butt'/%3E%3Cpath d='M194.47964,148.27503c-3.75,0 -3.75,-3.75 -3.75,-3.75l0.11197,-2.24284c2.60059,-10.39899 7.59665,-19.84912 17.11085,-25.3464c0,0 3.25591,-1.86052 5.11643,1.39539c1.86052,3.25591 -1.39539,5.11643 -1.39539,5.11643c-7.73081,4.35502 -11.48183,12.35486 -13.55582,20.6536l0.11197,0.42382c0,0 0,3.75 -3.75,3.75z' fill='%23e6a48a' stroke='none' stroke-width='0.5' stroke-linecap='butt'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E" />
+    
+    <script defer type="module" src="./index.js"></script>
+    
+    <style title="main">
+      body, canvas {
+        margin: 0;
+        padding: 0;
+        background-color: rgb(0, 0, 0);
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .panel {
+        color: #DDD;
+        background-color: #222;
+        font-family: monospace;
+        padding: 0px 20px 20px 20px;
+        font-size: 1.2em;
+
+        position: absolute;
+        left: 0; 
+        right: 0; 
+        margin-top: 50px; 
+        margin-left: auto; 
+        margin-right: auto; 
+        width: 600px;
+      }
+
+      .panel>h2 {
+        text-align: center;
+        font-size: 32px;
+        padding: 10px 0px;
+        margin: 0;
+      }
+
+      .panel>code {
+        background-color: #222;
+        display: block;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="errorPanel" class="panel hidden">
+      <h2>Fatal Error</h2>
+      <p>An error ocurred and the program could not recover from it. </p>
+      <p></p>
+      <p id="errorDetails" class="hidden">Error details:</p>
+      <code></code>
+    </div>
+
+    <canvas id="app" aria-label="Game canvas">
+    </canvas>
+  </body>
+</html>
