@@ -22,3 +22,8 @@ impl SaveFileHeader {
         }
     }
 }
+
+pub trait SaveAndLoad {
+    fn save(&self, writer: &mut SaveFileWriter);
+    fn load(reader: &mut SaveFileReader) -> Self;
+}

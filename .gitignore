@@ -1,5 +1,7 @@
 /target
 /Cargo.lock
+/build/assets
+/build/engine.js
 .DS_Store
 node_modules
 package-lock.json

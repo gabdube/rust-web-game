@@ -49,9 +49,43 @@ impl<'a> SaveFileReader<'a> {
         Ok(())
     }
 
+    pub fn load<T: super::SaveAndLoad>(&mut self) -> T {
+        T::load(self)
+    }
+
     pub fn read_u32(&mut self) -> u32 {
         let value = self.data[self.current_offset];
         self.current_offset += 1;
         value
+    }
+
+    pub fn read_f32(&mut self) -> f32 {
+        let value = self.data[self.current_offset];
+        self.current_offset += 1;
+        f32::from_bits(value)
+    }
+
+    pub fn read_slice<T: Copy>(&mut self) -> &[T] {
+        let align = align_of::<T>();
+        assert!(align == super::ALIGN, "Alignment of T must be {} bytes", super::ALIGN);
+
+        let length = self.read_u32();
+        if length == 0 {
+            return &[];
+        }
+
+        let slice_length_bytes = size_of::<T>() * (length as usize);
+        let remaining_buffer_size_bytes = (self.data.len() - self.current_offset) * super::ALIGN;
+        assert!(remaining_buffer_size_bytes >= slice_length_bytes, "Not enough bytes left to read {length} instances of type");
+
+        // Safety. Array will be large enough, but data might not be valid
+        let data = unsafe {
+            let data_ptr = self.data.as_ptr().offset(self.current_offset as isize) as *const T;
+            ::std::slice::from_raw_parts(data_ptr, length as usize)
+        };
+
+        self.current_offset += slice_length_bytes / super::ALIGN;
+
+        data
     }
 }

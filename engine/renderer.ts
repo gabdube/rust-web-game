@@ -1,4 +1,7 @@
+import { DemoGame } from "../build/game/game";
+import { EngineAssets } from "./assets";
 import { set_last_error } from "./error";
+import { Size } from "./helpers";
 import { WebGL2Backend } from "./renderer/webgl2_renderer";
 
 
@@ -28,12 +31,31 @@ export class Renderer {
         return false;
     }
 
-    update() {
-        this.backend?.update();
+    init_default_resources(assets: EngineAssets): boolean {
+        if (this.backend) {
+            this.backend.init_default_resources(assets);
+            return true;
+        } else {
+            set_last_error("init_default_resources called on an uninitialized renderer")
+            return false;
+        }
+    }
+
+    update(game: DemoGame) {
+        this.backend?.update(game);
     }
 
     render() {
         this.backend?.render();
+    }
+
+    canvas_size(): Size {
+        if (this.backend) {
+            return this.backend.canvas_size();
+        } else {
+            console.error("canvas_size was called on an uninitialized renderer");
+            return { width: 0, height: 0 };
+        }
     }
 
 }

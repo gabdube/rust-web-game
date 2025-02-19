@@ -10,14 +10,24 @@ export class WebSocketMessage {
 }
 
 export class GameWebSocket {
-    socket: WebSocket;
+    socket: WebSocket | null;
     messages: WebSocketMessage[];
     messages_count: number;
     open: boolean;
 
     constructor() {
         const host = "localhost:3000"
-        const socket = new WebSocket("ws://"+host);
+
+        let socket: WebSocket;
+        try {
+            socket = new WebSocket("ws://"+host);
+        } catch {
+            // No dev server
+            this.socket = null;
+            this.open = false;
+            return;
+        }
+        
         socket.binaryType = "arraybuffer";
 
         this.socket = socket;

@@ -1,11 +1,13 @@
 #[derive(Debug)]
 pub enum ErrorType {
+    Undefined,
     SaveLoad,
 }
 
 impl ::std::fmt::Display for ErrorType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
+            ErrorType::Undefined => "Undefined",
             ErrorType::SaveLoad => "Save/Load",
         })
     }
@@ -66,4 +68,5 @@ macro_rules! error {
     }};
 }
 
+macro_rules! undefined_err { ($($arg:tt)*) => { error!($crate::error::ErrorType::Undefined, $($arg)*) }; }
 macro_rules! save_err { ($($arg:tt)*) => { error!($crate::error::ErrorType::SaveLoad, $($arg)*) }; }

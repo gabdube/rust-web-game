@@ -12,6 +12,7 @@ class Error {
 
 export function set_last_error(msg: string, tb?: string) {
     LAST_ERROR = new Error(msg, tb || null);
+    console.log(LAST_ERROR);
 }
 
 export function get_last_error(): Error | null {

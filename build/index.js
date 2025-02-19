@@ -19,13 +19,15 @@ function show_critical_error(error) {
     }
 
     show(panel);
-
-    console.log(error);
 }
 
 function run(engine, time) {
     engine_mod.update(engine);
     engine_mod.render(engine);
+
+    if (engine.exit) {
+        return;
+    }
 
     if (engine.reload) {
         engine_mod.reload(engine)
@@ -39,6 +41,7 @@ async function init_app() {
     const engine = await engine_mod.init();
     if (!engine) {
         show_critical_error(engine_mod.get_last_error());
+        return;
     }
 
     boundedRun = run.bind(null, engine);

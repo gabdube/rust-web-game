@@ -1,4 +1,17 @@
+import { DemoGame } from "../../build/game/game";
+import { EngineAssets } from "../assets";
 import { set_last_error } from "../error";
+import { Size } from "../helpers";
+
+enum DrawModule {
+    DrawSprites
+}
+
+interface DrawCommand {
+    module: DrawModule,
+    index_count: number,
+    instance_count: number,
+}
 
 class RendererCanvas {
     element: HTMLCanvasElement;
@@ -18,16 +31,39 @@ export class WebGL2Backend {
     framebuffer: WebGLFramebuffer;
     color: WebGLRenderbuffer;
 
+    shaders: {
+        draw_sprites: WebGLProgram,
+    };
+
+    draw_count: number;
+    draw: DrawCommand[];
+
     init(): boolean {
         if ( !this.setup_canvas() ) { return false };
         if ( !this.setup_context() ) { return false; }
         if ( !this.setup_framebuffer() ) { return false; }
 
+        this.draw_count = 0;
+        this.draw = [];
+
         return true;
     }
 
-    update() {
-        
+    init_default_resources(assets: EngineAssets): boolean {
+        return true;
+    }
+
+    canvas_size(): Size {
+        return { width: this.canvas.width, height: this.canvas.height };
+    }
+
+    update(game: DemoGame) {
+    }
+
+    render_sprites(draw: DrawCommand) {
+        const ctx = this.ctx;
+        ctx.useProgram(this.shaders.draw_sprites);
+        ctx.drawElementsInstanced(ctx.TRIANGLES, draw.index_count, ctx.UNSIGNED_SHORT, 0, draw.instance_count);
     }
 
     render() {
@@ -36,6 +72,16 @@ export class WebGL2Backend {
 
         ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, this.framebuffer);
         ctx.clearBufferfv(ctx.COLOR, 0, [0.0, 0.0, 0.0, 1.0]);
+
+        for (let i = 0; i < this.draw_count; i += 1) {
+            const draw = this.draw[i];
+            switch (draw.module) {
+                case DrawModule.DrawSprites: {
+                    this.render_sprites(draw);
+                    break;
+                }
+            }
+        }
 
         ctx.bindFramebuffer(ctx.READ_FRAMEBUFFER, this.framebuffer);
         ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, null);
