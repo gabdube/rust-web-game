@@ -29,4 +29,3 @@ export async function fetch_text(url: string): Promise<string|null> {
 
     return response.text();
 }
-

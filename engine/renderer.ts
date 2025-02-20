@@ -1,4 +1,4 @@
-import { DemoGame } from "../build/game/game";
+import { EngineGameInstance } from "./game_interface";
 import { EngineAssets } from "./assets";
 import { set_last_error } from "./error";
 import { Size } from "./helpers";
@@ -33,15 +33,14 @@ export class Renderer {
 
     init_default_resources(assets: EngineAssets): boolean {
         if (this.backend) {
-            this.backend.init_default_resources(assets);
-            return true;
+            return this.backend.init_default_resources(assets);
         } else {
             set_last_error("init_default_resources called on an uninitialized renderer")
             return false;
         }
     }
 
-    update(game: DemoGame) {
+    update(game: EngineGameInstance) {
         this.backend?.update(game);
     }
 

@@ -88,6 +88,10 @@ impl DemoGame {
             .map(|err| format!("{}", err) )
     }
 
+    pub fn updates_ptr(&self) -> *const output::OutputIndex {
+        self.output.output_index
+    }
+
 }
 
 impl Default for DemoGame {

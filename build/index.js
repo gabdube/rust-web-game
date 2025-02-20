@@ -11,11 +11,11 @@ function show_critical_error(error) {
     const error_message = panel.children[2];
     const error_traceback = panel.lastElementChild;
 
-    error_message.textContent = error.msg;
+    error_message.textContent = error.message;
 
     if (error.traceback) {
-        show(document.getElementById("errorDetails"));
         error_traceback.textContent = error.traceback.toString();
+        show(document.getElementById("errorDetails"));
     }
 
     show(panel);

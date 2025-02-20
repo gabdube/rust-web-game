@@ -1,8 +1,9 @@
 /target
 /Cargo.lock
-/build/assets
 /build/engine.js
+/build/assets/*.json
 .DS_Store
+*.png
 node_modules
 package-lock.json
 todo.md

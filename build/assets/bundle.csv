@@ -1,0 +1,4 @@
+TEXTURE;pawn;assets/Pawn_Blue.png;
+JSON;pawn_sprites;assets/Pawn_Blue.json;
+
+SHADER;sprites;assets/shaders/sprites.vert.glsl;assets/shaders/sprites.frag.glsl;

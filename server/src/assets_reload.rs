@@ -6,7 +6,7 @@ use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher, Event, EventKin
 
 use crate::assets::AssetCache;
 
-static EXTENSIONS_TO_RELOAD: &[&str] = &["html", "js", "wasm", "ktx2", "json", "bin", "frag", "vert", "csv"];
+static EXTENSIONS_TO_RELOAD: &[&str] = &["html", "js", "wasm", "ktx2", "json", "bin", "frag", "vert", "csv", "glsl"];
 
 fn filter_change_events<'a>(assets: &AssetCache, event: &'a Event, dedup: &Vec<PathBuf>) -> Option<PathBuf> {
     let filter_event_kind = |event: &'a Event| -> Option<&'a Event> {
