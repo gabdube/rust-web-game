@@ -16,8 +16,9 @@ void main() {
         uv_offset.y + (in_position.y * uv_size.y)
     );
 
-    vec4 positions = (in_instance_position / vec4(screen_size.x, screen_size.y, screen_size.x, screen_size.y)) * 2.0;
+    vec4 positions = in_instance_position;
+    positions = (positions / vec4(screen_size.x, screen_size.y, screen_size.x, screen_size.y)) * 2.0;
     float x = (positions.x - 1.0) + (in_position.x * positions.z);
     float y = (positions.y - 1.0) + (in_position.y * positions.w);
-    gl_Position = vec4(x, y, 0.0, 1.0);
+    gl_Position = vec4(x, -y, 0.0, 1.0);
 }

@@ -16,7 +16,7 @@ export function file_extension(path: string): string {
 
 export async function fetch_text(url: string): Promise<string|null> {
     let response: Response | null = await fetch(url)
-        .catch((e) => { set_last_error(`Failed to fetch ${url}`); return null; } );
+        .catch((_) => { set_last_error(`Failed to fetch ${url}`); return null; } );
 
     if (!response) {
         return null;
@@ -28,4 +28,20 @@ export async function fetch_text(url: string): Promise<string|null> {
     }
 
     return response.text();
+}
+
+export async function fetch_blob(url: string): Promise<Blob|null> {
+    let response: Response | null = await fetch(url)
+        .catch((_) => { set_last_error(`Failed to fetch ${url}`); return null; } );
+
+    if (!response) {
+        return null;
+    }
+
+    if (!response.ok) {
+        set_last_error(`Failed to fetch ${url}`);
+        return null;
+    }
+
+    return response.blob();
 }

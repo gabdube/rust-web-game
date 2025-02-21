@@ -2,6 +2,7 @@
 pub enum ErrorType {
     Undefined,
     SaveLoad,
+    Assets,
 }
 
 impl ::std::fmt::Display for ErrorType {
@@ -9,6 +10,7 @@ impl ::std::fmt::Display for ErrorType {
         write!(f, "{}", match self {
             ErrorType::Undefined => "Undefined",
             ErrorType::SaveLoad => "Save/Load",
+            ErrorType::Assets => "Assets",
         })
     }
 }
@@ -53,6 +55,11 @@ impl Error {
             inner: Box::new(inner)
         }
     }
+
+    pub fn merge(&mut self, mut other: Self) {
+        ::std::mem::swap(self, &mut other);
+        self.inner.chained = Some(other.inner);
+    }
 }
 
 impl ::std::fmt::Display for Error {
@@ -70,3 +77,4 @@ macro_rules! error {
 
 macro_rules! undefined_err { ($($arg:tt)*) => { error!($crate::error::ErrorType::Undefined, $($arg)*) }; }
 macro_rules! save_err { ($($arg:tt)*) => { error!($crate::error::ErrorType::SaveLoad, $($arg)*) }; }
+macro_rules! assets_err { ($($arg:tt)*) => { error!($crate::error::ErrorType::Assets, $($arg)*) }; }

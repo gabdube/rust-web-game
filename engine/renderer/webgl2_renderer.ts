@@ -1,29 +1,45 @@
-import { EngineGameInstance, EngineGameDrawUpdate, GraphicsModule } from "../game_interface";
+import { EngineGameInstance, EngineGameInstanceUpdates, EngineGameDrawUpdate, GraphicsModule, SPRITE_DATA_SIZE } from "../game_interface";
 import { EngineAssets } from "../assets";
 import { set_last_error } from "../error";
 import { Size } from "../helpers";
 
-const SPRITE_INSTANCE_DATA_SIZE: number = 32;  // Data is shared with the GPU using a mat4x2 for each instance
+class DrawCommand {
+    module: GraphicsModule;
+    vao: WebGLVertexArrayObject;
+    instance_count: number;
 
-let once = true;
+    resource0: any; // Types depends on the module. Ex: For the Sprites GraphicsModule, this is a texture.
 
-interface DrawCommand {
-    module: GraphicsModule,
-    index_count: number,
-    instance_count: number,
+    constructor(module: GraphicsModule, vao: WebGLVertexArrayObject, instance_count: number, resources: any[]) {
+        this.module = module;
+        this.vao = vao;
+        this.instance_count = instance_count;
+        this.resource0 = resources[0];
+    }
 }
 
-interface RendererShaders {
-    draw_sprites_screen_size: WebGLUniformLocation,
-    draw_sprites: WebGLProgram,
+class RendererTexture {
+    handle: WebGLTexture;
 }
 
-interface RendererBuffers {
-    sprites: WebGLVertexArrayObject,
-    sprites_indices: WebGLBuffer,
-    sprites_vertex: WebGLBuffer,
-    sprites_instance_data: WebGLBuffer,
-    sprites_instance_data_size: number,
+class RendererShaders {
+    draw_sprites_position_attrloc: number;
+    draw_sprites_instance_position_attrloc: number;
+    draw_sprites_instance_texcoord_attrloc: number;
+    draw_sprites_screen_size: WebGLUniformLocation;
+    draw_sprites: WebGLProgram;
+}
+
+class SpriteDataBuffer {
+    vao: WebGLVertexArrayObject;
+    instance_data: WebGLBuffer;
+    capacity: number;
+}
+
+class RendererBuffers {
+    sprites_indices: WebGLBuffer;
+    sprites_vertex: WebGLBuffer;
+    sprites_data: Map<number, SpriteDataBuffer> = new Map();
 }
 
 class RendererCanvas {
@@ -45,6 +61,8 @@ export class WebGL2Backend {
     color: WebGLRenderbuffer;
 
     assets: EngineAssets;
+    textures: RendererTexture[];
+
     shaders: RendererShaders;
     buffers: RendererBuffers;
 
@@ -56,8 +74,12 @@ export class WebGL2Backend {
         if ( !this.setup_context() ) { return false; }
         if ( !this.setup_framebuffer() ) { return false; }
 
+        this.shaders = new RendererShaders();
+        this.buffers = new RendererBuffers();
+
         this.draw_count = 0;
         this.draw = [];
+        this.textures = [];
 
         return true;
     }
@@ -82,9 +104,8 @@ export class WebGL2Backend {
     // Updates
     //
 
-    private push_draw_command(module: GraphicsModule, index_count: number, instance_count: number) {
+    private push_draw_command(draw: DrawCommand) {
         // The draw array is never reset, instead we try to reuse as much memory as possible to reduce pressure on the GC. This may be a little overkill...
-        const draw = { module, index_count, instance_count }
         if (this.draw_count == this.draw.length) {
             this.draw.push(draw);
         } else {
@@ -94,22 +115,105 @@ export class WebGL2Backend {
         this.draw_count += 1;
     }
 
+    private create_renderer_texture(texture_id: number): RendererTexture {
+        const ctx = this.ctx;
+        const bitmap = this.assets.textures_by_id[texture_id];
+    
+        const texture = new RendererTexture();
+        texture.handle = ctx.createTexture();
+        ctx.bindTexture(ctx.TEXTURE_2D, texture.handle);
+        ctx.texParameterf(ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.LINEAR);
+        ctx.texParameterf(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.LINEAR);
+        ctx.texParameterf(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE);
+        ctx.texParameterf(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE);
+        ctx.texStorage2D(ctx.TEXTURE_2D, 1, ctx.RGBA8, bitmap.width, bitmap.height);
+        ctx.texSubImage2D(ctx.TEXTURE_2D, 0, 0, 0, bitmap.width, bitmap.height, ctx.RGBA, ctx.UNSIGNED_BYTE, bitmap);
 
-    private update_sprites(update: EngineGameDrawUpdate) {
-        this.push_draw_command(update.module, 0, 0);
+        this.textures[texture_id] = texture;
+
+        return texture;
+    }
+
+    private create_sprites_buffer(capacity: number): SpriteDataBuffer {
+        const ctx = this.ctx;
+        const buffer = new SpriteDataBuffer();
+        let location: number;
+
+        buffer.vao = ctx.createVertexArray();
+        buffer.instance_data = ctx.createBuffer();
+        buffer.capacity = capacity;
+        
+        ctx.bindVertexArray(buffer.vao);
+
+        // Vertex data
+        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, this.buffers.sprites_indices);
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_vertex);
+
+        location = this.shaders.draw_sprites_position_attrloc;
+        ctx.enableVertexAttribArray(location);
+        ctx.vertexAttribPointer(location, 2, ctx.FLOAT, false, 8, 0);
+
+        // Instance Data
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer.instance_data);
+        ctx.bufferData(ctx.ARRAY_BUFFER, buffer.capacity * SPRITE_DATA_SIZE, ctx.DYNAMIC_DRAW);
+
+        location = this.shaders.draw_sprites_instance_position_attrloc;
+        ctx.enableVertexAttribArray(location);
+        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 32, 0);
+        ctx.vertexAttribDivisor(location, 1);
+
+        location = this.shaders.draw_sprites_instance_texcoord_attrloc;
+        ctx.enableVertexAttribArray(location);
+        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 32, 16);
+        ctx.vertexAttribDivisor(location, 1);
+
+        ctx.bindVertexArray(null);
+
+        return buffer;
+    }
+
+    private update_sprites(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) {
+        let buffer = this.buffers.sprites_data.get(draw_update.id);
+        if (!buffer) {
+            const capacity = draw_update.instance_count + (64 - (draw_update.instance_count % 64));
+            buffer = this.create_sprites_buffer(capacity);
+        } else if (buffer.capacity < draw_update.instance_count) {
+            console.log("TODO REALLOC");
+        }
+
+        let texture = this.textures[draw_update.texture_id];
+        if (!texture) {
+            texture = this.create_renderer_texture(draw_update.texture_id);
+        }
+
+        const ctx = this.ctx;
+        const buffer_data = updates.get_sprites_data(draw_update.instance_base, draw_update.instance_count);
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer.instance_data);
+        ctx.bufferSubData(ctx.ARRAY_BUFFER, 0, buffer_data);
+
+        this.push_draw_command(new DrawCommand(
+            draw_update.module,
+            buffer.vao,
+            draw_update.instance_count,
+            [texture.handle]
+        ));
+    }
+
+    private clear_drawing() {
+        this.draw_count = 0;
     }
 
     update(game: EngineGameInstance) {
-        // Resets the draw count
-        this.draw_count = 0;
+        let game_updates = game.updates();
+
+        this.clear_drawing();
         
-        let game_output = game.updates();
-        const updates_count = game_output.draw_updates_count();
+        const updates_count = game_updates.draw_updates_count();
         for (let i = 0; i < updates_count; i += 1) {
-            const update = game_output.get_draw_update(i);
-            switch (update.module) {
+            const draw_update = game_updates.get_draw_update(i);
+            switch (draw_update.module) {
                 case GraphicsModule.DrawSprites: {
-                    this.update_sprites(update);
+                    this.update_sprites(game_updates, draw_update);
                     break;
                 }
                 default: {
@@ -124,11 +228,17 @@ export class WebGL2Backend {
     //
 
     render_sprites(draw: DrawCommand) {
+        const SPRITE_INDEX_COUNT: number = 6;
         const ctx = this.ctx;
 
         ctx.useProgram(this.shaders.draw_sprites);
-        ctx.bindVertexArray(this.buffers.sprites);
-        ctx.drawElementsInstanced(ctx.TRIANGLES, draw.index_count, ctx.UNSIGNED_SHORT, 0, draw.instance_count);
+
+        ctx.activeTexture(ctx.TEXTURE0);
+        ctx.bindTexture(ctx.TEXTURE_2D, draw.resource0);
+
+        ctx.bindVertexArray(draw.vao);
+
+        ctx.drawElementsInstanced(ctx.TRIANGLES, SPRITE_INDEX_COUNT, ctx.UNSIGNED_SHORT, 0, draw.instance_count);
     }
 
     render() {
@@ -269,10 +379,12 @@ export class WebGL2Backend {
             return false;
         }
 
-        this.shaders = {
-            draw_sprites_screen_size: ctx.getUniformLocation(sprites_program, "screen_size") as any,
-            draw_sprites: sprites_program
-        };
+        const shaders = this.shaders;
+        shaders.draw_sprites_position_attrloc = ctx.getAttribLocation(sprites_program, "in_position");
+        shaders.draw_sprites_instance_position_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_position");
+        shaders.draw_sprites_instance_texcoord_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_texcoord");
+        shaders.draw_sprites_screen_size = ctx.getUniformLocation(sprites_program, "screen_size") as any,
+        shaders.draw_sprites = sprites_program;
 
         // Cleanup
         ctx.deleteShader(sprites_vert);
@@ -281,11 +393,8 @@ export class WebGL2Backend {
         return true;
     }
 
-    private setup_sprites_buffer() {
+    private setup_sprites_vertex() {
         const ctx = this.ctx;
-
-        this.buffers.sprites = ctx.createVertexArray();
-        ctx.bindVertexArray(this.buffers.sprites);
 
         // Indices
         this.buffers.sprites_indices = ctx.createBuffer();
@@ -301,33 +410,10 @@ export class WebGL2Backend {
             0.0, 1.0, // V2
             1.0, 1.0, // V3
         ]), ctx.STATIC_DRAW);
-
-        const position_index = ctx.getAttribLocation(this.shaders.draw_sprites, "in_position");
-        ctx.enableVertexAttribArray(position_index);
-        ctx.vertexAttribPointer(position_index, 2, ctx.FLOAT, false, 8, 0);
-
-        // Vertex instance data
-        this.buffers.sprites_instance_data_size = 300 * SPRITE_INSTANCE_DATA_SIZE;  // Enough to hold 300 sprites instances (may be reallocated)
-        this.buffers.sprites_instance_data = ctx.createBuffer();
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_instance_data);
-        ctx.bufferData(ctx.ARRAY_BUFFER, this.buffers.sprites_instance_data_size, ctx.DYNAMIC_DRAW);
-
-        const data_position_index = ctx.getAttribLocation(this.shaders.draw_sprites, "in_instance_position");
-        ctx.enableVertexAttribArray(data_position_index);
-        ctx.vertexAttribPointer(data_position_index, 4, ctx.FLOAT, false, 32, 0);
-        ctx.vertexAttribDivisor(data_position_index, 1);
-
-        const data_texcoord_index = ctx.getAttribLocation(this.shaders.draw_sprites, "in_instance_position");
-        ctx.enableVertexAttribArray(data_texcoord_index);
-        ctx.vertexAttribPointer(data_texcoord_index, 4, ctx.FLOAT, false, 32, 16);
-        ctx.vertexAttribDivisor(data_texcoord_index, 1);
-
-        ctx.bindVertexArray(null);
     }
 
     private setup_buffers() {
-        this.buffers = {} as any;
-        this.setup_sprites_buffer();
+        this.setup_sprites_vertex();
     }
 }
 

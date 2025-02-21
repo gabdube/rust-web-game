@@ -81,6 +81,46 @@ impl SaveFileWriter {
         }
     }
 
+    pub fn write_str(&mut self, value: &str) {
+        let padding = 4 - (value.len() % 4);
+        let length = value.len();
+        let padded_length = length + padding;
+
+        let u32_count = padded_length / 4;
+        self.try_realloc(u32_count + 2);
+        
+        self.write_u32_inner(length as u32);
+        self.write_u32_inner(padded_length as u32);
+
+        unsafe { 
+            ::std::ptr::copy_nonoverlapping::<u8>(
+                value.as_ptr(),
+                self.data.as_ptr().offset(self.data_offset as isize) as *mut u8,
+                length as usize
+            );
+        }
+
+        self.data_offset += u32_count as u32;
+    }
+
+    pub fn write_string_hashmap<T: Copy>(&mut self, data: &fnv::FnvHashMap<String, T>) {
+        assert!(align_of::<T>() == super::ALIGN, "Data alignment must be 4 bytes");
+
+        if data.len() == 0 {
+            // 0 for the size and no data
+            self.write_u32(0);
+            return;
+        }
+
+        self.try_realloc(1);
+        self.write_u32_inner(data.len() as u32);
+
+        for (key, value) in data.iter() {
+            self.write_str(key);
+            self.write(value);
+        }
+    }
+
     #[inline(always)]
     fn write_u32_inner(&mut self, value: u32) {
         self.data[self.data_offset as usize] = value;

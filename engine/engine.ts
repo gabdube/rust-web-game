@@ -53,7 +53,7 @@ function init_renderer_default_resources(engine: Engine): boolean {
 }
 
 /// Instance the game client
-function start_game_client(engine: Engine) {
+function start_game_client(engine: Engine): boolean {
     const game = engine.game.module;
 
     const init = game.DemoGameInit.new();
@@ -63,6 +63,12 @@ function start_game_client(engine: Engine) {
     init.set_initial_window_size(size.width, size.height);
 
     engine.game.instance = game.DemoGame.initialize(init);
+    if (engine.game.instance) {
+        return true
+    } else {
+        set_last_error(`An error occured while initializing the game client: ${engine.game.module.get_last_error()}`);
+        return false;
+    }
 }
 
 export async function init(): Promise<Engine | null> {
@@ -83,7 +89,9 @@ export async function init(): Promise<Engine | null> {
         return null;
     }
 
-    start_game_client(engine);
+    if (!start_game_client(engine)) {
+        return null;
+    }
 
     return engine;
 }
@@ -93,7 +101,7 @@ export async function init(): Promise<Engine | null> {
 //
 
 function handle_game_err(engine: Engine) {
-    const error = engine.game.instance.get_last_error();
+    const error = engine.game.module.get_last_error();
     
     console.log(error);
 

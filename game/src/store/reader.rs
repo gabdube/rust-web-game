@@ -53,6 +53,19 @@ impl<'a> SaveFileReader<'a> {
         T::load(self)
     }
 
+    pub fn read<T: Copy>(&mut self) -> T {
+        assert!(align_of::<T>() == super::ALIGN, "Alignment of T must be at least 4 bytes");
+        let u32_count = size_of::<T>() / super::ALIGN;
+        
+        let data = unsafe {
+            ::std::ptr::read(self.data.as_ptr().offset(self.current_offset as isize) as *const T)
+        };
+
+        self.current_offset += u32_count;
+
+        data
+    }
+
     pub fn read_u32(&mut self) -> u32 {
         let value = self.data[self.current_offset];
         self.current_offset += 1;
@@ -66,8 +79,7 @@ impl<'a> SaveFileReader<'a> {
     }
 
     pub fn read_slice<T: Copy>(&mut self) -> &[T] {
-        let align = align_of::<T>();
-        assert!(align == super::ALIGN, "Alignment of T must be {} bytes", super::ALIGN);
+        assert!(align_of::<T>() == super::ALIGN, "Alignment of T must be {} bytes", super::ALIGN);
 
         let length = self.read_u32();
         if length == 0 {
@@ -87,5 +99,38 @@ impl<'a> SaveFileReader<'a> {
         self.current_offset += slice_length_bytes / super::ALIGN;
 
         data
+    }
+
+    pub fn read_str(&mut self) -> &str {
+        let length = self.read_u32();
+        let length_padded = self.read_u32();
+
+        let str = unsafe {
+            let str_ptr = self.data.as_ptr().offset(self.current_offset as isize) as *const u8;
+            let str_bytes = ::std::slice::from_raw_parts(str_ptr, length as usize);
+            ::std::str::from_utf8(str_bytes).unwrap_or("UTF8 DECODING ERROR")
+        };
+
+        self.current_offset += (length_padded / 4) as usize;
+
+        str
+    }
+
+    pub fn read_string_hashmap<T: Copy>(&mut self) -> fnv::FnvHashMap<String, T> {
+        assert!(align_of::<T>() == super::ALIGN, "Alignment of T must be {} bytes", super::ALIGN);
+
+        let mut out = fnv::FnvHashMap::default();
+        let item_count = self.read_u32();
+        if item_count == 0 {
+            return out;
+        }
+
+        for _ in 0..item_count {
+            let key = self.read_str().to_string();
+            let value = self.read();
+            out.insert(key, value);
+        }
+
+        out
     }
 }

@@ -1,6 +1,7 @@
 use crate::store::SaveAndLoad;
 use crate::Position;
 
+
 #[derive(Copy, Clone, Debug)]
 pub struct Pawn {
     pub position: Position<f32>,
@@ -8,7 +9,7 @@ pub struct Pawn {
 
 /// The game world data. Includes actors, terrain, and decorations
 pub struct World {
-    pub pawns: Vec<Pawn>
+    pub pawns: Vec<Pawn>,
 }
 
 impl SaveAndLoad for World {

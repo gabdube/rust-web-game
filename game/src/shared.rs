@@ -7,6 +7,12 @@ pub struct Position<T: Copy> {
     pub y: T,
 }
 
+impl<T: Copy> Position<T> {
+    pub const fn splat(self) -> [T; 2] {
+        [self.x, self.y]
+    }
+}
+
 impl<T: Debug+Copy> Debug for Position<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("Position")

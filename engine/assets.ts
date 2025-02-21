@@ -1,9 +1,6 @@
 import { set_last_error } from "./error";
-import { fetch_text } from "./helpers";
+import { fetch_text, fetch_blob } from "./helpers";
 
-export class Texture {
-
-}
 
 export class Json {
     raw: string;
@@ -25,7 +22,10 @@ export class Shader {
 
 export class EngineAssets {
     raw_bundle: string = "";
-    textures: Map<string, Texture> = new Map();
+
+    textures: Map<string, ImageBitmap> = new Map();
+    textures_by_id: ImageBitmap[] = [];
+
     json: Map<string, Json> = new Map();
     shaders: Map<string, Shader> = new Map();
 
@@ -59,9 +59,13 @@ export class EngineAssets {
             }
 
             const args = line.split(";");
+            let texture_id = 0;
             
             switch (args[0]) {
                 case "TEXTURE": {
+                    const name = args[1];
+                    const path = args[2];
+                    asset_loading_promises.push(this.load_texture(texture_id, name, path));
                     break;
                 }
                 case "JSON": {
@@ -85,6 +89,25 @@ export class EngineAssets {
 
         const results = await Promise.all(asset_loading_promises);
         return results.indexOf(false) == -1;
+    }
+
+    private async load_texture(texture_id: number, name: string, path: string): Promise<boolean> {
+        const texture_blob = await fetch_blob(path);
+        if (!texture_blob) {
+            return false;
+        }
+
+        const bitmap = await createImageBitmap(texture_blob)
+            .catch((_) => { set_last_error(`Failed to decode image ${path}`); return null; } );
+        
+        if (!bitmap) {
+            return false;
+        }
+
+        this.textures.set(name, bitmap);
+        this.textures_by_id[texture_id] = bitmap;
+
+        return true;
     }
 
     private async load_json(name: string, path: string): Promise<boolean> {
