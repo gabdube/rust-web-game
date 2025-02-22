@@ -31,7 +31,7 @@ pub struct DrawUpdate {
 /// Information on how to render a sprites on the GPU
 /// Memory layout must match `in_instance_position` and `in_instance_texcoord` in `sprites.vert.glsl`
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct SpriteData {
     pub position: [f32; 2],
     pub size: [f32; 2],
@@ -82,23 +82,8 @@ impl DemoGame {
             texture_id: pawn_texture,
         };
 
-        let texcoord_offset = [0.0, 0.0];
-        let texcoord_size = [60.0, 59.0];
-        let size = [60.0, 59.0];
-
-        for pawn in world.pawns.iter() {
-            let [x, y] = pawn.position.splat();
-
-            sprites_data.push(SpriteData {
-                position: [
-                    x - (texcoord_size[0] * 0.5),
-                    y - (texcoord_size[0] * 0.5)
-                ],
-                size,
-                texcoord_offset,
-                texcoord_size,
-            });
-
+        for &pawn_sprite in world.pawns_sprites.iter() {
+            sprites_data.push(pawn_sprite);
             command.instance_count += 1;
         }
 

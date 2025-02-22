@@ -1,4 +1,3 @@
-use crate::world::Pawn;
 use crate::state::GameState;
 use crate::{DemoGame, pos};
 
@@ -14,8 +13,7 @@ impl DemoGame {
     }
 
     fn init_gameplay_test(&mut self) {
-        self.world.pawns.push(Pawn {
-            position: pos(100.0, 100.0),
-        });
+        let idle = &self.assets.animations.pawn.idle;
+        self.world.create_pawn(&pos(100.0, 100.0), idle);
     }
 }

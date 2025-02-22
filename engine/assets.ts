@@ -1,16 +1,6 @@
 import { set_last_error } from "./error";
 import { fetch_text, fetch_blob } from "./helpers";
 
-
-export class Json {
-    raw: string;
-    value: any;
-    constructor(raw: string, value: any) {
-        this.raw = raw;
-        this.value = value;
-    }
-}
-
 export class Shader {
     vertex: string;
     fragment: string;
@@ -26,7 +16,7 @@ export class EngineAssets {
     textures: Map<string, ImageBitmap> = new Map();
     textures_by_id: ImageBitmap[] = [];
 
-    json: Map<string, Json> = new Map();
+    json: Map<string, string> = new Map();
     shaders: Map<string, Shader> = new Map();
 
     async load(): Promise<boolean> {
@@ -69,8 +59,8 @@ export class EngineAssets {
                     break;
                 }
                 case "JSON": {
-                    const name = args[1];
-                    const path = args[2];
+                    const name = args[2];
+                    const path = args[3];
                     asset_loading_promises.push(this.load_json(name, path));
                     break;
                 }
@@ -115,16 +105,8 @@ export class EngineAssets {
         if (!json_text) {
             return false;
         }
-
-        let json_value: any;
-        try {
-            json_value = JSON.parse(json_text);
-        } catch (e) {
-            set_last_error(`Failed to parse json resource ${name}`, e.toString());
-            return false;
-        }
-
-        this.json.set(name, new Json(json_text, json_value));
+    
+        this.json.set(name, json_text);
 
         return true;
     }

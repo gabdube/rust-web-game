@@ -22,6 +22,13 @@ impl<T: Debug+Copy> Debug for Position<T> {
     }
 }
 
+impl<T: Copy+Default> Default for Position<T> {
+    fn default() -> Self {
+        let v = Default::default();
+        Position { x: v, y: v }
+    }
+}
+
 
 #[derive(Copy, Clone)]
 pub struct Size<T: Copy> {

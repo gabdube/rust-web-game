@@ -21,8 +21,8 @@ function show_critical_error(error) {
     show(panel);
 }
 
-function run(engine, time) {
-    engine_mod.update(engine);
+function run(engine) {
+    engine_mod.update(engine, performance.now());
     engine_mod.render(engine);
 
     if (engine.exit) {

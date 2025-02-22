@@ -100,6 +100,29 @@ export class WebGL2Backend {
         return { width: this.canvas.width, height: this.canvas.height };
     }
 
+    handle_resize() {
+        const canvas = this.canvas;
+        const dpr = window.devicePixelRatio;
+        const display_width  = Math.round(canvas.element.clientWidth * dpr);
+        const display_height = Math.round(canvas.element.clientHeight * dpr);
+        if (display_width == canvas.width && display_height == canvas.height) {
+            return;
+        }
+    
+        const ctx = this.ctx;
+        canvas.element.width = display_width;
+        canvas.element.height = display_height;
+        canvas.width = display_width;
+        canvas.height = display_height;
+    
+        ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, this.framebuffer);
+    
+        ctx.bindRenderbuffer(ctx.RENDERBUFFER, this.color);
+        ctx.renderbufferStorageMultisample(ctx.RENDERBUFFER, ctx.getParameter(ctx.MAX_SAMPLES), ctx.RGBA8, canvas.width, canvas.height); 
+        ctx.framebufferRenderbuffer(ctx.DRAW_FRAMEBUFFER, ctx.COLOR_ATTACHMENT0, ctx.RENDERBUFFER, this.color);
+        ctx.viewport(0, 0, canvas.width, canvas.height);
+    }
+
     //
     // Updates
     //

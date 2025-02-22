@@ -23,6 +23,7 @@ static LAST_ERROR: Mutex<Option<error::Error>> = Mutex::new(None);
 pub struct DemoGameInit {
     pub(crate) assets_bundle: String,
     pub(crate) initial_window_size: Size<f32>,
+    pub(crate) json: fnv::FnvHashMap<String, String>,
 }
 
 #[wasm_bindgen]
@@ -31,6 +32,7 @@ impl DemoGameInit {
         DemoGameInit {
             assets_bundle: String::new(),
             initial_window_size: Size::default(),
+            json: fnv::FnvHashMap::default(),
         }
     }
 
@@ -41,16 +43,21 @@ impl DemoGameInit {
     pub fn set_initial_window_size(&mut self, width: f32, height: f32) {
         self.initial_window_size = Size { width, height };
     }
+
+    pub fn upload_json(&mut self, name: String, value: String) {
+        self.json.insert(name, value);
+    }
 }
 
 /// The game state
 #[wasm_bindgen]
 pub struct DemoGame {
+    time: f64,
     window_size: Size<f32>,
     assets: assets::Assets,
     world: world::World,
-    state: state::GameState,
     output: output::GameOutput,
+    state: state::GameState,
 }
 
 #[wasm_bindgen]
@@ -75,7 +82,9 @@ impl DemoGame {
     pub fn on_reload(&mut self) {
     }
 
-    pub fn update(&mut self) -> bool {
+    pub fn update(&mut self, time: f64) -> bool {
+        self.update_time(time);
+
         match self.state {
             state::GameState::MainMenu => {},
             state::GameState::Gameplay => {
@@ -87,6 +96,7 @@ impl DemoGame {
             }
         }
 
+        self.update_animations();
         self.update_output();
 
         return true;
@@ -96,8 +106,12 @@ impl DemoGame {
         self.output.output_index
     }
 
+    fn update_time(&mut self, new_time: f64) {
+        self.time = new_time;
+    }
+
     fn load_asset_bundle(&mut self, init: &DemoGameInit) -> Option<()> {
-        if let Err(e) = self.assets.load_bundle(&init.assets_bundle) {
+        if let Err(e) = self.assets.load_bundle(&init) {
             set_last_error(e);
             None
         } else {
@@ -110,6 +124,7 @@ impl DemoGame {
 impl Default for DemoGame {
     fn default() -> Self {
         DemoGame {
+            time: 0.0,
             window_size: Size::default(),
             assets: assets::Assets::default(),
             output: output::GameOutput::default(),

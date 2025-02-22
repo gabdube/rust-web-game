@@ -62,8 +62,13 @@ function start_game_client(engine: Engine): boolean {
     const size = engine.renderer.canvas_size();
     init.set_initial_window_size(size.width, size.height);
 
+    for (let [name, json] of engine.assets.json.entries()) {
+        init.upload_json(name, json);
+    }
+
     engine.game.instance = game.DemoGame.initialize(init);
-    if (engine.game.instance) {
+
+    if (engine.game.instance) { 
         return true
     } else {
         set_last_error(`An error occured while initializing the game client: ${engine.game.module.get_last_error()}`);
@@ -154,8 +159,8 @@ function websocket_messages(engine: Engine) {
 }
 
 /// Updates the game simulation
-function game_updates(engine: Engine) {
-    if (!engine.game.instance.update()) {
+function game_updates(engine: Engine, time: DOMHighResTimeStamp) {
+    if (!engine.game.instance.update(time)) {
         handle_game_err(engine);
     }
 }
@@ -165,9 +170,10 @@ function renderer_updates(engine: Engine) {
     engine.renderer.update(engine.game);
 }
 
-export function update(engine: Engine) {
+export function update(engine: Engine, time: DOMHighResTimeStamp) {
+    engine.renderer.handle_resize();
     websocket_messages(engine);
-    game_updates(engine);
+    game_updates(engine, time);
     renderer_updates(engine);
 }
 

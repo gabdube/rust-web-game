@@ -57,5 +57,13 @@ export class Renderer {
         }
     }
 
+    handle_resize() {
+        if (this.backend) {
+            return this.backend.handle_resize();
+        } else {
+            console.error("handle_resize was called on an uninitialized renderer");
+        }
+    }
+
 }
 
