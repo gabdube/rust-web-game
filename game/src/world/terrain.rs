@@ -1,21 +1,15 @@
+use crate::assets::TerrainCell;
 use crate::shared::AABB;
 
 const CHUNK_STRIDE: usize = 16;
 const CHUNK_STRIDE_F: f32 = 16.0;
 const TERRAIN_CELL_SIZE_PX: f32 = 64.0;
 
-#[derive(Copy, Clone)]
-pub enum TerrainCell {
-    Grass = 0,
-    Sand,
-    Water,
-}
-
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct TerrainChunk {
     // Chunk position [u16, u16] represented as a single u32
-    pub position: u32,
+    pub position: u32, 
     pub cells: [[TerrainCell; CHUNK_STRIDE]; CHUNK_STRIDE]
 }
 
@@ -46,7 +40,9 @@ impl TerrainChunk {
 pub struct Terrain {
     pub chunk_width: u32,
     pub chunk_height: u32,
-    pub chunks: Vec<TerrainChunk>
+    pub chunks_updates: Vec<bool>,
+    pub chunks: Vec<TerrainChunk>,
+    pub update_chunks: bool,
 }
 
 impl Terrain {
@@ -54,22 +50,30 @@ impl Terrain {
     pub fn reset(&mut self) {
         self.chunk_width = 0;
         self.chunk_height = 0;
+        self.chunks_updates.clear();
         self.chunks.clear();
+        self.update_chunks = false;
     }
 
-    /// Initialize a terrain with a size of `width` cells by `height` cells
+    /// Initialize a terrain with a size of `width` by `height` cells
     pub fn init_terrain(&mut self, width: u32, height: u32) {
         let stride = CHUNK_STRIDE as u32;
         self.chunk_width = (width+(stride-1)) / stride;
         self.chunk_height = (height+(stride-1)) / stride;
 
-        let chunk_count = (self.chunk_width * self.chunk_height) as usize;
         self.chunks.clear();
+        self.chunks_updates.clear();
+
+        let chunk_count = (self.chunk_width * self.chunk_height) as usize;
         self.chunks.reserve(chunk_count);
+        self.chunks_updates.reserve(chunk_count);
+
+        self.update_chunks = true;
         
         for y in 0..self.chunk_height {
             for x in 0..self.chunk_width {
                 self.chunks.push(TerrainChunk::new(x, y));
+                self.chunks_updates.push(true);
             }
         }
     }
@@ -80,14 +84,18 @@ impl crate::store::SaveAndLoad for Terrain {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_u32(self.chunk_width);
         writer.write_u32(self.chunk_height);
+        writer.write_bool_slice(&self.chunks_updates);
         writer.write_slice(&self.chunks);
+        writer.write_u32(self.update_chunks as u32);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         Terrain {
             chunk_width: reader.read_u32(),
             chunk_height: reader.read_u32(),
+            chunks_updates: reader.read_bool_vec(),
             chunks: reader.read_slice().to_vec(),
+            update_chunks: reader.read_u32() == 1,
         }
     }
 }
@@ -97,7 +105,9 @@ impl Default for Terrain {
         Terrain {
             chunk_width: 0,
             chunk_height: 0,
+            chunks_updates: Vec::new(),
             chunks: Vec::new(),
+            update_chunks: false,
         }
     }
 }

@@ -1,6 +1,9 @@
 mod animations;
 pub use animations::AnimationBase;
 
+mod terrain_tilemap;
+pub use terrain_tilemap::{TerrainTilemap, TerrainCell};
+
 use animations::AnimationsBundle;
 use fnv::FnvHashMap;
 use crate::error::Error;
@@ -11,8 +14,10 @@ pub struct Texture {
     pub id: u32,
 }
 
+#[derive(Default)]
 pub struct Assets {
     pub textures: FnvHashMap<String, Texture>,
+    pub terrain: TerrainTilemap,
     pub animations: AnimationsBundle,
 }
 
@@ -36,6 +41,9 @@ impl Assets {
                 },
                 "JSON" => {
                     self.load_json(init, args)
+                },
+                "CSV" => {
+                    self.load_csv(init, args)
                 },
                 "SHADER" => Ok(()),
                 _ => { Err(assets_err!("Unknown asset type {:?}", args[0])) }
@@ -95,7 +103,7 @@ impl Assets {
         let &data_type = args.get(1)
             .ok_or_else(|| assets_err!("Missing json data type") )?;
 
-        let json_string = init.json.get(json_name)
+        let json_string = init.text_assets.get(json_name)
             .ok_or_else(|| assets_err!("Failed to match json name to json data") )?;
 
         let json_value = serde_json::from_str::<serde_json::Value>(json_string.as_str())
@@ -106,9 +114,28 @@ impl Assets {
                 self.animations.load_animation(json_name, json_value)?;
             },
             name => {
-                { return Err(assets_err!("Unknown json data type: {:?}", name)); }
+                return Err(assets_err!("Unknown json data type: {:?}", name));
             }
         };
+
+        Ok(())
+    }
+
+    fn load_csv(&mut self, init: &crate::DemoGameInit, args: &[&str]) -> Result<(), Error> {
+        let &csv_name = args.get(1)
+            .ok_or_else(|| assets_err!("Missing csv name") )?;
+
+        let csv_string = init.text_assets.get(csv_name)
+            .ok_or_else(|| assets_err!("Failed to match csv name to csv data") )?;
+        
+        match csv_name {
+            "terrain_sprites" => {
+                dbg!("TODO load terrain sprites");
+            },
+            name => {
+                return Err(assets_err!("Unknown csv: {:?}", name)); 
+            }
+        }
 
         Ok(())
     }
@@ -118,23 +145,14 @@ impl crate::store::SaveAndLoad for Assets {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_string_hashmap(&self.textures);
         writer.write(&self.animations);
+        //writer.write(&self.terrain);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let mut assets = Assets::default();
         assets.textures = reader.read_string_hashmap();
         assets.animations = reader.read();
+        //assets.terrain = reader.read();
         assets
     }
-}
-
-impl Default for Assets {
-
-    fn default() -> Self {
-        Assets {
-            textures: FnvHashMap::default(),
-            animations: AnimationsBundle::default(),
-        }
-    }
-
 }

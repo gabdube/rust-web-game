@@ -101,6 +101,20 @@ impl<'a> SaveFileReader<'a> {
         data
     }
 
+    pub fn read_bool_vec(&mut self) -> Vec<bool> {
+        let length = self.read_u32();
+        if length == 0 {
+            return Vec::new();
+        }
+
+        let mut values = Vec::with_capacity(length as usize);
+        for _ in 0..length {
+            values.push(self.read_u32() == 1);
+        }
+
+        values
+    }
+
     pub fn read_str(&mut self) -> &str {
         let length = self.read_u32();
         let length_padded = self.read_u32();

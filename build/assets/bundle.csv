@@ -3,5 +3,7 @@ TEXTURE;terrain;assets/terrain.png;
 
 JSON;animation;pawn_sprites;assets/Pawn_Blue.json;
 
+CSV;terrain_sprites;assets/terrain.csv;
+
 SHADER;sprites;assets/shaders/sprites.vert.glsl;assets/shaders/sprites.frag.glsl;
 SHADER;terrain;assets/shaders/terrain.vert.glsl;assets/shaders/terrain.frag.glsl;

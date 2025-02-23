@@ -23,7 +23,15 @@ pub struct DrawSpriteParams {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct UpdateTerrainChunkParams {
+    pub chunk_id: u32,
+    pub chunk_data_offset: u32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct DrawTerrainChunkParams {
+    pub chunk_id: u32,
     pub x: f32,
     pub y: f32,
 }
@@ -32,6 +40,7 @@ pub struct DrawTerrainChunkParams {
 #[derive(Copy, Clone)]
 pub union DrawUpdateParams {
     pub draw_sprites: DrawSpriteParams,
+    pub update_terrain_chunk: UpdateTerrainChunkParams,
     pub draw_terrain_chunk: DrawTerrainChunkParams,
 }
 
@@ -55,6 +64,16 @@ pub struct SpriteData {
     pub texcoord_size: [f32; 2],
 }
 
+/// Texture coordinates for the 4 vertex of a sprite the terrain data buffer
+#[repr(C)]
+#[derive(Copy, Clone, Default, Debug)]
+pub struct TerrainChunkTexcoord {
+    pub v0: [f32; 2],
+    pub v1: [f32; 2],
+    pub v2: [f32; 2],
+    pub v3: [f32; 2],
+}
+
 /// The index of all the pointers and array size to share with the engine
 /// Must be `repr(C)` because it will be directly read from memory by the engine
 #[repr(C)]
@@ -64,6 +83,8 @@ pub struct OutputIndex {
     pub commands_count: usize,
     pub sprites_data_ptr: *const SpriteData,
     pub sprites_data_count: usize,
+    pub terrain_data_ptr: *const TerrainChunkTexcoord,
+    pub terrain_data_count: usize,
     pub validation: usize
 }
 
@@ -72,6 +93,7 @@ pub struct GameOutput {
     /// This is a leaked box because we return the pointer to the client in `output` and `Box::as_ptr` is a nightly-only experimental API
     pub output_index: &'static mut OutputIndex,
     pub sprite_data_buffer: Vec<SpriteData>,
+    pub terrain_data: Vec<TerrainChunkTexcoord>,
     pub commands: Vec<DrawUpdate>,
 }
 
@@ -87,14 +109,54 @@ impl DemoGame {
     }
 
     fn update_terrain(&mut self) {
+        const CELL_TEXEL_SIZE: f32 = 64.0;
 
+        let terrain = &mut self.world.terrain;
+        if !terrain.update_chunks {
+            return;
+        }
+
+        let output = &mut self.output;
+        let terrain_tilemap = &self.assets.terrain;
+        let mut params = UpdateTerrainChunkParams { chunk_id: 0, chunk_data_offset: 0 };
+
+        for (index, update) in terrain.chunks_updates.iter_mut().enumerate() {
+            if !*update {
+                continue;
+            }
+
+            let chunk = &terrain.chunks[index];
+            params.chunk_id = chunk.position;
+            params.chunk_data_offset = output.terrain_data.len() as u32;
+
+            for row in chunk.cells.iter() {
+                for &cell in row.iter() {
+                    let [x, y] = terrain_tilemap.get_cell_texcoord(cell);
+                    output.terrain_data.push(TerrainChunkTexcoord {
+                        v0: [x, y],
+                        v1: [x+CELL_TEXEL_SIZE, y],
+                        v2: [x, y+CELL_TEXEL_SIZE],
+                        v3: [x+CELL_TEXEL_SIZE, y+CELL_TEXEL_SIZE],
+                    });
+                }
+            }
+
+            output.commands.push(DrawUpdate {
+                graphics: GraphicsModule::UpdateTerrainChunk,
+                params: DrawUpdateParams { update_terrain_chunk: params },
+            });
+ 
+            *update = false;
+        }
+
+        terrain.update_chunks = false;
     }
 
     fn render_terrain(&mut self) {
         let output = &mut self.output;
         let view = aabb(self.view_offset, self.view_size);
 
-        let mut params = DrawTerrainChunkParams { x: 0.0, y: 0.0 };
+        let mut params = DrawTerrainChunkParams { chunk_id: 0, x: 0.0, y: 0.0 };
 
         for chunk in self.world.terrain.chunks.iter() {
             let chunk_view = chunk.view();
@@ -102,6 +164,7 @@ impl DemoGame {
                 continue;
             }
 
+            params.chunk_id = chunk.position;
             params.x = chunk_view.left;
             params.y = chunk_view.top;
 
@@ -142,6 +205,7 @@ impl GameOutput {
     pub fn clear(&mut self) {
         self.commands.clear();
         self.sprite_data_buffer.clear();
+        self.terrain_data.clear();
     }
 
     pub fn write_index(&mut self) {
@@ -150,6 +214,8 @@ impl GameOutput {
         index.commands_count = self.commands.len();
         index.sprites_data_ptr = self.sprite_data_buffer.as_ptr();
         index.sprites_data_count = self.sprite_data_buffer.len();
+        index.terrain_data_ptr = self.terrain_data.as_ptr();
+        index.terrain_data_count = self.terrain_data.len();
     }
 
 }
@@ -161,6 +227,7 @@ impl Default for GameOutput {
         GameOutput {
             output_index: Box::leak(output_index),
             sprite_data_buffer: Vec::with_capacity(32),
+            terrain_data: Vec::with_capacity(1024),
             commands: Vec::with_capacity(32),
         }
     }
@@ -175,6 +242,8 @@ impl Default for OutputIndex {
             commands_count: 0,
             sprites_data_ptr: ::std::ptr::null(),
             sprites_data_count: 0,
+            terrain_data_ptr: ::std::ptr::null(),
+            terrain_data_count: 0,
             validation: 33355,
         }
     }

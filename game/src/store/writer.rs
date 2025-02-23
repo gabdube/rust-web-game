@@ -81,6 +81,23 @@ impl SaveFileWriter {
         }
     }
 
+    pub fn write_bool_slice(&mut self, values: &[bool]) {
+        if values.len() == 0 {
+            // 0 for the size and no data
+            self.write_u32(0);
+            return;
+        }
+
+        let count = values.len();
+        self.try_realloc(count + 1);
+
+        self.write_u32_inner(count as u32);
+
+        for &value in values {
+            self.write_u32_inner(value as u32);
+        }
+    }
+
     pub fn write_str(&mut self, value: &str) {
         let padding = 4 - (value.len() % 4);
         let length = value.len();

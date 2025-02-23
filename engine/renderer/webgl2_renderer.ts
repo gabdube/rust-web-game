@@ -1,9 +1,10 @@
-import { EngineGameInstance, EngineGameInstanceUpdates, EngineGameDrawUpdate, GraphicsModule, SPRITE_DATA_SIZE } from "../game_interface";
+import { EngineGameInstance, EngineGameInstanceUpdates, EngineGameDrawUpdate, GraphicsModule,
+    SPRITE_DATA_SIZE, TERRAIN_CHUNK_STRIDE, TERRAIN_CHUNK_SIZE_BYTES } from "../game_interface";
 import { EngineAssets } from "../assets";
 import { set_last_error } from "../error";
 import { Size } from "../helpers";
 
-const TERRAIN_CHUNK_STRIDE: number = 16;
+
 const TERRAIN_CHUNK_INDEX_COUNT: number = TERRAIN_CHUNK_STRIDE * TERRAIN_CHUNK_STRIDE * 6;
 
 class DrawCommand {
@@ -30,11 +31,13 @@ class DrawCommand {
     static draw_terrain_chunk(
         draw: DrawCommand,
         chunk_x: number,
-        chunk_y: number
+        chunk_y: number,
+        chunk_vao: WebGLVertexArrayObject,
     ) {
         draw.module = GraphicsModule.DrawTerrainChunk;
         draw.resource0 = chunk_x;
         draw.resource1 = chunk_y;
+        draw.resource2 = chunk_vao;
     }
 }
 
@@ -50,6 +53,7 @@ class RendererShaders {
     draw_sprites: WebGLProgram;
 
     draw_terrain_position_attrloc: number;
+    draw_terrain_uv_attrloc: number;
     draw_terrain_screen_size: WebGLUniformLocation;
     draw_terrain_chunk_position: WebGLUniformLocation;
     draw_terrain: WebGLProgram;
@@ -61,6 +65,11 @@ class SpriteDataBuffer {
     capacity: number;
 }
 
+class TerrainChunkData {
+    vao: WebGLVertexArrayObject;
+    chunk_buffer: WebGLBuffer;
+}
+
 class RendererBuffers {
     sprites_indices: WebGLBuffer;
     sprites_vertex: WebGLBuffer;
@@ -68,7 +77,7 @@ class RendererBuffers {
 
     terrain_indices: WebGLBuffer;
     terrain_vertex: WebGLBuffer;
-    terrain_vao: WebGLVertexArrayObject;
+    terrain_chunk_data: Map<number, TerrainChunkData> = new Map();
 }
 
 class RendererCanvas {
@@ -91,6 +100,7 @@ export class WebGL2Backend {
 
     assets: EngineAssets;
     textures: RendererTexture[];
+    terrain_texture: RendererTexture;
 
     shaders: RendererShaders;
     buffers: RendererBuffers;
@@ -123,6 +133,10 @@ export class WebGL2Backend {
         this.assets = assets;
 
         if (!this.compile_shaders()) {
+            return false;
+        }
+
+        if (!this.setup_textures()) {
             return false;
         }
 
@@ -187,7 +201,7 @@ export class WebGL2Backend {
 
     private create_renderer_texture(texture_id: number): RendererTexture {
         const ctx = this.ctx;
-        const bitmap = this.assets.textures_by_id[texture_id];
+        const bitmap = this.assets.textures_by_id[texture_id].bitmap;
     
         const texture = new RendererTexture();
         texture.handle = ctx.createTexture();
@@ -272,14 +286,58 @@ export class WebGL2Backend {
         );
     }
 
+    private create_terrain_chunk_buffer(): TerrainChunkData {
+        const ctx = this.ctx;
+
+        const chunk_data = new TerrainChunkData();
+        chunk_data.vao = ctx.createVertexArray();
+        chunk_data.chunk_buffer = ctx.createBuffer();
+
+        let position = this.shaders.draw_terrain_position_attrloc;
+        let uv = this.shaders.draw_terrain_uv_attrloc;
+
+        ctx.bindVertexArray(chunk_data.vao);
+
+        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, this.buffers.terrain_indices);
+
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.terrain_vertex);
+        ctx.enableVertexAttribArray(position);
+        ctx.vertexAttribPointer(position, 2, ctx.FLOAT, false, 8, 0);
+
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, chunk_data.chunk_buffer);
+        ctx.bufferData(ctx.ARRAY_BUFFER, TERRAIN_CHUNK_SIZE_BYTES, ctx.STATIC_DRAW);
+        ctx.enableVertexAttribArray(uv);
+        ctx.vertexAttribPointer(uv, 2, ctx.FLOAT, false, 8, 0);
+
+        ctx.bindVertexArray(null);
+
+        return chunk_data;
+    }
+
     private update_terrain(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) { 
+        let chunk_data = this.buffers.terrain_chunk_data.get(draw_update.chunk_id);
+        if (!chunk_data) {
+            chunk_data = this.create_terrain_chunk_buffer();
+            this.buffers.terrain_chunk_data.set(draw_update.chunk_id, chunk_data);
+        }
+
+        const ctx = this.ctx;
+        const terrain_data = updates.get_terrain_data(draw_update.chunk_data_offset);
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, chunk_data.chunk_buffer);
+        ctx.bufferSubData(ctx.ARRAY_BUFFER, 0, terrain_data);
     }
 
     private draw_terrain(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) {
+        const chunk_data = this.buffers.terrain_chunk_data.get(draw_update.chunk_id);
+        if (!chunk_data) {
+            return;
+        }
+        
         DrawCommand.draw_terrain_chunk(
             this.next_draw_command(),
             draw_update.chunk_x,
-            draw_update.chunk_y
+            draw_update.chunk_y,
+            chunk_data.vao
         );
     }
 
@@ -340,9 +398,18 @@ export class WebGL2Backend {
     render_terrain_chunk(draw: DrawCommand) {
         const ctx = this.ctx;
 
+        const batch_x = draw.resource0 as number;
+        const batch_y = draw.resource1 as number;
+        const vao = draw.resource2 as WebGLVertexArrayObject;
+
         ctx.useProgram(this.shaders.draw_terrain);
-        ctx.uniform2f(this.shaders.draw_terrain_chunk_position, draw.resource0, draw.resource1);
-        ctx.bindVertexArray(this.buffers.terrain_vao);
+
+        ctx.activeTexture(ctx.TEXTURE0);
+        ctx.bindTexture(ctx.TEXTURE_2D, this.terrain_texture.handle);
+
+        ctx.uniform2f(this.shaders.draw_terrain_chunk_position, batch_x, batch_y);
+
+        ctx.bindVertexArray(vao);
         ctx.drawElements(ctx.TRIANGLES, TERRAIN_CHUNK_INDEX_COUNT, ctx.UNSIGNED_SHORT, 0);
     }
 
@@ -512,6 +579,7 @@ export class WebGL2Backend {
         }
 
         shaders.draw_terrain_position_attrloc = ctx.getAttribLocation(terrain_program, "in_position");
+        shaders.draw_terrain_uv_attrloc = ctx.getAttribLocation(terrain_program, "in_uv");
         shaders.draw_terrain_screen_size = ctx.getUniformLocation(terrain_program, "screen_size") as any;
         shaders.draw_terrain_chunk_position = ctx.getUniformLocation(terrain_program, "chunk_position") as any;
         shaders.draw_terrain = terrain_program;
@@ -521,6 +589,19 @@ export class WebGL2Backend {
         ctx.deleteShader(sprites_frag);
         ctx.deleteShader(terrain_vert);
         ctx.deleteShader(terrain_frag);
+
+        return true;
+    }
+
+    private setup_textures(): boolean {
+        // Preload the terrain texture
+        const texture_id = this.assets.textures.get("terrain")?.id;
+        if (!texture_id) {
+            set_last_error("Failed to load terrain texture")
+            return false;
+        }
+
+        this.terrain_texture = this.create_renderer_texture(texture_id);
 
         return true;
     }
@@ -592,9 +673,6 @@ export class WebGL2Backend {
         }
 
         // Update buffers
-        this.buffers.terrain_vao = ctx.createVertexArray();
-        ctx.bindVertexArray(this.buffers.terrain_vao);
-
         this.buffers.terrain_indices = ctx.createBuffer();
         ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, this.buffers.terrain_indices);
         ctx.bufferData(ctx.ELEMENT_ARRAY_BUFFER, indices_data, ctx.STATIC_DRAW);
@@ -602,13 +680,6 @@ export class WebGL2Backend {
         this.buffers.terrain_vertex = ctx.createBuffer();
         ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.terrain_vertex);
         ctx.bufferData(ctx.ARRAY_BUFFER, vertex_data, ctx.STATIC_DRAW);
-
-        // Attributes setup
-        const location = this.shaders.draw_terrain_position_attrloc;
-        ctx.enableVertexAttribArray(location);
-        ctx.vertexAttribPointer(location, 2, ctx.FLOAT, false, 8, 0);
-
-        ctx.bindVertexArray(null);
     }
 
     private setup_buffers() {

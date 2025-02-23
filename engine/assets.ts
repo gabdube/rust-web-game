@@ -10,13 +10,19 @@ export class Shader {
     }
 }
 
+export class Texture {
+    id: number;
+    bitmap: ImageBitmap;
+}
+
 export class EngineAssets {
     raw_bundle: string = "";
 
-    textures: Map<string, ImageBitmap> = new Map();
-    textures_by_id: ImageBitmap[] = [];
+    textures: Map<string, Texture> = new Map();
+    textures_by_id: Texture[] = [];
 
     json: Map<string, string> = new Map();
+    csv: Map<string, string> = new Map();
     shaders: Map<string, Shader> = new Map();
 
     async load(): Promise<boolean> {
@@ -65,6 +71,12 @@ export class EngineAssets {
                     asset_loading_promises.push(this.load_json(name, path));
                     break;
                 }
+                case "CSV": {
+                    const name = args[1];
+                    const path = args[2];
+                    asset_loading_promises.push(this.load_csv(name, path));
+                    break;
+                }
                 case "SHADER": {
                     const name = args[1];
                     const vertex_path = args[2];
@@ -95,8 +107,12 @@ export class EngineAssets {
             return false;
         }
 
-        this.textures.set(name, bitmap);
-        this.textures_by_id[texture_id] = bitmap;
+        const texture = new Texture();
+        texture.id = texture_id;
+        texture.bitmap = bitmap;
+
+        this.textures.set(name, texture);
+        this.textures_by_id[texture_id] = texture;
 
         return true;
     }
@@ -108,6 +124,17 @@ export class EngineAssets {
         }
     
         this.json.set(name, json_text);
+
+        return true;
+    }
+
+    private async load_csv(name: string, path: string): Promise<boolean> {
+        const csv_text = await fetch_text(path);
+        if (!csv_text) {
+            return false;
+        }
+    
+        this.csv.set(name, csv_text);
 
         return true;
     }

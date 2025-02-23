@@ -2,17 +2,24 @@
 
 import { DemoGame } from "../build/game/game";
 
-const OUTPUT_INDEX_SIZE: number = 24;  // size_of(OutputIndex)
+const OUTPUT_INDEX_SIZE: number = 32;  // size_of(OutputIndex)
 const DRAW_UPDATE_SIZE: number = 16;   // size_of(DrawUpdate)
-export const SPRITE_DATA_SIZE: number = 32;   // size_of(SpriteData)
+export const SPRITE_DATA_SIZE: number = 32;       // size_of(SpriteData)
+const TERRAIN_CHUNK_TEXT_COORD_SIZE: number = 32; //size_of(TerrainChunkTexcoord)
 
 const OUTPUT_INDEX_DRAW_UPDATES_OFFSET: number = 4;
 const OUTPUT_INDEX_DRAW_UPDATES_COUNT_OFFSET: number = 8;
 const OUTPUT_INDEX_SPRITE_DATA_OFFSET: number = 12;
 const OUTPUT_INDEX_SPRITE_DATA_COUNT_OFFSET: number = 16;
-const OUTPUT_INDEX_VALIDATION_INDEX: number = 20;
+const OUTPUT_INDEX_TERRAIN_DATA_OFFSET: number = 20;
+const OUTPUT_INDEX_TERRAIN_DATA_COUNT_OFFSET: number = 24;
+const OUTPUT_INDEX_VALIDATION_INDEX: number = 28;
 
 const DRAW_UPDATE_GRAPHICS_MODULE_OFFSET: number = 0;
+
+export const TERRAIN_CHUNK_STRIDE: number = 16;
+export const TERRAIN_CHUNK_CELL_COUNT: number = TERRAIN_CHUNK_STRIDE * TERRAIN_CHUNK_STRIDE;
+export const TERRAIN_CHUNK_SIZE_BYTES: number = TERRAIN_CHUNK_CELL_COUNT * TERRAIN_CHUNK_TEXT_COORD_SIZE;
 
 export enum GraphicsModule {
     Undefined = 0,
@@ -25,8 +32,12 @@ export class EngineGameDrawUpdate {
     module: GraphicsModule = GraphicsModule.Undefined;
 
     // DrawTerrainChunk parameters
+    chunk_id: number;
     chunk_x: number;
     chunk_y: number;
+
+    // UpdateTerrainChunk params
+    chunk_data_offset: number;
 
     // DrawSprites parameters
     instance_base: number;
@@ -67,11 +78,14 @@ export class EngineGameInstanceUpdates {
 
         switch (draw.module) {
             case GraphicsModule.UpdateTerrainChunk: {
+                draw.chunk_id = draw_update_view.getUint32(4, true);
+                draw.chunk_data_offset = draw_update_view.getUint32(8, true);
                 break;
             }
             case GraphicsModule.DrawTerrainChunk: {
-                draw.chunk_x = draw_update_view.getFloat32(4, true);
-                draw.chunk_y = draw_update_view.getFloat32(8, true);
+                draw.chunk_id = draw_update_view.getUint32(4, true);
+                draw.chunk_x = draw_update_view.getFloat32(8, true);
+                draw.chunk_y = draw_update_view.getFloat32(12, true);
                 break;
             }
             case GraphicsModule.DrawSprites: {
@@ -93,6 +107,13 @@ export class EngineGameInstanceUpdates {
         const sprites_data_begin = sprites_data_base + (SPRITE_DATA_SIZE * instance_base);
         const sprites_data_end = sprites_data_begin + (SPRITE_DATA_SIZE * instance_count);
         return this.buffer.slice(sprites_data_begin, sprites_data_end);
+    } 
+
+    get_terrain_data(chunk_data_offset: number): ArrayBuffer {
+        const terrain_data_base = this.index.getUint32(OUTPUT_INDEX_TERRAIN_DATA_OFFSET, true);
+        const terrain_data_begin = terrain_data_base + (chunk_data_offset * TERRAIN_CHUNK_TEXT_COORD_SIZE);
+        const terrain_data_end = terrain_data_begin + TERRAIN_CHUNK_SIZE_BYTES;
+        return this.buffer.slice(terrain_data_begin, terrain_data_end);
     }
 
 }

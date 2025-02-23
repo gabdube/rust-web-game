@@ -63,7 +63,11 @@ function start_game_client(engine: Engine): boolean {
     init.set_initial_window_size(size.width, size.height);
 
     for (let [name, json] of engine.assets.json.entries()) {
-        init.upload_json(name, json);
+        init.upload_text_asset(name, json);
+    }
+
+    for (let [name, json] of engine.assets.csv.entries()) {
+        init.upload_text_asset(name, json);
     }
 
     engine.game.instance = game.DemoGame.initialize(init);

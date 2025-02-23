@@ -23,7 +23,7 @@ static LAST_ERROR: Mutex<Option<error::Error>> = Mutex::new(None);
 pub struct DemoGameInit {
     pub(crate) assets_bundle: String,
     pub(crate) initial_window_size: Size<f32>,
-    pub(crate) json: fnv::FnvHashMap<String, String>,
+    pub(crate) text_assets: fnv::FnvHashMap<String, String>,
 }
 
 #[wasm_bindgen]
@@ -32,7 +32,7 @@ impl DemoGameInit {
         DemoGameInit {
             assets_bundle: String::new(),
             initial_window_size: Size::default(),
-            json: fnv::FnvHashMap::default(),
+            text_assets: fnv::FnvHashMap::default(),
         }
     }
 
@@ -44,8 +44,8 @@ impl DemoGameInit {
         self.initial_window_size = Size { width, height };
     }
 
-    pub fn upload_json(&mut self, name: String, value: String) {
-        self.json.insert(name, value);
+    pub fn upload_text_asset(&mut self, name: String, value: String) {
+        self.text_assets.insert(name, value);
     }
 }
 
