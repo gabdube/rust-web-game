@@ -1,3 +1,6 @@
+mod terrain;
+use terrain::Terrain;
+
 use crate::assets::AnimationBase;
 use crate::output::SpriteData;
 use crate::store::SaveAndLoad;
@@ -15,6 +18,7 @@ pub struct Pawn {
 /// The game world data. Includes actors, terrain, and decorations
 pub struct World {
     pub last_animation_tick: f64,
+    pub terrain: Terrain,
     pub pawns: Vec<Pawn>,
     pub pawns_sprites: Vec<SpriteData>,
 }
@@ -37,6 +41,16 @@ impl crate::DemoGame {
 }
 
 impl World {
+
+    pub fn reset(&mut self) {
+        self.pawns.clear();
+        self.pawns_sprites.clear();
+        self.terrain.reset();
+    }
+
+    pub fn init_terrain(&mut self, width: u32, height: u32) {
+        self.terrain.init_terrain(width, height);
+    }
 
     pub fn create_pawn(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
         let pawn_index = self.pawns.len();
@@ -90,13 +104,16 @@ impl SaveAndLoad for World {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_slice(&self.pawns);
         writer.write_slice(&self.pawns_sprites);
+        writer.save(&self.terrain);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let pawns = reader.read_slice().to_vec();
         let pawns_sprites = reader.read_slice().to_vec();
+        let terrain = reader.load();
         World {
             last_animation_tick: 0.0,
+            terrain,
             pawns,
             pawns_sprites,
         }
@@ -108,6 +125,7 @@ impl Default for World {
     fn default() -> Self {
         World {
             last_animation_tick: 0.0,
+            terrain: Terrain::default(),
             pawns: Vec::with_capacity(16),
             pawns_sprites: Vec::with_capacity(16),
         }

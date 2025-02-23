@@ -43,19 +43,20 @@ export class EngineAssets {
 
         const lines = this.raw_bundle.split(split_line);
         let asset_loading_promises: Promise<boolean>[] = [];
+        let texture_id = 0;
+
         for (let line of lines) {
             if (line.length == 0) {
                 continue;
             }
 
             const args = line.split(";");
-            let texture_id = 0;
-            
             switch (args[0]) {
                 case "TEXTURE": {
                     const name = args[1];
                     const path = args[2];
                     asset_loading_promises.push(this.load_texture(texture_id, name, path));
+                    texture_id += 1;
                     break;
                 }
                 case "JSON": {

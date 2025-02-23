@@ -53,7 +53,8 @@ impl DemoGameInit {
 #[wasm_bindgen]
 pub struct DemoGame {
     time: f64,
-    window_size: Size<f32>,
+    view_offset: Position<f32>,
+    view_size: Size<f32>,
     assets: assets::Assets,
     world: world::World,
     output: output::GameOutput,
@@ -67,7 +68,7 @@ impl DemoGame {
         ::std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 
         let mut demo_app = DemoGame {
-            window_size: init.initial_window_size,
+            view_size: init.initial_window_size,
             ..DemoGame::default()
         };
     
@@ -75,11 +76,12 @@ impl DemoGame {
         demo_app.init_gameplay();
     
         dbg!("Game client initialized. Game client size: {}", size_of::<DemoGame>());
-    
+
         Some(demo_app)
     }
 
     pub fn on_reload(&mut self) {
+        self.init_gameplay();
     }
 
     pub fn update(&mut self, time: f64) -> bool {
@@ -125,7 +127,8 @@ impl Default for DemoGame {
     fn default() -> Self {
         DemoGame {
             time: 0.0,
-            window_size: Size::default(),
+            view_offset: Position::default(),
+            view_size: Size::default(),
             assets: assets::Assets::default(),
             output: output::GameOutput::default(),
             world: world::World::default(),
@@ -136,7 +139,8 @@ impl Default for DemoGame {
 
 impl store::SaveAndLoad for DemoGame {
     fn save(&self, writer: &mut store::SaveFileWriter) {
-        writer.save(&self.window_size);
+        writer.save(&self.view_offset);
+        writer.save(&self.view_size);
         writer.save(&self.state);
         writer.save(&self.world);
         writer.save(&self.assets);
@@ -144,7 +148,8 @@ impl store::SaveAndLoad for DemoGame {
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
         let mut demo_app = DemoGame::default();
-        demo_app.window_size = reader.load();
+        demo_app.view_offset = reader.load();
+        demo_app.view_size = reader.load();
         demo_app.state = reader.load();
         demo_app.world = reader.load();
         demo_app.assets = reader.load();

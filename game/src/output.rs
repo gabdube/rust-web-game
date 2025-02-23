@@ -1,4 +1,5 @@
-use super::DemoGame;
+use crate::shared::aabb;
+use crate::DemoGame;
 
 /// Tells the engine which "module" to use to process a draw update
 /// This maps 1-1 to the `GraphicsModule` defined in the engine renderer
@@ -7,13 +8,31 @@ use super::DemoGame;
 pub enum GraphicsModule {
     #[default]
     Undefined = 0,
-    DrawSprite = 1,
+    DrawSprites = 1,
+    UpdateTerrainChunk = 2,
+    DrawTerrainChunk = 3,
 }
 
-#[repr(u32)]
+#[repr(C)]
 #[derive(Copy, Clone)]
-pub enum DrawId {
-    DrawPawns = 0
+pub struct DrawSpriteParams {
+    pub instance_base: u32,
+    pub instance_count: u32,
+    pub texture_id: u32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct DrawTerrainChunkParams {
+    pub x: f32,
+    pub y: f32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union DrawUpdateParams {
+    pub draw_sprites: DrawSpriteParams,
+    pub draw_terrain_chunk: DrawTerrainChunkParams,
 }
 
 /// A generic draw update that will be read by the renderer
@@ -22,10 +41,7 @@ pub enum DrawId {
 #[derive(Copy, Clone)]
 pub struct DrawUpdate {
     graphics: GraphicsModule,
-    draw_id: DrawId,
-    instance_base: u32,
-    instance_count: u32,
-    texture_id: u32,
+    params: DrawUpdateParams,
 }
 
 /// Information on how to render a sprites on the GPU
@@ -64,8 +80,36 @@ impl DemoGame {
     /// Updates the current output buffers based on the game state
     pub fn update_output(&mut self) {
         self.output.clear();
+        self.update_terrain();
+        self.render_terrain();
         self.render_pawns();
         self.output.write_index();
+    }
+
+    fn update_terrain(&mut self) {
+
+    }
+
+    fn render_terrain(&mut self) {
+        let output = &mut self.output;
+        let view = aabb(self.view_offset, self.view_size);
+
+        let mut params = DrawTerrainChunkParams { x: 0.0, y: 0.0 };
+
+        for chunk in self.world.terrain.chunks.iter() {
+            let chunk_view = chunk.view();
+            if !view.intersects(&chunk_view) {
+                continue;
+            }
+
+            params.x = chunk_view.left;
+            params.y = chunk_view.top;
+
+            output.commands.push(DrawUpdate {
+                graphics: GraphicsModule::DrawTerrainChunk,
+                params: DrawUpdateParams { draw_terrain_chunk: params },
+            });
+        }
     }
 
     fn render_pawns(&mut self) {
@@ -74,9 +118,7 @@ impl DemoGame {
         let sprites_data = &mut output.sprite_data_buffer;
 
         let pawn_texture = self.assets.textures.get("pawn").unwrap().id;
-        let mut command = DrawUpdate {
-            graphics: GraphicsModule::DrawSprite,
-            draw_id: DrawId::DrawPawns,
+        let mut params = DrawSpriteParams {
             instance_base: 0,
             instance_count: 0,
             texture_id: pawn_texture,
@@ -84,10 +126,13 @@ impl DemoGame {
 
         for &pawn_sprite in world.pawns_sprites.iter() {
             sprites_data.push(pawn_sprite);
-            command.instance_count += 1;
+            params.instance_count += 1;
         }
 
-        output.commands.push(command);
+        output.commands.push(DrawUpdate {
+            graphics: GraphicsModule::DrawSprites,
+            params: DrawUpdateParams { draw_sprites: params },
+        });
     }
 
 }

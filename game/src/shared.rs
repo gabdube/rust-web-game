@@ -7,9 +7,17 @@ pub struct Position<T: Copy> {
     pub y: T,
 }
 
-impl<T: Copy> Position<T> {
-    pub const fn splat(self) -> [T; 2] {
-        [self.x, self.y]
+impl SaveAndLoad for Position<f32> {
+    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
+        writer.write_f32(self.x);
+        writer.write_f32(self.y);
+    }
+
+    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
+        Position {
+            x: reader.read_f32(),
+            y: reader.read_f32(),
+        }
     }
 }
 
@@ -66,6 +74,43 @@ impl SaveAndLoad for Size<f32> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct AABB {
+    pub left: f32,
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32
+}
+
+impl AABB {
+
+    pub fn intersects(&self, other: &Self) -> bool {
+        if self.right < other.left || other.right < self.left {
+            return false
+        }
+
+        if self.bottom < other.top || other.bottom < self.top {
+            return false
+        }
+
+        true
+    }
+
+}
+
+//
+// Helpers method
+//
+
 pub fn pos<T:Copy>(x: T, y: T) -> Position<T> {
     Position { x, y }
+}
+
+pub fn aabb(position: Position<f32>, size: Size<f32>) -> AABB {
+    AABB {
+        left: position.x,
+        top: position.y,
+        right: position.x + size.width,
+        bottom: position.y + size.height
+    }
 }

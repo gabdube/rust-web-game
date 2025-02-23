@@ -13,7 +13,8 @@ impl DemoGame {
     }
 
     fn init_gameplay_test(&mut self) {
-        let idle = &self.assets.animations.pawn.idle;
-        self.world.create_pawn(&pos(100.0, 100.0), idle);
+        self.world.reset();
+        self.world.init_terrain(32, 32);
+        self.world.create_pawn(&pos(100.0, 100.0), &self.assets.animations.pawn.idle);
     }
 }

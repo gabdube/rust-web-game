@@ -3,7 +3,7 @@
 import { DemoGame } from "../build/game/game";
 
 const OUTPUT_INDEX_SIZE: number = 24;  // size_of(OutputIndex)
-const DRAW_UPDATE_SIZE: number = 20;   // size_of(DrawUpdate)
+const DRAW_UPDATE_SIZE: number = 16;   // size_of(DrawUpdate)
 export const SPRITE_DATA_SIZE: number = 32;   // size_of(SpriteData)
 
 const OUTPUT_INDEX_DRAW_UPDATES_OFFSET: number = 4;
@@ -13,19 +13,22 @@ const OUTPUT_INDEX_SPRITE_DATA_COUNT_OFFSET: number = 16;
 const OUTPUT_INDEX_VALIDATION_INDEX: number = 20;
 
 const DRAW_UPDATE_GRAPHICS_MODULE_OFFSET: number = 0;
-const DRAW_UPDATE_ID_OFFSET: number = 4;
-const DRAW_UPDATE_INSTANCE_BASE_OFFSET: number = 8;
-const DRAW_UPDATE_INSTANCE_COUNT_OFFSET: number = 12;
-const DRAW_UPDATE_TEXTURE_ID_OFFSET: number = 16;
 
 export enum GraphicsModule {
     Undefined = 0,
     DrawSprites = 1,
+    UpdateTerrainChunk = 2,
+    DrawTerrainChunk = 3,
 }
 
 export class EngineGameDrawUpdate {
     module: GraphicsModule = GraphicsModule.Undefined;
-    id: number;
+
+    // DrawTerrainChunk parameters
+    chunk_x: number;
+    chunk_y: number;
+
+    // DrawSprites parameters
     instance_base: number;
     instance_count: number;
     texture_id: number;
@@ -61,10 +64,26 @@ export class EngineGameInstanceUpdates {
 
         const draw = this.last_draw_update
         draw.module = draw_update_view.getUint32(DRAW_UPDATE_GRAPHICS_MODULE_OFFSET, true);
-        draw.id = draw_update_view.getUint32(DRAW_UPDATE_ID_OFFSET, true);
-        draw.instance_base = draw_update_view.getUint32(DRAW_UPDATE_INSTANCE_BASE_OFFSET, true);
-        draw.instance_count = draw_update_view.getUint32(DRAW_UPDATE_INSTANCE_COUNT_OFFSET, true);
-        draw.texture_id = draw_update_view.getUint32(DRAW_UPDATE_TEXTURE_ID_OFFSET, true);
+
+        switch (draw.module) {
+            case GraphicsModule.UpdateTerrainChunk: {
+                break;
+            }
+            case GraphicsModule.DrawTerrainChunk: {
+                draw.chunk_x = draw_update_view.getFloat32(4, true);
+                draw.chunk_y = draw_update_view.getFloat32(8, true);
+                break;
+            }
+            case GraphicsModule.DrawSprites: {
+                draw.instance_base = draw_update_view.getUint32(4, true);
+                draw.instance_count = draw_update_view.getUint32(8, true);
+                draw.texture_id = draw_update_view.getUint32(12, true);
+                break;
+            }
+            default: {
+                console.error("Error: Received unknown draw update type");
+            }
+        }
     
         return draw;
     }
