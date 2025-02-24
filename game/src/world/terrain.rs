@@ -42,7 +42,6 @@ pub struct Terrain {
     pub chunk_height: u32,
     pub chunks_updates: Vec<bool>,
     pub chunks: Vec<TerrainChunk>,
-    pub update_chunks: bool,
 }
 
 impl Terrain {
@@ -52,7 +51,6 @@ impl Terrain {
         self.chunk_height = 0;
         self.chunks_updates.clear();
         self.chunks.clear();
-        self.update_chunks = false;
     }
 
     /// Initialize a terrain with a size of `width` by `height` cells
@@ -67,8 +65,6 @@ impl Terrain {
         let chunk_count = (self.chunk_width * self.chunk_height) as usize;
         self.chunks.reserve(chunk_count);
         self.chunks_updates.reserve(chunk_count);
-
-        self.update_chunks = true;
         
         for y in 0..self.chunk_height {
             for x in 0..self.chunk_width {
@@ -86,7 +82,6 @@ impl crate::store::SaveAndLoad for Terrain {
         writer.write_u32(self.chunk_height);
         writer.write_bool_slice(&self.chunks_updates);
         writer.write_slice(&self.chunks);
-        writer.write_u32(self.update_chunks as u32);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
@@ -95,7 +90,6 @@ impl crate::store::SaveAndLoad for Terrain {
             chunk_height: reader.read_u32(),
             chunks_updates: reader.read_bool_vec(),
             chunks: reader.read_slice().to_vec(),
-            update_chunks: reader.read_u32() == 1,
         }
     }
 }
@@ -107,7 +101,6 @@ impl Default for Terrain {
             chunk_height: 0,
             chunks_updates: Vec::new(),
             chunks: Vec::new(),
-            update_chunks: false,
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::shared::{Position, pos};
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ButtonState {
     Released = 0,
     JustReleased = 1,
@@ -32,6 +32,27 @@ pub struct InputState {
 }
 
 impl InputState {
+
+    pub fn right_mouse_clicked(&self) -> bool {
+        self.mouse_buttons[MouseButton::Right as usize] == ButtonState::JustPressed
+    }
+
+    pub fn right_mouse_released(&self) -> bool {
+        self.mouse_buttons[MouseButton::Right as usize] == ButtonState::JustReleased
+    }
+
+    pub fn mouse_delta(&self) -> Option<Position<f32>> {
+        let delta = self.mouse_position - self.last_mouse_position;
+        if delta.x != 0.0 || delta.y != 0.0 {
+            Some(delta)
+        } else {
+            None
+        }
+    }
+
+    //
+    // Updates
+    //
 
     pub fn update(&mut self) {
         self.last_mouse_position = self.mouse_position;

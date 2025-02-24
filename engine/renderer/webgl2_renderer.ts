@@ -1,4 +1,4 @@
-import { EngineGameInstance, EngineGameInstanceUpdates, EngineGameDrawUpdate, GraphicsModule,
+import { EngineGameInstance, EngineGameInstanceUpdates, EngineGameDrawUpdate, DrawUpdateType,
     SPRITE_DATA_SIZE, TERRAIN_CHUNK_STRIDE, TERRAIN_CHUNK_SIZE_BYTES } from "../game_interface";
 import { EngineAssets } from "../assets";
 import { set_last_error } from "../error";
@@ -7,8 +7,13 @@ import { Size } from "../helpers";
 
 const TERRAIN_CHUNK_INDEX_COUNT: number = TERRAIN_CHUNK_STRIDE * TERRAIN_CHUNK_STRIDE * 6;
 
+enum DrawCommandType {
+    DrawSprites = 1,
+    DrawTerrainChunk = 2,
+}
+
 class DrawCommand {
-    module: GraphicsModule;
+    ty: DrawCommandType;
 
     // Types depends on the module
     // See static methods
@@ -22,7 +27,7 @@ class DrawCommand {
         instance_count: number,
         texture: WebGLTexture,
     ) {
-        draw.module = GraphicsModule.DrawSprites;
+        draw.ty = DrawCommandType.DrawSprites;
         draw.resource0 = vao;
         draw.resource1 = instance_count;
         draw.resource2 = texture;
@@ -34,7 +39,7 @@ class DrawCommand {
         chunk_y: number,
         chunk_vao: WebGLVertexArrayObject,
     ) {
-        draw.module = GraphicsModule.DrawTerrainChunk;
+        draw.ty = DrawCommandType.DrawTerrainChunk;
         draw.resource0 = chunk_x;
         draw.resource1 = chunk_y;
         draw.resource2 = chunk_vao;
@@ -49,12 +54,14 @@ class RendererShaders {
     draw_sprites_position_attrloc: number;
     draw_sprites_instance_position_attrloc: number;
     draw_sprites_instance_texcoord_attrloc: number;
-    draw_sprites_screen_size: WebGLUniformLocation;
+    draw_sprites_view_position: WebGLUniformLocation;
+    draw_sprites_view_size: WebGLUniformLocation;
     draw_sprites: WebGLProgram;
 
     draw_terrain_position_attrloc: number;
     draw_terrain_uv_attrloc: number;
-    draw_terrain_screen_size: WebGLUniformLocation;
+    draw_terrain_view_position: WebGLUniformLocation;
+    draw_terrain_view_size: WebGLUniformLocation;
     draw_terrain_chunk_position: WebGLUniformLocation;
     draw_terrain: WebGLProgram;
 }
@@ -108,6 +115,9 @@ export class WebGL2Backend {
     draw_count: number;
     draw: DrawCommand[];
 
+    view_x: number;
+    view_y: number;
+
     init(): boolean {
         if ( !this.setup_canvas() ) { return false };
         if ( !this.setup_context() ) { return false; }
@@ -125,6 +135,9 @@ export class WebGL2Backend {
         this.draw_count = 0;
         this.draw = [];
         this.textures = [];
+
+        this.view_x = 0.0;
+        this.view_y = 0.0;
 
         return true;
     }
@@ -174,10 +187,10 @@ export class WebGL2Backend {
 
         // Screen size uniforms
         ctx.useProgram(this.shaders.draw_sprites);
-        ctx.uniform2f(this.shaders.draw_sprites_screen_size, this.canvas.width, this.canvas.height);
+        ctx.uniform2f(this.shaders.draw_sprites_view_size, this.canvas.width, this.canvas.height);
 
         ctx.useProgram(this.shaders.draw_terrain);
-        ctx.uniform2f(this.shaders.draw_terrain_screen_size, this.canvas.width, this.canvas.height);
+        ctx.uniform2f(this.shaders.draw_terrain_view_size, this.canvas.width, this.canvas.height);
     }
 
     //
@@ -327,7 +340,7 @@ export class WebGL2Backend {
         ctx.bufferSubData(ctx.ARRAY_BUFFER, 0, terrain_data);
     }
 
-    private draw_terrain(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) {
+    private draw_terrain(draw_update: EngineGameDrawUpdate) {
         const chunk_data = this.buffers.terrain_chunk_data.get(draw_update.chunk_id);
         if (!chunk_data) {
             return;
@@ -339,6 +352,21 @@ export class WebGL2Backend {
             draw_update.chunk_y,
             chunk_data.vao
         );
+    }
+
+    private update_view_offset(draw_update: EngineGameDrawUpdate) {
+        const ctx = this.ctx;
+        this.view_x = draw_update.view_x;
+        this.view_y = draw_update.view_y;
+
+        const x = -this.view_x;
+        const y = -this.view_y;
+    
+        ctx.useProgram(this.shaders.draw_sprites);
+        ctx.uniform2f(this.shaders.draw_sprites_view_position, x, y);
+
+        ctx.useProgram(this.shaders.draw_terrain);
+        ctx.uniform2f(this.shaders.draw_terrain_view_position, x, y);
     }
 
     private clear_drawing() {
@@ -354,20 +382,24 @@ export class WebGL2Backend {
         for (let i = 0; i < updates_count; i += 1) {
             const draw_update = game_updates.get_draw_update(i);
             switch (draw_update.module) {
-                case GraphicsModule.UpdateTerrainChunk: {
+                case DrawUpdateType.UpdateTerrainChunk: {
                     this.update_terrain(game_updates, draw_update);
                     break;
                 }
-                case GraphicsModule.DrawTerrainChunk: {
-                    this.draw_terrain(game_updates, draw_update);
+                case DrawUpdateType.DrawTerrainChunk: {
+                    this.draw_terrain(draw_update);
                     break;
                 }
-                case GraphicsModule.DrawSprites: {
+                case DrawUpdateType.DrawSprites: {
                     this.update_sprites(game_updates, draw_update);
                     break;
                 }
+                case DrawUpdateType.UpdateViewOffset: {
+                    this.update_view_offset(draw_update);
+                    break;
+                }
                 default: {
-                    console.log("Warning: A drawing update with an undefined graphics module was received. This should never happen");
+                    console.log("Warning: A drawing update with an unknown type was received");
                 }
             }
         }
@@ -423,17 +455,17 @@ export class WebGL2Backend {
         // Rendering
         for (let i = 0; i < this.draw_count; i += 1) {
             const draw = this.draw[i];
-            switch (draw.module) {
-                case GraphicsModule.DrawTerrainChunk: {
+            switch (draw.ty) {
+                case DrawCommandType.DrawTerrainChunk: {
                     this.render_terrain_chunk(draw);
                     break;
                 }
-                case GraphicsModule.DrawSprites: {
+                case DrawCommandType.DrawSprites: {
                     this.render_sprites(draw);
                     break;
                 }
                 default: {
-                    console.log("Warning: A drawing command with an undefined graphic module was received. This should never happen");
+                    console.log("Warning: A drawing command with an unknown type was received");
                 }
             }
         }
@@ -555,7 +587,8 @@ export class WebGL2Backend {
         shaders.draw_sprites_position_attrloc = ctx.getAttribLocation(sprites_program, "in_position");
         shaders.draw_sprites_instance_position_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_position");
         shaders.draw_sprites_instance_texcoord_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_texcoord");
-        shaders.draw_sprites_screen_size = ctx.getUniformLocation(sprites_program, "screen_size") as any;
+        shaders.draw_sprites_view_position = ctx.getUniformLocation(sprites_program, "view_position") as any;
+        shaders.draw_sprites_view_size = ctx.getUniformLocation(sprites_program, "view_size") as any;
         shaders.draw_sprites = sprites_program;
 
         // Terrain
@@ -580,7 +613,8 @@ export class WebGL2Backend {
 
         shaders.draw_terrain_position_attrloc = ctx.getAttribLocation(terrain_program, "in_position");
         shaders.draw_terrain_uv_attrloc = ctx.getAttribLocation(terrain_program, "in_uv");
-        shaders.draw_terrain_screen_size = ctx.getUniformLocation(terrain_program, "screen_size") as any;
+        shaders.draw_terrain_view_position = ctx.getUniformLocation(terrain_program, "view_position") as any;
+        shaders.draw_terrain_view_size = ctx.getUniformLocation(terrain_program, "view_size") as any;
         shaders.draw_terrain_chunk_position = ctx.getUniformLocation(terrain_program, "chunk_position") as any;
         shaders.draw_terrain = terrain_program;
 
@@ -690,10 +724,12 @@ export class WebGL2Backend {
     private setup_uniforms() {
         const ctx = this.ctx;
         ctx.useProgram(this.shaders.draw_sprites);
-        ctx.uniform2f(this.shaders.draw_sprites_screen_size, this.canvas.width, this.canvas.height);
+        ctx.uniform2f(this.shaders.draw_sprites_view_position, 0.0, 0.0);
+        ctx.uniform2f(this.shaders.draw_sprites_view_size, this.canvas.width, this.canvas.height);
 
         ctx.useProgram(this.shaders.draw_terrain);
-        ctx.uniform2f(this.shaders.draw_terrain_screen_size, this.canvas.width, this.canvas.height);
+        ctx.uniform2f(this.shaders.draw_terrain_view_position, 0.0, 0.0);
+        ctx.uniform2f(this.shaders.draw_terrain_view_size, this.canvas.width, this.canvas.height);
     }
 }
 

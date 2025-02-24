@@ -21,15 +21,16 @@ export const TERRAIN_CHUNK_STRIDE: number = 16;
 export const TERRAIN_CHUNK_CELL_COUNT: number = TERRAIN_CHUNK_STRIDE * TERRAIN_CHUNK_STRIDE;
 export const TERRAIN_CHUNK_SIZE_BYTES: number = TERRAIN_CHUNK_CELL_COUNT * TERRAIN_CHUNK_TEXT_COORD_SIZE;
 
-export enum GraphicsModule {
+export enum DrawUpdateType {
     Undefined = 0,
     DrawSprites = 1,
     UpdateTerrainChunk = 2,
     DrawTerrainChunk = 3,
+    UpdateViewOffset = 4,
 }
 
 export class EngineGameDrawUpdate {
-    module: GraphicsModule = GraphicsModule.Undefined;
+    module: DrawUpdateType = DrawUpdateType.Undefined;
 
     // DrawTerrainChunk parameters
     chunk_id: number;
@@ -43,6 +44,10 @@ export class EngineGameDrawUpdate {
     instance_base: number;
     instance_count: number;
     texture_id: number;
+
+    // Update view params
+    view_x: number;
+    view_y: number;
 }
 
 export class EngineGameInstanceUpdates {
@@ -77,21 +82,26 @@ export class EngineGameInstanceUpdates {
         draw.module = draw_update_view.getUint32(DRAW_UPDATE_GRAPHICS_MODULE_OFFSET, true);
 
         switch (draw.module) {
-            case GraphicsModule.UpdateTerrainChunk: {
+            case DrawUpdateType.UpdateTerrainChunk: {
                 draw.chunk_id = draw_update_view.getUint32(4, true);
                 draw.chunk_data_offset = draw_update_view.getUint32(8, true);
                 break;
             }
-            case GraphicsModule.DrawTerrainChunk: {
+            case DrawUpdateType.DrawTerrainChunk: {
                 draw.chunk_id = draw_update_view.getUint32(4, true);
                 draw.chunk_x = draw_update_view.getFloat32(8, true);
                 draw.chunk_y = draw_update_view.getFloat32(12, true);
                 break;
             }
-            case GraphicsModule.DrawSprites: {
+            case DrawUpdateType.DrawSprites: {
                 draw.instance_base = draw_update_view.getUint32(4, true);
                 draw.instance_count = draw_update_view.getUint32(8, true);
                 draw.texture_id = draw_update_view.getUint32(12, true);
+                break;
+            }
+            case DrawUpdateType.UpdateViewOffset: {
+                draw.view_x = draw_update_view.getFloat32(4, true);
+                draw.view_y = draw_update_view.getFloat32(8, true);
                 break;
             }
             default: {

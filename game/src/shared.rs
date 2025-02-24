@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{ops, fmt::Debug};
 use crate::store::SaveAndLoad;
 
 #[derive(Copy, Clone)]
@@ -21,6 +21,27 @@ impl SaveAndLoad for Position<f32> {
     }
 }
 
+impl ops::Sub for Position<f32> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn sub(self, rhs: Self) -> Self::Output {
+        Position {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl ops::SubAssign for Position<f32> {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: Self) {
+        self.x -= rhs.x;
+        self.y -= rhs.y;
+    }
+}
+
+
 impl<T: Debug+Copy> Debug for Position<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("Position")
@@ -36,6 +57,7 @@ impl<T: Copy+Default> Default for Position<T> {
         Position { x: v, y: v }
     }
 }
+
 
 
 #[derive(Copy, Clone)]

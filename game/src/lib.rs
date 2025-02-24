@@ -92,7 +92,7 @@ impl DemoGame {
 
         match self.state {
             state::GameState::MainMenu => {},
-            state::GameState::Gameplay => {
+            state::GameState::Gameplay(_) => {
                 self.gameplay_update();
             },
             state::GameState::Startup => {

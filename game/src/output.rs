@@ -1,16 +1,20 @@
-use crate::shared::aabb;
+use crate::shared::{aabb, Position};
 use crate::DemoGame;
+
+const UPDATE_VIEW: u8 = 0b001;
+const UPDATE_WORLD: u8 = 0b010;
 
 /// Tells the engine which "module" to use to process a draw update
 /// This maps 1-1 to the `GraphicsModule` defined in the engine renderer
 #[repr(u32)]
 #[derive(Copy, Clone, Default)]
-pub enum GraphicsModule {
+pub enum DrawUpdateType {
     #[default]
     Undefined = 0,
     DrawSprites = 1,
     UpdateTerrainChunk = 2,
     DrawTerrainChunk = 3,
+    UpdateViewOffset = 4,
 }
 
 #[repr(C)]
@@ -42,6 +46,7 @@ pub union DrawUpdateParams {
     pub draw_sprites: DrawSpriteParams,
     pub update_terrain_chunk: UpdateTerrainChunkParams,
     pub draw_terrain_chunk: DrawTerrainChunkParams,
+    pub update_view_offset: Position<f32>,
 }
 
 /// A generic draw update that will be read by the renderer
@@ -49,7 +54,7 @@ pub union DrawUpdateParams {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct DrawUpdate {
-    graphics: GraphicsModule,
+    graphics: DrawUpdateType,
     params: DrawUpdateParams,
 }
 
@@ -95,6 +100,7 @@ pub struct GameOutput {
     pub sprite_data_buffer: Vec<SpriteData>,
     pub terrain_data: Vec<TerrainChunkTexcoord>,
     pub commands: Vec<DrawUpdate>,
+    pub updates: u8,
 }
 
 impl DemoGame {
@@ -102,21 +108,36 @@ impl DemoGame {
     /// Updates the current output buffers based on the game state
     pub fn update_output(&mut self) {
         self.output.clear();
+        self.update_view();
         self.update_terrain();
         self.render_terrain();
         self.render_pawns();
         self.output.write_index();
     }
 
-    fn update_terrain(&mut self) {
-        const CELL_TEXEL_SIZE: f32 = 64.0;
-
-        let terrain = &mut self.world.terrain;
-        if !terrain.update_chunks {
+    fn update_view(&mut self) {
+        let output = &mut self.output;
+        if !output.must_sync_view() {
             return;
         }
 
+        output.commands.push(DrawUpdate {
+            graphics: DrawUpdateType::UpdateViewOffset,
+            params: DrawUpdateParams { update_view_offset: self.view_offset },
+        });
+
+        output.clear_sync_view();
+    }
+
+    fn update_terrain(&mut self) {
+        const CELL_TEXEL_SIZE: f32 = 64.0;
+
         let output = &mut self.output;
+        if !output.must_sync_world() {
+            return;
+        }
+
+        let terrain = &mut self.world.terrain;
         let terrain_tilemap = &self.assets.terrain;
         let mut params = UpdateTerrainChunkParams { chunk_id: 0, chunk_data_offset: 0 };
 
@@ -142,14 +163,14 @@ impl DemoGame {
             }
 
             output.commands.push(DrawUpdate {
-                graphics: GraphicsModule::UpdateTerrainChunk,
+                graphics: DrawUpdateType::UpdateTerrainChunk,
                 params: DrawUpdateParams { update_terrain_chunk: params },
             });
  
             *update = false;
         }
 
-        terrain.update_chunks = false;
+        output.clear_sync_world();
     }
 
     fn render_terrain(&mut self) {
@@ -169,7 +190,7 @@ impl DemoGame {
             params.y = chunk_view.top;
 
             output.commands.push(DrawUpdate {
-                graphics: GraphicsModule::DrawTerrainChunk,
+                graphics: DrawUpdateType::DrawTerrainChunk,
                 params: DrawUpdateParams { draw_terrain_chunk: params },
             });
         }
@@ -193,7 +214,7 @@ impl DemoGame {
         }
 
         output.commands.push(DrawUpdate {
-            graphics: GraphicsModule::DrawSprites,
+            graphics: DrawUpdateType::DrawSprites,
             params: DrawUpdateParams { draw_sprites: params },
         });
     }
@@ -218,6 +239,14 @@ impl GameOutput {
         index.terrain_data_count = self.terrain_data.len();
     }
 
+    pub fn sync_view(&mut self) { self.updates |= UPDATE_VIEW; }
+    fn must_sync_view(&self) -> bool { self.updates & UPDATE_VIEW > 0 }
+    fn clear_sync_view(&mut self) { self.updates &= !UPDATE_VIEW; }
+
+    pub fn sync_world(&mut self) { self.updates |= UPDATE_WORLD; }
+    fn must_sync_world(&self) -> bool { self.updates & UPDATE_WORLD > 0 }
+    fn clear_sync_world(&mut self) { self.updates &= !UPDATE_WORLD; }
+
 }
 
 impl Default for GameOutput {
@@ -229,6 +258,7 @@ impl Default for GameOutput {
             sprite_data_buffer: Vec::with_capacity(32),
             terrain_data: Vec::with_capacity(1024),
             commands: Vec::with_capacity(32),
+            updates: 0,
         }
     }
 

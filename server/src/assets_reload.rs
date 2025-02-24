@@ -49,7 +49,7 @@ fn filter_change_events<'a>(assets: &AssetCache, event: &'a Event, dedup: &Vec<P
 
 
 pub(crate) fn reload_assets(assets: &AssetCache) {
-    const WAIT: ::std::time::Duration = ::std::time::Duration::from_millis(200);
+    const WAIT: ::std::time::Duration = ::std::time::Duration::from_millis(500);
 
     let assets = assets.clone();
     
