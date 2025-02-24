@@ -30,4 +30,8 @@ cd game
 wasm-pack build --out-dir ../build/game --target web
 ```
 
+### Tools
+```
+cargo run -p tools -- -c *command_name* -f *filters*
+```
 

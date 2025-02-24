@@ -2,6 +2,7 @@
 /Cargo.lock
 /build/engine.js
 /build/assets/*.json
+/build/assets/tiny_sword/
 .DS_Store
 *.png
 node_modules
