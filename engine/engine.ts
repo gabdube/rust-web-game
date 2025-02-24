@@ -5,13 +5,22 @@ import { GameWebSocket, WebSocketMessage } from "./websocket";
 import { file_extension } from "./helpers";
 import { set_last_error } from "./error";
 
-export { get_last_error } from "./error";
+import { Error, get_last_error } from "./error";
+
+class InputState {
+    update_mouse_position: boolean = false;
+    mouse_position: number[] = [0.0, 0.0];
+    left_mouse_button: boolean = false;
+    right_mouse_button: boolean = false;
+}
 
 class Engine {
+    web_socket: GameWebSocket = new GameWebSocket();
+
     game: EngineGameInstance = new EngineGameInstance();
     assets: EngineAssets = new EngineAssets();
     renderer: Renderer = new Renderer();
-    web_socket: GameWebSocket = new GameWebSocket();
+    input: InputState = new InputState();
 
     errors_count: number = 0;
 
@@ -80,7 +89,37 @@ function start_game_client(engine: Engine): boolean {
     }
 }
 
-export async function init(): Promise<Engine | null> {
+function init_handlers(engine: Engine) {
+    const canvas = engine.renderer.canvas();
+    const input_state = engine.input;
+
+    canvas.addEventListener("mousemove", (event) => { 
+        input_state.mouse_position[0] = event.clientX;
+        input_state.mouse_position[1] = event.clientY;
+        input_state.update_mouse_position = true;
+    })
+
+    canvas.addEventListener("mousedown", (event) => {
+        input_state.mouse_position[0] = event.clientX;
+        input_state.mouse_position[1] = event.clientY;
+        if (event.button === 0) { input_state.left_mouse_button = true; }
+        else if (event.button === 2) { input_state.right_mouse_button = true; }
+    })
+
+    canvas.addEventListener("mouseup", (event) => {
+        input_state.mouse_position[0] = event.clientX;
+        input_state.mouse_position[1] = event.clientY;
+        if (event.button === 0) { input_state.left_mouse_button = false; }
+        else if (event.button === 2) { input_state.right_mouse_button = false; }
+    })
+
+    canvas.addEventListener("contextmenu", (event) => { event.preventDefault(); });
+
+    // window.addEventListener("keydown", (event) => { input_state.keys.set(event.code, true); });
+    // window.addEventListener("keyup", (event) => { input_state.keys.set(event.code, false); });
+}
+
+async function init(): Promise<Engine | null> {
     const engine = new Engine();
 
     if ( !engine.renderer.init() ) {
@@ -101,6 +140,8 @@ export async function init(): Promise<Engine | null> {
     if (!start_game_client(engine)) {
         return null;
     }
+
+    init_handlers(engine);
 
     return engine;
 }
@@ -174,9 +215,13 @@ function renderer_updates(engine: Engine) {
     engine.renderer.update(engine.game);
 }
 
-export function update(engine: Engine, time: DOMHighResTimeStamp) {
+function handle_resize(engine: Engine) {
     engine.renderer.handle_resize();
+}
+
+export function update(engine: Engine, time: DOMHighResTimeStamp) {
     websocket_messages(engine);
+    handle_resize(engine);
     game_updates(engine, time);
     renderer_updates(engine);
 }
@@ -212,3 +257,59 @@ export async function reload(engine: Engine) {
         engine.reload_client = false;
     }
 }
+
+// Runtime
+
+let boundedRun = () => {};
+
+function show(element: HTMLElement) {
+    element.classList.remove('hidden');
+}
+
+function show_critical_error(error: Error) {
+    const panel = document.getElementById("errorPanel") as HTMLElement;
+    const error_message = panel.children[2] as HTMLElement;
+    const error_traceback = panel.lastElementChild as HTMLElement;
+
+    error_message.textContent = error.message;
+
+    if (error.traceback) {
+        error_traceback.textContent = error.traceback.toString();
+        show(document.getElementById("errorDetails") as HTMLElement);
+    }
+
+    show(panel);
+}
+
+function run(engine: Engine) {
+    update(engine, performance.now());
+    render(engine);
+
+    if (engine.exit) {
+        return;
+    }
+
+    if (engine.reload) {
+        reload(engine)
+            .then(() => requestAnimationFrame(boundedRun) );
+    } else {
+        requestAnimationFrame(boundedRun);
+    }
+}
+
+async function init_app() {
+    const engine = await init();
+    if (!engine) {
+        const error = get_last_error();
+        if (error) {
+            show_critical_error(error);
+        }
+        return;
+    }
+
+    boundedRun = run.bind(null, engine);
+    boundedRun();
+}
+
+init_app();
+

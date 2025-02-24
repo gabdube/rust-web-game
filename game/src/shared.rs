@@ -114,3 +114,36 @@ pub fn aabb(position: Position<f32>, size: Size<f32>) -> AABB {
         bottom: position.y + size.height
     }
 }
+
+
+pub fn split_csv<CB: FnMut(&[&str])>(csv: &str, mut callback: CB) {
+    let mut start = 0;
+    let mut end = 0;
+    let mut chars_iter = csv.chars();
+    let mut args: [&str; 8] = [""; 8];
+    while let Some(c) = chars_iter.next() {
+        end += 1;
+        if c == '\n' {
+            let line = &csv[start..end];
+            let mut args_count = 0;
+            for substr in line.split(';') {
+                args[args_count] = substr;
+                args_count += 1;
+            }
+
+            if args_count > 1 {
+                callback(&args[0..(args_count-1)]);
+            }
+
+            start = end;
+        }
+    }
+}
+
+pub fn merge_error(err: &mut Option<crate::error::Error>, new: crate::error::Error) {
+    if err.is_none() {
+        *err = Some(new);
+    } else {
+        err.as_mut().unwrap().merge(new);
+    }
+}

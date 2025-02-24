@@ -1,6 +1,6 @@
 let LAST_ERROR: Error | null = null;
 
-class Error {
+export class Error {
     message: string;
     traceback: string | null;
 

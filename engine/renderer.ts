@@ -40,6 +40,15 @@ export class Renderer {
         }
     }
 
+    canvas(): HTMLCanvasElement {
+        if (this.backend) {
+            return this.backend.canvas.element;
+        } else {
+            console.error("canvas_size was called on an uninitialized renderer");
+            return new HTMLCanvasElement();
+        }
+    }
+
     update(game: EngineGameInstance) {
         this.backend?.update(game);
     }
