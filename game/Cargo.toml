@@ -9,7 +9,6 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 wasm-bindgen = "0.2.92"
 console_error_panic_hook = "0.1"
-bitflags = "2.5"
 unicode-segmentation = "1.12.0"
 fnv = "1.0.7"
 parking_lot = "0.12.3"

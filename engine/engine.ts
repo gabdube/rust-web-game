@@ -7,11 +7,20 @@ import { set_last_error } from "./error";
 
 import { Error, get_last_error } from "./error";
 
+const UPDATE_MOUSE_POSITION = 0b1;
+const UPDATE_MOUSE_BUTTONS = 0b10;
+
+// Matches `MouseButton`
+const MOUSE_BUTTON_LEFT = 0;
+const MOUSE_BUTTON_RIGHT = 1;
+
 class InputState {
-    update_mouse_position: boolean = false;
+    updates: number = 0;
     mouse_position: number[] = [0.0, 0.0];
-    left_mouse_button: boolean = false;
-    right_mouse_button: boolean = false;
+
+    // true: button was pressed, false: button was released, null: button state wasn't changed
+    left_mouse_button: boolean|null = null;    
+    right_mouse_button: boolean|null = null;
 }
 
 class Engine {
@@ -96,12 +105,14 @@ function init_handlers(engine: Engine) {
     canvas.addEventListener("mousemove", (event) => { 
         input_state.mouse_position[0] = event.clientX;
         input_state.mouse_position[1] = event.clientY;
-        input_state.update_mouse_position = true;
+        input_state.updates |= UPDATE_MOUSE_POSITION;
     })
 
     canvas.addEventListener("mousedown", (event) => {
         input_state.mouse_position[0] = event.clientX;
         input_state.mouse_position[1] = event.clientY;
+        input_state.updates |= UPDATE_MOUSE_BUTTONS;
+
         if (event.button === 0) { input_state.left_mouse_button = true; }
         else if (event.button === 2) { input_state.right_mouse_button = true; }
     })
@@ -109,6 +120,8 @@ function init_handlers(engine: Engine) {
     canvas.addEventListener("mouseup", (event) => {
         input_state.mouse_position[0] = event.clientX;
         input_state.mouse_position[1] = event.clientY;
+        input_state.updates |= UPDATE_MOUSE_BUTTONS;
+
         if (event.button === 0) { input_state.left_mouse_button = false; }
         else if (event.button === 2) { input_state.right_mouse_button = false; }
     })
@@ -203,8 +216,40 @@ function websocket_messages(engine: Engine) {
     ws.messages_count = 0;
 }
 
+function game_input_updates(engine: Engine): boolean {
+    const inputs = engine.input;
+    const game = engine.game.instance;
+    let ok = true;
+
+    if ((inputs.updates & UPDATE_MOUSE_POSITION) > 0) {
+        game.update_mouse_position(inputs.mouse_position[0], inputs.mouse_position[1]);
+    }
+
+    if ((inputs.updates & UPDATE_MOUSE_BUTTONS) > 0) {
+        if (inputs.left_mouse_button !== null) {
+            ok = ok && game.update_mouse_buttons(MOUSE_BUTTON_LEFT, inputs.left_mouse_button);
+        }
+
+        if (inputs.right_mouse_button !== null) {
+            ok = ok && game.update_mouse_buttons(MOUSE_BUTTON_RIGHT, inputs.right_mouse_button);
+        }
+
+        inputs.left_mouse_button = null;
+        inputs.right_mouse_button = null;
+    }
+
+    inputs.updates = 0;
+
+    return ok;
+}
+
 /// Updates the game simulation
 function game_updates(engine: Engine, time: DOMHighResTimeStamp) {
+    if (!game_input_updates(engine)) {
+        handle_game_err(engine);
+        return;
+    }
+    
     if (!engine.game.instance.update(time)) {
         handle_game_err(engine);
     }

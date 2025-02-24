@@ -6,6 +6,7 @@ mod error;
 
 mod store;
 mod shared;
+mod inputs;
 mod assets;
 mod world;
 mod output;
@@ -49,6 +50,7 @@ impl DemoGameInit {
     }
 }
 
+
 /// The game state
 #[wasm_bindgen]
 pub struct DemoGame {
@@ -56,6 +58,7 @@ pub struct DemoGame {
     view_offset: Position<f32>,
     view_size: Size<f32>,
     assets: assets::Assets,
+    inputs: inputs::InputState,
     world: world::World,
     output: output::GameOutput,
     state: state::GameState,
@@ -100,12 +103,36 @@ impl DemoGame {
 
         self.update_animations();
         self.update_output();
+        self.inputs.update();
 
-        return true;
+        return true
     }
 
     pub fn updates_ptr(&self) -> *const output::OutputIndex {
         self.output.output_index
+    }
+
+    pub fn update_mouse_position(&mut self, x: f32, y: f32) {
+        self.inputs.update_mouse_position(x, y);
+    }
+
+    pub fn update_mouse_buttons(&mut self, button: u8, pressed: bool) -> bool {
+        let button = match inputs::MouseButton::try_from(button) {
+            Ok(btn) => btn,
+            Err(error) => {
+                set_last_error(error);
+                return false;
+            }
+        };
+
+        let state = match pressed {
+            true => inputs::ButtonState::JustPressed,
+            false => inputs::ButtonState::JustReleased,
+        };
+
+        self.inputs.update_mouse_buttons(button, state);
+
+        return true;
     }
 
     fn update_time(&mut self, new_time: f64) {
@@ -130,6 +157,7 @@ impl Default for DemoGame {
             view_offset: Position::default(),
             view_size: Size::default(),
             assets: assets::Assets::default(),
+            inputs: inputs::InputState::default(),
             output: output::GameOutput::default(),
             world: world::World::default(),
             state: state::GameState::Startup,
