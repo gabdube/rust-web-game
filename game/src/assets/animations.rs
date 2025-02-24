@@ -49,10 +49,43 @@ impl PawnAnimation {
     }
 }
 
+#[derive(Default, Copy, Clone)]
+pub struct WarriorAnimation {
+    pub idle: AnimationBase,
+    pub walk: AnimationBase,
+    pub strike_h1: AnimationBase,
+    pub strike_h2: AnimationBase,
+    pub strike_b1: AnimationBase,
+    pub strike_b2: AnimationBase,
+    pub strike_t1: AnimationBase,
+    pub strike_t2: AnimationBase,
+}
+
+impl WarriorAnimation {
+    fn set_animation_by_name(&mut self, name: &str, animation: AnimationBase) -> Option<()> {
+        let target = match name {
+            "idle" => Some(&mut self.idle),
+            "walk" => Some(&mut self.walk),
+            "strike-horz-1" => Some(&mut self.strike_h1),
+            "strike-horz-2" => Some(&mut self.strike_h2),
+            "strike-bottom-1" => Some(&mut self.strike_b1),
+            "strike-bottom-2" => Some(&mut self.strike_b2),
+            "strike-top-1" => Some(&mut self.strike_t1),
+            "strike-top-2" => Some(&mut self.strike_t2),
+            _ => None,
+        }?;
+
+        *target = animation;
+
+        Some(())
+    }
+}
+
 
 #[derive(Default, Clone, Copy)]
 pub struct AnimationsBundle {
     pub pawn: PawnAnimation,
+    pub warrior: WarriorAnimation,
 }
 
 impl AnimationsBundle {
@@ -83,6 +116,7 @@ impl AnimationsBundle {
 
             let result = match name {
                 "pawn_sprites" => self.pawn.set_animation_by_name(animation_name, animation),
+                "warrior_sprites" => self.warrior.set_animation_by_name(animation_name, animation),
                 _ => { return Err(assets_err!("Unknown animation group name: {:?}", name)); }
             };
 

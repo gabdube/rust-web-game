@@ -76,6 +76,7 @@ impl DemoGame {
         };
     
         demo_app.load_asset_bundle(&init)?;
+        demo_app.init_world_assets()?;
         demo_app.init_gameplay();
     
         dbg!("Game client initialized. Game client size: {}", size_of::<DemoGame>());
@@ -103,7 +104,7 @@ impl DemoGame {
 
         self.update_animations();
         self.update_output();
-        self.inputs.update();
+        self.inputs.after_update();
 
         return true
     }
@@ -135,8 +136,24 @@ impl DemoGame {
         return true;
     }
 
+}
+
+impl DemoGame {
     fn update_time(&mut self, new_time: f64) {
         self.time = new_time;
+    }
+
+    fn update_animations(&mut self) {
+        const ANIMATION_INTERVAL: f64 = 1000.0 / 16.0; // 16fps
+
+        let world = &mut self.world;
+        let delta = self.time - world.last_animation_tick;
+        if delta < ANIMATION_INTERVAL {
+            return;
+        }
+
+        world.inner_animation_update();
+        world.last_animation_tick = self.time;
     }
 
     fn load_asset_bundle(&mut self, init: &DemoGameInit) -> Option<()> {
@@ -148,6 +165,14 @@ impl DemoGame {
         }
     }
 
+    fn init_world_assets(&mut self) -> Option<()> {
+        if let Err(e) = self.world.init_assets(&self.assets) {
+            set_last_error(e);
+            None
+        } else {
+            Some(())
+        }
+    }
 }
 
 impl Default for DemoGame {

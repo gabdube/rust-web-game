@@ -111,7 +111,7 @@ impl DemoGame {
         self.update_view();
         self.update_terrain();
         self.render_terrain();
-        self.render_pawns();
+        self.render_sprites();
         self.output.write_index();
     }
 
@@ -196,27 +196,42 @@ impl DemoGame {
         }
     }
 
-    fn render_pawns(&mut self) {
+    fn render_sprites(&mut self) {
         let world = &self.world;
         let output = &mut self.output;
         let sprites_data = &mut output.sprite_data_buffer;
 
-        let pawn_texture = self.assets.textures.get("pawn").unwrap().id;
         let mut params = DrawSpriteParams {
             instance_base: 0,
             instance_count: 0,
-            texture_id: pawn_texture,
+            texture_id: 0,
         };
 
-        for &pawn_sprite in world.pawns_sprites.iter() {
-            sprites_data.push(pawn_sprite);
-            params.instance_count += 1;
+        let sprites_group = [
+            (world.pawn_texture, &world.pawns_sprites),
+            (world.warrior_texture, &world.warrior_sprites),
+        ];
+
+        for (texture, sprites) in sprites_group {
+            if sprites.len() == 0 {
+                continue;
+            }
+
+            params.instance_base = sprites_data.len() as u32;
+            params.instance_count = 0;
+            params.texture_id = texture.id;
+            
+            for &sprite in sprites {
+                sprites_data.push(sprite);
+                params.instance_count += 1;
+            }
+
+            output.commands.push(DrawUpdate {
+                graphics: DrawUpdateType::DrawSprites,
+                params: DrawUpdateParams { draw_sprites: params },
+            });
         }
 
-        output.commands.push(DrawUpdate {
-            graphics: DrawUpdateType::DrawSprites,
-            params: DrawUpdateParams { draw_sprites: params },
-        });
     }
 
 }

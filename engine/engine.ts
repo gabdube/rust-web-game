@@ -93,7 +93,7 @@ function start_game_client(engine: Engine): boolean {
     if (engine.game.instance) { 
         return true
     } else {
-        set_last_error(`An error occured while initializing the game client: ${engine.game.module.get_last_error()}`);
+        set_last_error(engine.game.module.get_last_error());
         return false;
     }
 }

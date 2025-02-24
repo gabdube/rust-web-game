@@ -57,6 +57,7 @@ impl DemoGame {
         self.world.reset();
         self.world.init_terrain(32, 32);
         self.world.create_pawn(&pos(100.0, 100.0), &self.assets.animations.pawn.idle);
+        self.world.create_warrior(&pos(200.0, 100.0), &self.assets.animations.warrior.idle);
         self.output.sync_world();
     }
 

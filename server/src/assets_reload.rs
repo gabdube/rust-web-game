@@ -49,6 +49,7 @@ fn filter_change_events<'a>(assets: &AssetCache, event: &'a Event, dedup: &Vec<P
 
 
 pub(crate) fn reload_assets(assets: &AssetCache) {
+    // This value should be at least 1/2 of the wasm client compile time or else the update will be duplicated
     const WAIT: ::std::time::Duration = ::std::time::Duration::from_millis(500);
 
     let assets = assets.clone();

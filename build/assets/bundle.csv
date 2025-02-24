@@ -1,7 +1,9 @@
 TEXTURE;pawn;assets/Pawn_Blue.png;
+TEXTURE;warrior;assets/Warrior_Blue.png;
 TEXTURE;terrain;assets/terrain.png;
 
 JSON;animation;pawn_sprites;assets/Pawn_Blue.json;
+JSON;animation;warrior_sprites;assets/Warrior_Blue.json;
 
 CSV;terrain_sprites;assets/terrain.csv;
 
