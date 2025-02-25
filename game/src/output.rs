@@ -210,6 +210,10 @@ impl DemoGame {
         let sprites_group = [
             (world.pawn_texture, &world.pawns_sprites),
             (world.warrior_texture, &world.warrior_sprites),
+            (world.archer_texture, &world.archer_sprites),
+            (world.torch_goblin_texture, &world.torch_goblins_sprites),
+            (world.tnt_goblin_texture, &world.tnt_goblins_sprites),
+            (world.sheep_texture, &world.sheep_sprites),
         ];
 
         for (texture, sprites) in sprites_group {

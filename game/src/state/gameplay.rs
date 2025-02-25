@@ -58,6 +58,10 @@ impl DemoGame {
         self.world.init_terrain(32, 32);
         self.world.create_pawn(&pos(100.0, 100.0), &self.assets.animations.pawn.idle);
         self.world.create_warrior(&pos(200.0, 100.0), &self.assets.animations.warrior.idle);
+        self.world.create_archer(&pos(300.0, 100.0), &self.assets.animations.archer.idle);
+        self.world.create_sheep(&pos(100.0, 200.0), &self.assets.animations.sheep.walk);
+        self.world.create_torch_goblin(&pos(200.0, 200.0), &self.assets.animations.torch_goblin.idle);
+        self.world.create_tnt_goblin(&pos(300.0, 200.0), &self.assets.animations.tnt_goblin.idle);
         self.output.sync_world();
     }
 

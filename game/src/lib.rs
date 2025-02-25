@@ -76,7 +76,6 @@ impl DemoGame {
         };
     
         demo_app.load_asset_bundle(&init)?;
-        demo_app.init_world_assets()?;
         demo_app.init_gameplay();
     
         dbg!("Game client initialized. Game client size: {}", size_of::<DemoGame>());
@@ -156,15 +155,6 @@ impl DemoGame {
         world.last_animation_tick = self.time;
     }
 
-    fn load_asset_bundle(&mut self, init: &DemoGameInit) -> Option<()> {
-        if let Err(e) = self.assets.load_bundle(&init) {
-            set_last_error(e);
-            None
-        } else {
-            Some(())
-        }
-    }
-
     fn init_world_assets(&mut self) -> Option<()> {
         if let Err(e) = self.world.init_assets(&self.assets) {
             set_last_error(e);
@@ -173,6 +163,16 @@ impl DemoGame {
             Some(())
         }
     }
+
+    fn load_asset_bundle(&mut self, init: &DemoGameInit) -> Option<()> {
+        if let Err(e) = self.assets.load_bundle(&init) {
+            set_last_error(e);
+            return None;
+        }
+
+        self.init_world_assets()
+    }
+
 }
 
 impl Default for DemoGame {

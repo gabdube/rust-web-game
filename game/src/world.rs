@@ -7,17 +7,8 @@ use crate::output::SpriteData;
 use crate::store::SaveAndLoad;
 use crate::Position;
 
-
 #[derive(Copy, Clone, Default, Debug)]
-pub struct Pawn {
-    pub position: Position<f32>,
-    pub animation: AnimationBase,
-    pub current_frame: u8,
-    pub flipped: bool,
-}
-
-#[derive(Copy, Clone, Default, Debug)]
-pub struct Warrior {
+pub struct BaseUnit {
     pub position: Position<f32>,
     pub animation: AnimationBase,
     pub current_frame: u8,
@@ -30,22 +21,46 @@ pub struct World {
     pub terrain: Terrain,
 
     pub pawn_texture: Texture,
-    pub pawns: Vec<Pawn>,
+    pub pawns: Vec<BaseUnit>,
     pub pawns_sprites: Vec<SpriteData>,
 
     pub warrior_texture: Texture,
-    pub warriors: Vec<Warrior>,
+    pub warriors: Vec<BaseUnit>,
     pub warrior_sprites: Vec<SpriteData>,
+
+    pub archer_texture: Texture,
+    pub archers: Vec<BaseUnit>,
+    pub archer_sprites: Vec<SpriteData>,
+
+    pub torch_goblin_texture: Texture,
+    pub torch_goblins: Vec<BaseUnit>,
+    pub torch_goblins_sprites: Vec<SpriteData>,
+
+    pub tnt_goblin_texture: Texture,
+    pub tnt_goblins: Vec<BaseUnit>,
+    pub tnt_goblins_sprites: Vec<SpriteData>,
+
+    pub sheep_texture: Texture,
+    pub sheeps: Vec<BaseUnit>,
+    pub sheep_sprites: Vec<SpriteData>,
 }
 
 impl World {
 
     pub fn init_assets(&mut self, assets: &crate::assets::Assets) -> Result<(), Error> {
-        self.pawn_texture = assets.textures.get("pawn").copied()
-            .ok_or_else(|| assets_err!("Pawn texture missing") )?;
-    
-        self.warrior_texture = assets.textures.get("warrior").copied()
-            .ok_or_else(|| assets_err!("Warrior texture missing") )?;
+        let textures = [
+            (&mut self.pawn_texture, "pawn"),
+            (&mut self.warrior_texture, "warrior"),
+            (&mut self.archer_texture, "archer"),
+            (&mut self.torch_goblin_texture, "torch_goblin"),
+            (&mut self.tnt_goblin_texture, "tnt_goblin"),
+            (&mut self.sheep_texture, "sheep"),
+        ];
+
+        for (texture, name) in textures {
+            *texture = assets.textures.get(name).copied()
+                .ok_or_else(|| assets_err!("{} texture missing", name) )?;
+        }
 
         Ok(())
     }
@@ -55,6 +70,10 @@ impl World {
         self.pawns_sprites.clear();
         self.warriors.clear();
         self.warrior_sprites.clear();
+        self.archers.clear();
+        self.archer_sprites.clear();
+        self.sheeps.clear();
+        self.sheep_sprites.clear();
         self.terrain.reset();
     }
 
@@ -63,52 +82,62 @@ impl World {
     }
 
     pub fn create_pawn(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
-        let pawn_index = self.pawns.len();
-
-        self.pawns_sprites.push(Self::build_sprite_data(position, animation, 0, false));
-
-        self.pawns.push(Pawn {
-            position: *position,
-            animation: *animation,
-            ..Default::default()
-        });
-
-        pawn_index
+        Self::create_inner_actor(&mut self.pawns, &mut self.pawns_sprites, position, animation)
     }
 
     pub fn create_warrior(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
-        let warrior_index = self.warriors.len();
+        Self::create_inner_actor(&mut self.warriors, &mut self.warrior_sprites, position, animation)
+    }
 
-        self.warrior_sprites.push(Self::build_sprite_data(position, animation, 0, false));
+    pub fn create_archer(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+        Self::create_inner_actor(&mut self.archers, &mut self.archer_sprites, position, animation)
+    }
 
-        self.warriors.push(Warrior {
-            position: *position,
-            animation: *animation,
-            ..Default::default()
-        });
+    pub fn create_torch_goblin(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+        Self::create_inner_actor(&mut self.torch_goblins, &mut self.torch_goblins_sprites, position, animation)
+    }
 
-        warrior_index
+    pub fn create_tnt_goblin(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+        Self::create_inner_actor(&mut self.tnt_goblins, &mut self.tnt_goblins_sprites, position, animation)
+    }
+    
+    pub fn create_sheep(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+        Self::create_inner_actor(&mut self.sheeps, &mut self.sheep_sprites, position, animation)
     }
 
     pub fn inner_animation_update(&mut self) {
-        for (index, pawn) in self.pawns.iter_mut().enumerate() {
-            pawn.current_frame += 1;
-            if pawn.current_frame > pawn.animation.last_frame {
-                pawn.current_frame = 0;
+        let groups = [
+            (&mut self.pawns, &mut self.pawns_sprites),
+            (&mut self.warriors, &mut self.warrior_sprites),
+            (&mut self.archers, &mut self.archer_sprites),
+            (&mut self.torch_goblins, &mut self.torch_goblins_sprites),
+            (&mut self.tnt_goblins, &mut self.tnt_goblins_sprites),
+            (&mut self.sheeps, &mut self.sheep_sprites),
+        ];
+
+        for (actors, sprites) in groups {
+            for (index, actor) in actors.iter_mut().enumerate() {
+                actor.current_frame += 1;
+                if actor.current_frame > actor.animation.last_frame {
+                    actor.current_frame = 0;
+                }
+    
+                sprites[index] = Self::build_sprite_data(&actor.position, &actor.animation, actor.current_frame, actor.flipped);
             }
-
-            self.pawns_sprites[index] = Self::build_sprite_data(&pawn.position, &pawn.animation, pawn.current_frame, pawn.flipped);
-        }
-
-        for (index, warrior) in self.warriors.iter_mut().enumerate() {
-            warrior.current_frame += 1;
-            if warrior.current_frame > warrior.animation.last_frame {
-                warrior.current_frame = 0;
-            }
-
-            self.warrior_sprites[index] = Self::build_sprite_data(&warrior.position, &warrior.animation, warrior.current_frame, warrior.flipped);
         }
     } 
+
+    fn create_inner_actor(
+        base: &mut Vec<BaseUnit>,
+        sprites: &mut Vec<SpriteData>,
+        position: &Position<f32>,
+        animation: &AnimationBase
+    ) -> usize {
+        let index = base.len();
+        sprites.push(Self::build_sprite_data(position, animation, 0, false));
+        base.push(BaseUnit { position: *position, animation: *animation, ..Default::default()});
+        return index
+    }
 
     fn build_sprite_data(position: &Position<f32>, animation: &AnimationBase, current_frame: u8, flipped: bool) -> SpriteData {
         let mut sprite = SpriteData::default();
@@ -138,9 +167,28 @@ impl SaveAndLoad for World {
         writer.write(&self.pawn_texture);
         writer.write_slice(&self.pawns);
         writer.write_slice(&self.pawns_sprites);
+
         writer.write(&self.warrior_texture);
         writer.write_slice(&self.warriors);
         writer.write_slice(&self.warrior_sprites);
+
+        writer.write(&self.archer_texture);
+        writer.write_slice(&self.archers);
+        writer.write_slice(&self.archer_sprites);
+
+        writer.write(&self.torch_goblin_texture);
+        writer.write_slice(&self.torch_goblins);
+        writer.write_slice(&self.torch_goblins_sprites);
+
+        writer.write(&self.tnt_goblin_texture);
+        writer.write_slice(&self.tnt_goblins);
+        writer.write_slice(&self.tnt_goblins_sprites);
+
+        writer.write(&self.sheep_texture);
+        writer.write_slice(&self.sheeps);
+        writer.write_slice(&self.sheep_sprites);
+
+
         writer.save(&self.terrain);
     }
 
@@ -152,6 +200,22 @@ impl SaveAndLoad for World {
         let warrior_texture = reader.read();
         let warriors = reader.read_slice().to_vec();
         let warrior_sprites = reader.read_slice().to_vec();
+
+        let archer_texture = reader.read();
+        let archers = reader.read_slice().to_vec();
+        let archer_sprites = reader.read_slice().to_vec();
+
+        let torch_goblin_texture = reader.read();
+        let torch_goblins = reader.read_slice().to_vec();
+        let torch_goblins_sprites = reader.read_slice().to_vec();
+
+        let tnt_goblin_texture = reader.read();
+        let tnt_goblins = reader.read_slice().to_vec();
+        let tnt_goblins_sprites = reader.read_slice().to_vec();
+
+        let sheep_texture = reader.read();
+        let sheeps = reader.read_slice().to_vec();
+        let sheep_sprites = reader.read_slice().to_vec();
 
         let terrain = reader.load();
 
@@ -166,6 +230,22 @@ impl SaveAndLoad for World {
             warrior_texture,
             warriors,
             warrior_sprites,
+
+            archer_texture,
+            archers,
+            archer_sprites,
+
+            torch_goblin_texture,
+            torch_goblins,
+            torch_goblins_sprites,
+
+            tnt_goblin_texture,
+            tnt_goblins,
+            tnt_goblins_sprites,
+
+            sheep_texture,
+            sheeps,
+            sheep_sprites,
         }
     }
 
@@ -184,6 +264,22 @@ impl Default for World {
             warrior_texture: Texture { id: 0 },
             warriors: Vec::with_capacity(16),
             warrior_sprites: Vec::with_capacity(16),
+
+            archer_texture: Texture { id: 0 },
+            archers: Vec::with_capacity(16),
+            archer_sprites: Vec::with_capacity(16),
+
+            torch_goblin_texture: Texture { id: 0 },
+            torch_goblins: Vec::with_capacity(16),
+            torch_goblins_sprites: Vec::with_capacity(16),
+
+            tnt_goblin_texture: Texture { id: 0 },
+            tnt_goblins: Vec::with_capacity(16),
+            tnt_goblins_sprites: Vec::with_capacity(16),
+
+            sheep_texture: Texture { id: 0 },
+            sheeps: Vec::with_capacity(16),
+            sheep_sprites: Vec::with_capacity(16),
         }
     }
 }

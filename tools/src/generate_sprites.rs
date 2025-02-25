@@ -99,7 +99,7 @@ fn load_actors(filters: &[String], state: &mut AssetsState) {
     let mut actors = Vec::with_capacity(10);
     actors.push(actor("Factions/Knights/Troops/Pawn/Blue/Pawn_Blue.png", size(192, 192), &["idle", "walk", "hammer", "axe", "idle_hold", "idle_walk"]));
     actors.push(actor("Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png", size(192, 192), &["idle", "walk", "strike-horz-1", "strike-horz-2", "strike-bottom-1", "strike-bottom-2", "strike-top-1", "strike-top-2"]));
-    actors.push(actor("Factions/Knights/Troops/Archer/Blue/Archer_Blue.png", size(192, 192), &["idle", "walk", "fire_top", "fire-top-horz", "fire-horz", "fire-bottom-horz", "fire-bottom"]));
+    actors.push(actor("Factions/Knights/Troops/Archer/Blue/Archer_Blue.png", size(192, 192), &["idle", "walk", "fire-top", "fire-top-horz", "fire-horz", "fire-bottom-horz", "fire-bottom"]));
     actors.push(actor("Factions/Goblins/Troops/Torch/Red/Torch_Red.png", size(192, 192), &["idle", "walk", "strike-horz", "strike-bottom", "strike-top"]));
     actors.push(actor("Factions/Goblins/Troops/TNT/Red/TNT_Red.png", size(192, 192), &["idle", "walk", "throw"]));
     actors.push(actor("Resources/Sheep/HappySheep_All.png", size(128, 128), &["idle", "walk"]));
