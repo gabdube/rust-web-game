@@ -112,6 +112,11 @@ impl DemoGame {
         self.output.output_index
     }
 
+    pub fn update_view_size(&mut self, width: f32, height: f32) {
+        self.view_size.width = width;
+        self.view_size.height = height;
+    }
+
     pub fn update_mouse_position(&mut self, x: f32, y: f32) {
         self.inputs.update_mouse_position(x, y);
     }
@@ -138,6 +143,7 @@ impl DemoGame {
 }
 
 impl DemoGame {
+
     fn update_time(&mut self, new_time: f64) {
         self.time = new_time;
     }
@@ -151,7 +157,7 @@ impl DemoGame {
             return;
         }
 
-        world.inner_animation_update();
+        world.animation_update();
         world.last_animation_tick = self.time;
     }
 

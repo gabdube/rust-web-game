@@ -32,6 +32,6 @@ wasm-pack build --out-dir ../build/game --target web
 
 ### Tools
 ```
-cargo run -p tools -- -c *command_name* -f *filters*
+cargo run -p tools --release -- -c *command_name* -f *filters*
 ```
 

@@ -163,13 +163,13 @@ export class WebGL2Backend {
         return { width: this.canvas.width, height: this.canvas.height };
     }
 
-    handle_resize() {
+    handle_resize(): boolean {
         const canvas = this.canvas;
         const dpr = window.devicePixelRatio;
         const display_width  = Math.round(canvas.element.clientWidth * dpr);
         const display_height = Math.round(canvas.element.clientHeight * dpr);
         if (display_width == canvas.width && display_height == canvas.height) {
-            return;
+            return false;
         }
     
         const ctx = this.ctx;
@@ -191,6 +191,8 @@ export class WebGL2Backend {
 
         ctx.useProgram(this.shaders.draw_terrain);
         ctx.uniform2f(this.shaders.draw_terrain_view_size, this.canvas.width, this.canvas.height);
+
+        return true;
     }
 
     //

@@ -68,18 +68,50 @@ impl World {
     pub fn reset(&mut self) {
         self.pawns.clear();
         self.pawns_sprites.clear();
+
         self.warriors.clear();
         self.warrior_sprites.clear();
+
         self.archers.clear();
         self.archer_sprites.clear();
+
+        self.torch_goblins.clear();
+        self.torch_goblins_sprites.clear();
+
+        self.tnt_goblins.clear();
+        self.tnt_goblins_sprites.clear();
+
         self.sheeps.clear();
         self.sheep_sprites.clear();
+
         self.terrain.reset();
     }
 
     pub fn init_terrain(&mut self, width: u32, height: u32) {
         self.terrain.init_terrain(width, height);
     }
+
+    pub fn animation_update(&mut self) {
+        let groups = [
+            (&mut self.pawns, &mut self.pawns_sprites),
+            (&mut self.warriors, &mut self.warrior_sprites),
+            (&mut self.archers, &mut self.archer_sprites),
+            (&mut self.torch_goblins, &mut self.torch_goblins_sprites),
+            (&mut self.tnt_goblins, &mut self.tnt_goblins_sprites),
+            (&mut self.sheeps, &mut self.sheep_sprites),
+        ];
+
+        for (actors, sprites) in groups {
+            for (index, actor) in actors.iter_mut().enumerate() {
+                actor.current_frame += 1;
+                if actor.current_frame > actor.animation.last_frame {
+                    actor.current_frame = 0;
+                }
+    
+                sprites[index] = Self::build_sprite_data(&actor.position, &actor.animation, actor.current_frame, actor.flipped);
+            }
+        }
+    } 
 
     pub fn create_pawn(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
         Self::create_inner_actor(&mut self.pawns, &mut self.pawns_sprites, position, animation)
@@ -105,28 +137,6 @@ impl World {
         Self::create_inner_actor(&mut self.sheeps, &mut self.sheep_sprites, position, animation)
     }
 
-    pub fn inner_animation_update(&mut self) {
-        let groups = [
-            (&mut self.pawns, &mut self.pawns_sprites),
-            (&mut self.warriors, &mut self.warrior_sprites),
-            (&mut self.archers, &mut self.archer_sprites),
-            (&mut self.torch_goblins, &mut self.torch_goblins_sprites),
-            (&mut self.tnt_goblins, &mut self.tnt_goblins_sprites),
-            (&mut self.sheeps, &mut self.sheep_sprites),
-        ];
-
-        for (actors, sprites) in groups {
-            for (index, actor) in actors.iter_mut().enumerate() {
-                actor.current_frame += 1;
-                if actor.current_frame > actor.animation.last_frame {
-                    actor.current_frame = 0;
-                }
-    
-                sprites[index] = Self::build_sprite_data(&actor.position, &actor.animation, actor.current_frame, actor.flipped);
-            }
-        }
-    } 
-
     fn create_inner_actor(
         base: &mut Vec<BaseUnit>,
         sprites: &mut Vec<SpriteData>,
@@ -143,7 +153,7 @@ impl World {
         let mut sprite = SpriteData::default();
         let i = current_frame as f32;
         sprite.position[0] = position.x - (animation.sprite_width * 0.5);
-        sprite.position[1] = position.y - (animation.sprite_height * 0.5);
+        sprite.position[1] = position.y - animation.sprite_height;
         sprite.size[0] = animation.sprite_width;
         sprite.size[1] = animation.sprite_height;
         sprite.texcoord_offset[0] = animation.x + (animation.sprite_width * i) + (animation.padding * i);

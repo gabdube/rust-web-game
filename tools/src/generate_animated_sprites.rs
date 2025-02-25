@@ -1,6 +1,11 @@
-//! Generate optimized sprites from the data in `assets/dev/tiny_sword`
-//! Call this script using `cargo run -p loomz-tools --release -- -c generate_sprites -f [optional_filters]`
-use std::{fs::File, u32};
+/**
+    Generate optimized sprites from the units data in `assets/dev/tiny_sword`
+
+    Actors sprites must be manually added to the `load_actors` functions
+
+    Call this script using `cargo run -p tools --release -- -c generate_animated_sprites -f [optional_filters]`
+*/
+use std::fs::File;
 use crate::shared::{Rect, Size, Offset, size};
 
 const SRC_ROOT: &str = "build/assets/tiny_sword/";
@@ -41,7 +46,7 @@ struct ActorAnimation {
 }
 
 /// All the info required to read and process a "actor" sprites 
-#[derive(Clone)]
+
 struct Actor {
     file_name: String,
     src_path: &'static str,
@@ -63,6 +68,47 @@ struct AssetsState {
 }
 
 //
+// Processing actors
+//
+
+
+pub fn generate_sprites(filters: &[String]) {
+    let mut state = AssetsState::default();
+    load_actors(filters, &mut state);
+    process_actor_sprites(&mut state);
+}
+
+fn process_actor_sprites(state: &mut AssetsState) {
+    fn process_single_actor<P: Copy+Default+PartialEq>(actor: &mut Actor) {
+        find_actor_animation_sources::<P>(actor);
+        prepare_actor_dst::<P>(actor);
+        compute_sprites_dst(actor);
+        copy_sprites_dst::<P>(actor);
+    }
+
+    for actor in state.actors.iter_mut() {
+        if !actor.loaded {
+            continue;
+        }
+
+        match (actor.src_image_info.bit_depth, actor.src_image_info.color_type) {
+            (png::BitDepth::Eight, png::ColorType::Rgba) => process_single_actor::<[u8;4]>(actor),
+            combined => unimplemented!("process_actor_sprites for {:?} is not implemented", combined)
+        }
+
+        if let Err(e) = export_image(actor) {
+            println!("ERROR: Failed to export actors sprites: {:?}", e);
+        }
+        
+        if let Err(e) = export_json(actor) {
+            println!("ERROR: Failed to export actors sprites json: {:?}", e);
+        }
+    }
+}
+
+
+
+//
 // Loading files & templates
 //
 
@@ -78,6 +124,7 @@ fn load_actors_source(actor: &mut Actor) {
 }
 
 fn load_actors(filters: &[String], state: &mut AssetsState) {
+    /// src_sprite_size is the size of a single sprite in the source file
     fn actor(src_path: &'static str, src_sprite_size: Size, animation_names: &'static [&'static str]) -> Actor {
         let file_name = ::std::path::Path::new(&src_path).file_stem().and_then(|n| n.to_str() ).unwrap();
         Actor {
@@ -104,14 +151,13 @@ fn load_actors(filters: &[String], state: &mut AssetsState) {
     actors.push(actor("Factions/Goblins/Troops/TNT/Red/TNT_Red.png", size(192, 192), &["idle", "walk", "throw"]));
     actors.push(actor("Resources/Sheep/HappySheep_All.png", size(128, 128), &["idle", "walk"]));
 
-    for actor in actors.iter() {
+    for mut actor in actors {
         if !filters.is_empty() {
             if !filters.iter().any(|f| actor.src_path.matches(f).next().is_some() ) {
                 continue;
             }
         }
 
-        let mut actor = actor.clone();
         load_actors_source(&mut actor);
         state.actors.push(actor);
     }
@@ -399,40 +445,3 @@ fn export_json(actor: &Actor) -> Result<(), Box<dyn ::std::error::Error>> {
     Ok(())
 }
 
-//
-// Processing actors
-//
-
-fn process_actor_sprites(state: &mut AssetsState) {
-    fn process_single_actor<P: Copy+Default+PartialEq>(actor: &mut Actor) {
-        find_actor_animation_sources::<P>(actor);
-        prepare_actor_dst::<P>(actor);
-        compute_sprites_dst(actor);
-        copy_sprites_dst::<P>(actor);
-    }
-
-    for actor in state.actors.iter_mut() {
-        if !actor.loaded {
-            continue;
-        }
-
-        match (actor.src_image_info.bit_depth, actor.src_image_info.color_type) {
-            (png::BitDepth::Eight, png::ColorType::Rgba) => process_single_actor::<[u8;4]>(actor),
-            combined => unimplemented!("process_actor_sprites for {:?} is not implemented", combined)
-        }
-
-        if let Err(e) = export_image(actor) {
-            println!("ERROR: Failed to export actors sprites: {:?}", e);
-        }
-        
-        if let Err(e) = export_json(actor) {
-            println!("ERROR: Failed to export actors sprites json: {:?}", e);
-        }
-    }
-}
-
-pub fn generate_sprites(filters: &[String]) {
-    let mut state = AssetsState::default();
-    load_actors(filters, &mut state);
-    process_actor_sprites(&mut state);
-}
