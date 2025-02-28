@@ -21,12 +21,20 @@ pub struct Rect {
 }
 
 impl Rect {
+    pub fn splat(&self) -> [u32; 4] {
+        [self.left, self.top, self.right, self.bottom]
+    } 
+
     pub fn width(&self) -> u32 {
         self.right - self.left
     }
 
     pub fn height(&self) -> u32 {
         self.bottom - self.top
+    }
+
+    pub fn fits(&self, width: u32, height: u32) -> bool {
+        self.width() >= width && self.height() >= height
     }
 }
 
