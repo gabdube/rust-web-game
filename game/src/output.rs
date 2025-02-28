@@ -111,7 +111,8 @@ impl DemoGame {
         self.update_view();
         self.update_terrain();
         self.render_terrain();
-        self.render_sprites();
+        self.render_actor_sprites();
+        self.render_decoration();
         self.output.write_index();
     }
 
@@ -196,7 +197,7 @@ impl DemoGame {
         }
     }
 
-    fn render_sprites(&mut self) {
+    fn render_actor_sprites(&mut self) {
         let world = &self.world;
         let output = &mut self.output;
         let sprites_data = &mut output.sprite_data_buffer;
@@ -236,6 +237,33 @@ impl DemoGame {
             });
         }
 
+    }
+
+    fn render_decoration(&mut self) {
+        let world = &self.world;
+        if world.decoration_sprites.is_empty() {
+            return;
+        }
+
+        let output = &mut self.output;
+        let sprites_data = &mut output.sprite_data_buffer;
+        let texture_id = self.world.static_resources_texture.id;
+
+        let mut params = DrawSpriteParams {
+            instance_base: sprites_data.len() as u32,
+            instance_count: 0,
+            texture_id,
+        };
+
+        for &sprite in world.decoration_sprites.iter() {
+            sprites_data.push(sprite);
+            params.instance_count += 1;
+        }
+
+        output.commands.push(DrawUpdate {
+            graphics: DrawUpdateType::DrawSprites,
+            params: DrawUpdateParams { draw_sprites: params },
+        });
     }
 
 }

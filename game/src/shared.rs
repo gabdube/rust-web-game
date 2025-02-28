@@ -96,7 +96,7 @@ impl SaveAndLoad for Size<f32> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct AABB {
     pub left: f32,
     pub top: f32,
@@ -106,7 +106,15 @@ pub struct AABB {
 
 impl AABB {
 
-    pub fn intersects(&self, other: &Self) -> bool {
+    pub const fn width(&self) -> f32 {
+        self.right - self.left
+    }
+
+    pub const fn height(&self) -> f32 {
+        self.bottom - self.top
+    }
+
+    pub const fn intersects(&self, other: &Self) -> bool {
         if self.right < other.left || other.right < self.left {
             return false
         }

@@ -5,6 +5,7 @@ TEXTURE;sheep;assets/HappySheep_All.png;
 TEXTURE;torch_goblin;assets/Torch_Red.png;
 TEXTURE;tnt_goblin;assets/TNT_Red.png;
 TEXTURE;terrain;assets/terrain.png;
+TEXTURE;static_resources;assets/static_resources.png;
 
 JSON;animation;pawn_sprites;assets/Pawn_Blue.json;
 JSON;animation;warrior_sprites;assets/Warrior_Blue.json;
@@ -14,6 +15,7 @@ JSON;animation;tnt_goblin_sprites;assets/TNT_Red.json;
 JSON;animation;sheep_sprites;assets/HappySheep_All.json;
 
 CSV;terrain_sprites;assets/terrain.csv;
+CSV;static_sprites;assets/static_resources.csv;
 
 SHADER;sprites;assets/shaders/sprites.vert.glsl;assets/shaders/sprites.frag.glsl;
 SHADER;terrain;assets/shaders/terrain.vert.glsl;assets/shaders/terrain.frag.glsl;

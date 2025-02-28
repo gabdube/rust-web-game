@@ -1,9 +1,10 @@
 mod terrain;
 use terrain::Terrain;
 
-use crate::assets::{AnimationBase, Texture};
+use crate::assets::{AnimationBase, Texture, DecorationBase};
 use crate::error::Error;
 use crate::output::SpriteData;
+use crate::shared::AABB;
 use crate::store::SaveAndLoad;
 use crate::Position;
 
@@ -15,9 +16,16 @@ pub struct BaseUnit {
     pub flipped: bool,
 }
 
+#[derive(Copy, Clone, Default, Debug)]
+pub struct BaseStatic {
+    pub position: Position<f32>,
+}
+
 /// The game world data. Includes actors, terrain, and decorations
 pub struct World {
     pub last_animation_tick: f64,
+    pub static_resources_texture: Texture,
+
     pub terrain: Terrain,
 
     pub pawn_texture: Texture,
@@ -43,6 +51,9 @@ pub struct World {
     pub sheep_texture: Texture,
     pub sheeps: Vec<BaseUnit>,
     pub sheep_sprites: Vec<SpriteData>,
+
+    pub decorations: Vec<BaseStatic>,
+    pub decoration_sprites: Vec<SpriteData>
 }
 
 impl World {
@@ -61,6 +72,9 @@ impl World {
             *texture = assets.textures.get(name).copied()
                 .ok_or_else(|| assets_err!("{} texture missing", name) )?;
         }
+
+        self.static_resources_texture = assets.textures.get("static_resources").copied()
+            .ok_or_else(|| assets_err!("static_resources texture missing") )?;
 
         Ok(())
     }
@@ -83,6 +97,9 @@ impl World {
 
         self.sheeps.clear();
         self.sheep_sprites.clear();
+
+        self.decorations.clear();
+        self.decoration_sprites.clear();
 
         self.terrain.reset();
     }
@@ -137,6 +154,13 @@ impl World {
         Self::create_inner_actor(&mut self.sheeps, &mut self.sheep_sprites, position, animation)
     }
 
+    pub fn create_decoration(&mut self, position: &Position<f32>, deco: &DecorationBase) -> usize {
+        let index = self.decorations.len();
+        self.decoration_sprites.push(Self::build_static_sprite_data(position, &deco.aabb));
+        self.decorations.push(BaseStatic { position: *position });
+        index
+    }
+
     fn create_inner_actor(
         base: &mut Vec<BaseUnit>,
         sprites: &mut Vec<SpriteData>,
@@ -158,13 +182,27 @@ impl World {
         sprite.size[1] = animation.sprite_height;
         sprite.texcoord_offset[0] = animation.x + (animation.sprite_width * i) + (animation.padding * i);
         sprite.texcoord_offset[1] = animation.y;
-        sprite.texcoord_size[0] = animation.sprite_width;
-        sprite.texcoord_size[1] = animation.sprite_height;
+        sprite.texcoord_size[0] = sprite.size[0];
+        sprite.texcoord_size[1] = sprite.size[1];
 
         if flipped {
             sprite.texcoord_offset[0] += sprite.size[0];
             sprite.texcoord_size[0] *= -1.0;
         }
+
+        sprite
+    }
+
+    fn build_static_sprite_data(position: &Position<f32>, sprite_rect: &AABB) -> SpriteData {
+        let mut sprite = SpriteData::default();
+        sprite.position[0] = position.x - (sprite_rect.width() * 0.5);
+        sprite.position[1] = position.y - sprite_rect.height();
+        sprite.size[0] = sprite_rect.width();
+        sprite.size[1] = sprite_rect.height();
+        sprite.texcoord_offset[0] = sprite_rect.left;
+        sprite.texcoord_offset[1] = sprite_rect.top;
+        sprite.texcoord_size[0] = sprite.size[0];
+        sprite.texcoord_size[1] = sprite.size[1];
 
         sprite
     }
@@ -198,6 +236,10 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.sheeps);
         writer.write_slice(&self.sheep_sprites);
 
+        writer.write_slice(&self.decorations);
+        writer.write_slice(&self.decoration_sprites);
+
+        writer.write(&self.static_resources_texture);
 
         writer.save(&self.terrain);
     }
@@ -227,10 +269,17 @@ impl SaveAndLoad for World {
         let sheeps = reader.read_slice().to_vec();
         let sheep_sprites = reader.read_slice().to_vec();
 
+        let decorations = reader.read_slice().to_vec();
+        let decoration_sprites = reader.read_slice().to_vec();
+
+        let static_resources_texture = reader.read();
+
         let terrain = reader.load();
 
         World {
             last_animation_tick: 0.0,
+            static_resources_texture,
+
             terrain,
 
             pawn_texture,
@@ -256,6 +305,9 @@ impl SaveAndLoad for World {
             sheep_texture,
             sheeps,
             sheep_sprites,
+
+            decorations,
+            decoration_sprites,
         }
     }
 
@@ -265,6 +317,8 @@ impl Default for World {
     fn default() -> Self {
         World {
             last_animation_tick: 0.0,
+            static_resources_texture: Texture { id: 0 },
+
             terrain: Terrain::default(),
     
             pawn_texture: Texture { id: 0 },
@@ -290,6 +344,9 @@ impl Default for World {
             sheep_texture: Texture { id: 0 },
             sheeps: Vec::with_capacity(16),
             sheep_sprites: Vec::with_capacity(16),
+
+            decorations: Vec::with_capacity(16),
+            decoration_sprites: Vec::with_capacity(16),
         }
     }
 }
