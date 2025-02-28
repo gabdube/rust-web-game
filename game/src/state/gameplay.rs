@@ -1,4 +1,3 @@
-use crate::output::SpriteData;
 use crate::state::GameState;
 use crate::{DemoGame, pos};
 
@@ -67,6 +66,8 @@ impl DemoGame {
 
         self.world.create_decoration(&pos(150.0, 300.0), &self.assets.decorations.shroom_big);
         self.world.create_decoration(&pos(250.0, 300.0), &self.assets.decorations.shroom_sml);
+
+        self.world.create_structure(&pos(200.0, 500.0), &self.assets.structures.knights_castle);
 
         self.output.sync_world();
     }

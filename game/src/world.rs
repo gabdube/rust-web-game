@@ -1,7 +1,7 @@
 mod terrain;
 use terrain::Terrain;
 
-use crate::assets::{AnimationBase, Texture, DecorationBase};
+use crate::assets::{AnimationBase, Texture, DecorationBase, StructureBase};
 use crate::error::Error;
 use crate::output::SpriteData;
 use crate::shared::AABB;
@@ -52,8 +52,8 @@ pub struct World {
     pub sheeps: Vec<BaseUnit>,
     pub sheep_sprites: Vec<SpriteData>,
 
-    pub decorations: Vec<BaseStatic>,
-    pub decoration_sprites: Vec<SpriteData>
+    pub decoration_sprites: Vec<SpriteData>,
+    pub structure_sprites: Vec<SpriteData>,
 }
 
 impl World {
@@ -98,8 +98,8 @@ impl World {
         self.sheeps.clear();
         self.sheep_sprites.clear();
 
-        self.decorations.clear();
         self.decoration_sprites.clear();
+        self.structure_sprites.clear();
 
         self.terrain.reset();
     }
@@ -155,9 +155,14 @@ impl World {
     }
 
     pub fn create_decoration(&mut self, position: &Position<f32>, deco: &DecorationBase) -> usize {
-        let index = self.decorations.len();
+        let index = self.decoration_sprites.len();
         self.decoration_sprites.push(Self::build_static_sprite_data(position, &deco.aabb));
-        self.decorations.push(BaseStatic { position: *position });
+        index
+    }
+
+    pub fn create_structure(&mut self, position: &Position<f32>, deco: &StructureBase) -> usize {
+        let index = self.structure_sprites.len();
+        self.structure_sprites.push(Self::build_static_sprite_data(position, &deco.aabb));
         index
     }
 
@@ -236,8 +241,8 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.sheeps);
         writer.write_slice(&self.sheep_sprites);
 
-        writer.write_slice(&self.decorations);
         writer.write_slice(&self.decoration_sprites);
+        writer.write_slice(&self.structure_sprites);
 
         writer.write(&self.static_resources_texture);
 
@@ -269,8 +274,8 @@ impl SaveAndLoad for World {
         let sheeps = reader.read_slice().to_vec();
         let sheep_sprites = reader.read_slice().to_vec();
 
-        let decorations = reader.read_slice().to_vec();
         let decoration_sprites = reader.read_slice().to_vec();
+        let structure_sprites = reader.read_slice().to_vec();
 
         let static_resources_texture = reader.read();
 
@@ -306,8 +311,8 @@ impl SaveAndLoad for World {
             sheeps,
             sheep_sprites,
 
-            decorations,
             decoration_sprites,
+            structure_sprites,
         }
     }
 
@@ -345,8 +350,8 @@ impl Default for World {
             sheeps: Vec::with_capacity(16),
             sheep_sprites: Vec::with_capacity(16),
 
-            decorations: Vec::with_capacity(16),
             decoration_sprites: Vec::with_capacity(16),
+            structure_sprites: Vec::with_capacity(16)
         }
     }
 }

@@ -112,7 +112,7 @@ impl DemoGame {
         self.update_terrain();
         self.render_terrain();
         self.render_actor_sprites();
-        self.render_decoration();
+        self.render_static_sprites();
         self.output.write_index();
     }
 
@@ -239,7 +239,7 @@ impl DemoGame {
 
     }
 
-    fn render_decoration(&mut self) {
+    fn render_static_sprites(&mut self) {
         let world = &self.world;
         if world.decoration_sprites.is_empty() {
             return;
@@ -256,6 +256,11 @@ impl DemoGame {
         };
 
         for &sprite in world.decoration_sprites.iter() {
+            sprites_data.push(sprite);
+            params.instance_count += 1;
+        }
+
+        for &sprite in world.structure_sprites.iter() {
             sprites_data.push(sprite);
             params.instance_count += 1;
         }

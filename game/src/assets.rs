@@ -7,6 +7,9 @@ pub use terrain_tilemap::{TerrainTilemap, TerrainCell};
 mod decoration;
 pub use decoration::*;
 
+mod structures;
+pub use structures::*;
+
 use animations::AnimationsBundle;
 use fnv::FnvHashMap;
 use crate::error::Error;
@@ -22,6 +25,7 @@ pub struct Assets {
     pub textures: FnvHashMap<String, Texture>,
     pub terrain: TerrainTilemap,
     pub decorations: DecorationBundle,
+    pub structures: StructuresBundle,
     pub animations: AnimationsBundle,
 }
 
@@ -107,6 +111,7 @@ impl Assets {
             },
             "static_sprites" => {
                 self.decorations.load(csv_string.as_str())?;
+                self.structures.load(csv_string.as_str())?;
             },
             name => {
                 warn!("Unknown csv: {:?}", name);
@@ -121,6 +126,7 @@ impl crate::store::SaveAndLoad for Assets {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_string_hashmap(&self.textures);
         writer.write(&self.decorations);
+        writer.write(&self.structures);
         writer.write(&self.animations);
         writer.save(&self.terrain);
     }
@@ -129,6 +135,7 @@ impl crate::store::SaveAndLoad for Assets {
         let mut assets = Assets::default();
         assets.textures = reader.read_string_hashmap();
         assets.decorations = reader.read();
+        assets.structures = reader.read();
         assets.animations = reader.read();
         assets.terrain = reader.load();
         assets
