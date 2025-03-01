@@ -21,6 +21,18 @@ impl SaveAndLoad for Position<f32> {
     }
 }
 
+impl ops::Add for Position<f32> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(self, rhs: Self) -> Self::Output {
+        Position {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
 impl ops::Sub for Position<f32> {
     type Output = Self;
 

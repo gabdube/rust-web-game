@@ -51,6 +51,10 @@ impl DemoGame {
                 self.output.sync_view();
             }
         }
+
+        let pos = self.view_offset + inputs.mouse_position;
+        self.world.update_pawn_position(0, &pos);
+
     }
 
     fn init_gameplay_test(&mut self) {

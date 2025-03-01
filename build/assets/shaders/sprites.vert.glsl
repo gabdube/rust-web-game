@@ -19,6 +19,7 @@ void main() {
     );
 
     vec4 positions = vec4(view_position, 0.0, 0.0) + in_instance_position;
+
     positions = (positions / vec4(view_size.x, view_size.y, view_size.x, view_size.y)) * 2.0;
     float x = (positions.x - 1.0) + (in_position.x * positions.z);
     float y = (positions.y - 1.0) + (in_position.y * positions.w);

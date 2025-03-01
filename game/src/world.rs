@@ -134,6 +134,12 @@ impl World {
         Self::create_inner_actor(&mut self.pawns, &mut self.pawns_sprites, position, animation)
     }
 
+    pub fn update_pawn_position(&mut self, pawn_id: usize, position: &Position<f32>) {
+        let actor = self.pawns[pawn_id];
+        self.pawns[pawn_id].position = *position;
+        self.pawns_sprites[pawn_id] = Self::build_sprite_data(position, &actor.animation, actor.current_frame, actor.flipped);
+    }
+
     pub fn create_warrior(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
         Self::create_inner_actor(&mut self.warriors, &mut self.warrior_sprites, position, animation)
     }

@@ -228,7 +228,7 @@ impl DemoGame {
             
             for &sprite in sprites {
                 sprites_data.push(sprite);
-                params.instance_count += 1;
+                params.instance_count += 1; 
             }
 
             output.commands.push(DrawUpdate {

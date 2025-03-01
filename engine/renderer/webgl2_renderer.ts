@@ -104,6 +104,7 @@ export class WebGL2Backend {
     ctx: WebGL2RenderingContext;
     framebuffer: WebGLFramebuffer;
     color: WebGLRenderbuffer;
+    depth: WebGLRenderbuffer;
 
     assets: EngineAssets;
     textures: RendererTexture[];
@@ -126,6 +127,10 @@ export class WebGL2Backend {
         const ctx = this.ctx;
         ctx.disable(ctx.CULL_FACE);
         ctx.enable(ctx.BLEND);
+
+        // ctx.enable(ctx.DEPTH_TEST)
+        // ctx.depthFunc(ctx.GREATER);
+
         ctx.blendFuncSeparate(ctx.ONE, ctx.ONE_MINUS_SRC_ALPHA, ctx.ONE, ctx.ONE_MINUS_DST_ALPHA);
         ctx.blendEquationSeparate(ctx.FUNC_ADD, ctx.FUNC_ADD);
 
@@ -181,8 +186,13 @@ export class WebGL2Backend {
         ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, this.framebuffer);
     
         ctx.bindRenderbuffer(ctx.RENDERBUFFER, this.color);
-        ctx.renderbufferStorageMultisample(ctx.RENDERBUFFER, ctx.getParameter(ctx.MAX_SAMPLES), ctx.RGBA8, canvas.width, canvas.height); 
+        ctx.renderbufferStorageMultisample(ctx.RENDERBUFFER, this.get_samples(), ctx.RGBA8, canvas.width, canvas.height); 
         ctx.framebufferRenderbuffer(ctx.DRAW_FRAMEBUFFER, ctx.COLOR_ATTACHMENT0, ctx.RENDERBUFFER, this.color);
+
+        // ctx.bindRenderbuffer(ctx.RENDERBUFFER, this.depth);
+        // ctx.renderbufferStorageMultisample(ctx.RENDERBUFFER, this.get_samples(), ctx.DEPTH24_STENCIL8, canvas.width, canvas.height);
+        // ctx.framebufferRenderbuffer(ctx.DRAW_FRAMEBUFFER, ctx.DEPTH_STENCIL_ATTACHMENT, ctx.RENDERBUFFER, this.depth);
+        
         ctx.viewport(0, 0, canvas.width, canvas.height);
 
         // Screen size uniforms
@@ -453,6 +463,7 @@ export class WebGL2Backend {
 
         ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, this.framebuffer);
         ctx.clearBufferfv(ctx.COLOR, 0, [0.0, 0.0, 0.0, 1.0]);
+        // ctx.clearBufferfi(ctx.DEPTH_STENCIL, 0, 0.0, 0);
 
         // Rendering
         for (let i = 0; i < this.draw_count; i += 1) {
@@ -538,14 +549,25 @@ export class WebGL2Backend {
             return false;
         }
 
+        // const depth = ctx.createRenderbuffer();
+        // if (!depth) {
+        //     set_last_error("Failed to create the renderer depth render buffer");
+        //     return false;
+        // }
+
         ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, framebuffer);
 
         ctx.bindRenderbuffer(ctx.RENDERBUFFER, color);
         ctx.renderbufferStorageMultisample(ctx.RENDERBUFFER, this.get_samples(), ctx.RGBA8, canvas.width, canvas.height); 
         ctx.framebufferRenderbuffer(ctx.DRAW_FRAMEBUFFER, ctx.COLOR_ATTACHMENT0, ctx.RENDERBUFFER, color);
 
+        // ctx.bindRenderbuffer(ctx.RENDERBUFFER, depth);
+        // ctx.renderbufferStorageMultisample(ctx.RENDERBUFFER, this.get_samples(), ctx.DEPTH24_STENCIL8, canvas.width, canvas.height);
+        // ctx.framebufferRenderbuffer(ctx.DRAW_FRAMEBUFFER, ctx.DEPTH_STENCIL_ATTACHMENT, ctx.RENDERBUFFER, depth);
+
         this.framebuffer = framebuffer;
         this.color = color;
+        //this.depth = depth;
 
         return true;
     }
