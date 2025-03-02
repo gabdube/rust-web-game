@@ -3,6 +3,7 @@ use crate::DemoGame;
 
 const UPDATE_VIEW: u8 = 0b001;
 const UPDATE_WORLD: u8 = 0b010;
+const UPDATE_ANIMATION: u8 = 0b100;
 
 /// Tells the engine which "module" to use to process a draw update
 /// This maps 1-1 to the `GraphicsModule` defined in the engine renderer
@@ -18,7 +19,7 @@ pub enum DrawUpdateType {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct DrawSpriteParams {
     pub instance_base: u32,
     pub instance_count: u32,
@@ -79,6 +80,14 @@ pub struct TerrainChunkTexcoord {
     pub v3: [f32; 2],
 }
 
+
+/// Temporary storage for sprites when regrouping by texture_id and clusters
+pub struct TempSprite {
+    pub texture_id: u32,
+    pub y: f32,
+    pub sprite: SpriteData,
+}
+
 /// The index of all the pointers and array size to share with the engine
 /// Must be `repr(C)` because it will be directly read from memory by the engine
 #[repr(C)]
@@ -97,9 +106,20 @@ pub struct OutputIndex {
 pub struct GameOutput {
     /// This is a leaked box because we return the pointer to the client in `output` and `Box::as_ptr` is a nightly-only experimental API
     pub output_index: &'static mut OutputIndex,
+
+    /// Buffers of generated sprites. Shared with the renderer
     pub sprite_data_buffer: Vec<SpriteData>,
+
+    /// Buffers of generated terrain sprites. Shared with the renderer.
     pub terrain_data: Vec<TerrainChunkTexcoord>,
+
+    /// Buffers of the generated draw update for the current frame. Shared with the renderer.
     pub commands: Vec<DrawUpdate>,
+
+    /// Temporary storage used with generating and optimizing sprites draw calls
+    pub sprites_builder: Vec<TempSprite>,
+
+    /// Output update flags
     pub updates: u8,
 }
 
@@ -111,8 +131,7 @@ impl DemoGame {
         self.update_view();
         self.update_terrain();
         self.render_terrain();
-        self.render_actor_sprites();
-        self.render_static_sprites();
+        self.render_sprites();
         self.output.write_index();
     }
 
@@ -197,72 +216,153 @@ impl DemoGame {
         }
     }
 
-    fn render_actor_sprites(&mut self) {
-        let world = &self.world;
+    /**
+        This function does a few things:
+
+        * Update the animations if the UPDATE_ANIMATION flag was set
+        * Generates sprites from the different world objects
+        * Regroup and order sprites by their Y coordinates from the highest (rendered first), to the lowest (rendered last)
+        * Generate batches of commands for the engine to render
+
+        TODO: To optimize draw calls, sprites that cannot overlap with eachother should be renderer separately
+    */
+    fn render_sprites(&mut self) {
+        let world = &mut self.world;
         let output = &mut self.output;
-        let sprites_data = &mut output.sprite_data_buffer;
 
-        let mut params = DrawSpriteParams {
-            instance_base: 0,
-            instance_count: 0,
-            texture_id: 0,
-        };
-
-        let sprites_group = [
-            (world.pawn_texture, &world.pawns_sprites),
-            (world.warrior_texture, &world.warrior_sprites),
-            (world.archer_texture, &world.archer_sprites),
-            (world.torch_goblin_texture, &world.torch_goblins_sprites),
-            (world.tnt_goblin_texture, &world.tnt_goblins_sprites),
-            (world.sheep_texture, &world.sheep_sprites),
-        ];
-
-        for (texture, sprites) in sprites_group {
-            if sprites.len() == 0 {
-                continue;
-            }
-
-            params.instance_base = sprites_data.len() as u32;
-            params.instance_count = 0;
-            params.texture_id = texture.id;
-            
-            for &sprite in sprites {
-                sprites_data.push(sprite);
-                params.instance_count += 1; 
-            }
-
-            output.commands.push(DrawUpdate {
-                graphics: DrawUpdateType::DrawSprites,
-                params: DrawUpdateParams { draw_sprites: params },
-            });
-        }
-
-    }
-
-    fn render_static_sprites(&mut self) {
-        let world = &self.world;
-        if world.decoration_sprites.is_empty() {
+        let total_sprites = world.total_sprites();
+        if total_sprites == 0 {
             return;
         }
 
-        let output = &mut self.output;
-        let sprites_data = &mut output.sprite_data_buffer;
-        let texture_id = self.world.static_resources_texture.id;
+        output.sprites_builder.reserve(total_sprites);
 
+        // Generate sprites
+        Self::gen_static_sprites(world, output);
+
+        if output.must_update_animation() {
+            Self::gen_sprites_with_animation(world, output);
+        } else {
+            Self::gen_sprites(world, output);
+        }
+
+        // Order sprites
+        Self::order_sprites(output);
+
+        // Generate commands
+        Self::gen_commands(output);
+       
+        output.clear_update_animation();
+    }
+
+    fn gen_sprites(world: &crate::world::World, output: &mut GameOutput) {
+        let sprites_by_texture_id = [
+            (world.pawn_texture, &world.pawns),
+            (world.warrior_texture, &world.warriors),
+            (world.archer_texture, &world.archers),
+            (world.torch_goblin_texture, &world.torch_goblins),
+            (world.tnt_goblin_texture, &world.tnt_goblins),
+            (world.sheep_texture, &world.sheeps),
+        ];
+
+        let builder = &mut output.sprites_builder;
+        for (texture_id, units) in sprites_by_texture_id {
+            for unit in units.iter() {
+                let sprite = Self::build_actor_sprite(unit);
+                builder.push(TempSprite {
+                    texture_id: texture_id.id,
+                    y: unit.position.y,
+                    sprite
+                });
+            }
+        }
+    }
+
+    fn gen_sprites_with_animation(world: &mut crate::world::World, output: &mut GameOutput) {
+        let sprites_by_texture_id = [
+            (world.pawn_texture, &mut world.pawns),
+            (world.warrior_texture, &mut world.warriors),
+            (world.archer_texture, &mut world.archers),
+            (world.torch_goblin_texture, &mut world.torch_goblins),
+            (world.tnt_goblin_texture, &mut world.tnt_goblins),
+            (world.sheep_texture, &mut world.sheeps),
+        ];
+
+        let builder = &mut output.sprites_builder;
+        for (texture_id, units) in sprites_by_texture_id {
+            for unit in units.iter_mut() {
+                if unit.current_frame == unit.animation.last_frame {
+                    unit.current_frame = 0;
+                } else {
+                    unit.current_frame += 1;
+                }
+
+                let sprite = Self::build_actor_sprite(unit);
+                builder.push(TempSprite {
+                    texture_id: texture_id.id,
+                    y: unit.position.y,
+                    sprite
+                });
+            }
+        }
+    }
+
+    fn gen_static_sprites(world: &crate::world::World, output: &mut GameOutput) {
+        let texture_id = world.static_resources_texture.id;
+        let sprites_groups = [&world.decorations, &world.structures];
+        let builder = &mut output.sprites_builder;
+        for group in sprites_groups {
+            for unit in group {
+                let sprite = Self::build_static_sprite(unit);
+                builder.push(TempSprite {
+                    texture_id,
+                    y: unit.position.y,
+                    sprite
+                });
+            }
+        }
+    }
+
+    fn order_sprites(output: &mut GameOutput) {
+        use std::cmp::Ordering;
+
+        // Sprites with a lower Y value gets rendered first
+        output.sprites_builder.sort_unstable_by(|v1, v2| {
+            let diff = v1.y - v2.y;
+            if diff < -1.0 {
+                Ordering::Less
+            } else if diff > 1.0 {
+                Ordering::Greater
+            } else {
+                v1.texture_id.cmp(&v2.texture_id)
+            }
+        });
+    }
+
+    fn gen_commands(output: &mut GameOutput) {
+        let texture_id = output.sprites_builder.first().map(|v| v.texture_id ).unwrap_or(0);
         let mut params = DrawSpriteParams {
-            instance_base: sprites_data.len() as u32,
+            instance_base: 0,
             instance_count: 0,
             texture_id,
         };
 
-        for &sprite in world.decoration_sprites.iter() {
-            sprites_data.push(sprite);
-            params.instance_count += 1;
-        }
+        let sprites_data = &mut output.sprite_data_buffer;
 
-        for &sprite in world.structure_sprites.iter() {
-            sprites_data.push(sprite);
-            params.instance_count += 1;
+        for build_sprite in output.sprites_builder.iter() {
+            if build_sprite.texture_id != params.texture_id {
+                output.commands.push(DrawUpdate {
+                    graphics: DrawUpdateType::DrawSprites,
+                    params: DrawUpdateParams { draw_sprites: params },
+                });
+
+                params.instance_base = sprites_data.len() as u32;
+                params.instance_count = 0;
+                params.texture_id = build_sprite.texture_id;
+            };
+
+            sprites_data.push(build_sprite.sprite);
+            params.instance_count += 1; 
         }
 
         output.commands.push(DrawUpdate {
@@ -271,12 +371,51 @@ impl DemoGame {
         });
     }
 
+    fn build_actor_sprite(unit: &crate::world::BaseUnit) -> SpriteData {
+        let mut sprite = SpriteData::default();
+        let position = unit.position;
+        let animation = unit.animation;
+        let i = unit.current_frame as f32;
+
+        sprite.position[0] = position.x - (animation.sprite_width * 0.5);
+        sprite.position[1] = position.y - animation.sprite_height;
+        sprite.size[0] = animation.sprite_width;
+        sprite.size[1] = animation.sprite_height;
+        sprite.texcoord_offset[0] = animation.x + (animation.sprite_width * i) + (animation.padding * i);
+        sprite.texcoord_offset[1] = animation.y;
+        sprite.texcoord_size[0] = sprite.size[0];
+        sprite.texcoord_size[1] = sprite.size[1];
+     
+        if unit.flipped {
+            sprite.texcoord_offset[0] += sprite.size[0];
+            sprite.texcoord_size[0] *= -1.0;
+        }
+     
+        sprite
+    }
+
+    fn build_static_sprite(base: &crate::world::BaseStatic) -> SpriteData {
+        let mut sprite = SpriteData::default();
+        let position = base.position;
+        let aabb = base.aabb;
+        sprite.position[0] = position.x - (aabb.width() * 0.5);
+        sprite.position[1] = position.y - aabb.height();
+        sprite.size[0] = aabb.width();
+        sprite.size[1] = aabb.height();
+        sprite.texcoord_offset[0] = aabb.left;
+        sprite.texcoord_offset[1] = aabb.top;
+        sprite.texcoord_size[0] = sprite.size[0];
+        sprite.texcoord_size[1] = sprite.size[1];
+        sprite
+    }
+
 }
 
 impl GameOutput {
 
     pub fn clear(&mut self) {
         self.commands.clear();
+        self.sprites_builder.clear();
         self.sprite_data_buffer.clear();
         self.terrain_data.clear();
     }
@@ -299,6 +438,10 @@ impl GameOutput {
     fn must_sync_world(&self) -> bool { self.updates & UPDATE_WORLD > 0 }
     fn clear_sync_world(&mut self) { self.updates &= !UPDATE_WORLD; }
 
+    pub fn update_animations(&mut self) { self.updates |= UPDATE_ANIMATION; }
+    fn must_update_animation(&self) -> bool { self.updates & UPDATE_ANIMATION > 0 }
+    fn clear_update_animation(&mut self) { self.updates &= !UPDATE_ANIMATION; }
+
 }
 
 impl Default for GameOutput {
@@ -310,6 +453,7 @@ impl Default for GameOutput {
             sprite_data_buffer: Vec::with_capacity(32),
             terrain_data: Vec::with_capacity(1024),
             commands: Vec::with_capacity(32),
+            sprites_builder: Vec::with_capacity(128),
             updates: 0,
         }
     }

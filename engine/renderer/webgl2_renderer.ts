@@ -66,12 +66,6 @@ class RendererShaders {
     draw_terrain: WebGLProgram;
 }
 
-class SpriteDataBuffer {
-    vao: WebGLVertexArrayObject;
-    instance_data: WebGLBuffer;
-    capacity: number;
-}
-
 class TerrainChunkData {
     vao: WebGLVertexArrayObject;
     chunk_buffer: WebGLBuffer;
@@ -80,7 +74,13 @@ class TerrainChunkData {
 class RendererBuffers {
     sprites_indices: WebGLBuffer;
     sprites_vertex: WebGLBuffer;
-    sprites_data: Map<number, SpriteDataBuffer> = new Map();
+    
+    sprites_attributes: WebGLBuffer;
+    sprites_attributes_len: number = 0;
+    sprites_attributes_capacity: number = 0;
+
+    sprites_vao: WebGLVertexArrayObject[] = [];
+    sprite_vao_len: number = 0;
 
     terrain_indices: WebGLBuffer;
     terrain_vertex: WebGLBuffer;
@@ -243,16 +243,17 @@ export class WebGL2Backend {
         return texture;
     }
 
-    private create_sprites_buffer(capacity: number): SpriteDataBuffer {
+    private create_sprites_vao(attributes_offset: number): WebGLVertexArrayObject {
         const ctx = this.ctx;
-        const buffer = new SpriteDataBuffer();
         let location: number;
 
-        buffer.vao = ctx.createVertexArray();
-        buffer.instance_data = ctx.createBuffer();
-        buffer.capacity = capacity;
+        let vao = this.buffers.sprites_vao[this.buffers.sprite_vao_len];
+        if (!vao) {
+            vao = ctx.createVertexArray();
+            this.buffers.sprites_vao.push(vao);
+        }
         
-        ctx.bindVertexArray(buffer.vao);
+        ctx.bindVertexArray(vao);
 
         // Vertex data
         ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, this.buffers.sprites_indices);
@@ -263,49 +264,50 @@ export class WebGL2Backend {
         ctx.vertexAttribPointer(location, 2, ctx.FLOAT, false, 8, 0);
 
         // Instance Data
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer.instance_data);
-        ctx.bufferData(ctx.ARRAY_BUFFER, buffer.capacity * SPRITE_DATA_SIZE, ctx.DYNAMIC_DRAW);
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_attributes);
 
         location = this.shaders.draw_sprites_instance_position_attrloc;
         ctx.enableVertexAttribArray(location);
-        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 32, 0);
+        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 32, attributes_offset);
         ctx.vertexAttribDivisor(location, 1);
 
         location = this.shaders.draw_sprites_instance_texcoord_attrloc;
         ctx.enableVertexAttribArray(location);
-        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 32, 16);
+        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 32, attributes_offset+16);
         ctx.vertexAttribDivisor(location, 1);
 
         ctx.bindVertexArray(null);
 
-        return buffer;
+        return vao;
     }
 
     /// Updates the sprites data and queue a drawing command to render them
     private update_sprites(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) {
+        const ctx = this.ctx;
+        
         let texture = this.textures[draw_update.texture_id];
         if (!texture) {
             texture = this.create_renderer_texture(draw_update.texture_id);
         }
-        
-        // Creates a unique buffer for each texture
-        let buffer = this.buffers.sprites_data.get(draw_update.texture_id);
-        if (!buffer) {
-            const capacity = draw_update.instance_count + (64 - (draw_update.instance_count % 64));
-            buffer = this.create_sprites_buffer(capacity);
-            this.buffers.sprites_data.set(draw_update.texture_id, buffer);
-        } else if (buffer.capacity < draw_update.instance_count) {
-            console.log("TODO REALLOC");
+
+        if (this.buffers.sprites_attributes_len + draw_update.instance_count > this.buffers.sprites_attributes_capacity) {
+            console.log("TODO: realloc sprites attributes")
+            return;
         }
 
-        const ctx = this.ctx;
+        const attributes_offset = SPRITE_DATA_SIZE * this.buffers.sprites_attributes_len;
+        const vao = this.create_sprites_vao(attributes_offset);
         const buffer_data = updates.get_sprites_data(draw_update.instance_base, draw_update.instance_count);
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer.instance_data);
-        ctx.bufferSubData(ctx.ARRAY_BUFFER, 0, buffer_data);
+
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_attributes);
+        ctx.bufferSubData(ctx.ARRAY_BUFFER, attributes_offset, buffer_data);
+
+        this.buffers.sprites_attributes_len += draw_update.instance_count;
+        this.buffers.sprite_vao_len += 1;
 
         DrawCommand.draw_sprites(
             this.next_draw_command(),
-            buffer.vao,
+            vao,
             draw_update.instance_count,
             texture.handle
         );
@@ -383,6 +385,8 @@ export class WebGL2Backend {
 
     private clear_drawing() {
         this.draw_count = 0;
+        this.buffers.sprites_attributes_len = 0;
+        this.buffers.sprite_vao_len = 0;
     }
 
     update(game: EngineGameInstance) {
@@ -683,6 +687,24 @@ export class WebGL2Backend {
         ]), ctx.STATIC_DRAW);
     }
 
+    private setup_sprites_attributes() {
+        const ctx = this.ctx;
+
+        // Base sprites buffer can hold 128 sprites
+        const base_capacity = 128;
+        this.buffers.sprites_attributes = ctx.createBuffer();
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_attributes);
+        ctx.bufferData(ctx.ARRAY_BUFFER, SPRITE_DATA_SIZE * base_capacity, ctx.DYNAMIC_DRAW);
+
+        this.buffers.sprites_attributes_capacity = base_capacity;
+        this.buffers.sprites_attributes_len = 0;
+
+        // Prealloc some vertex array objects
+        for (let i = 0; i < 16; i+=1) {
+            this.buffers.sprites_vao.push(ctx.createVertexArray());
+        }
+    }
+
     private setup_terrain_chunk_vertex() {
         const ctx = this.ctx;
         
@@ -742,6 +764,7 @@ export class WebGL2Backend {
 
     private setup_buffers() {
         this.setup_sprites_vertex();
+        this.setup_sprites_attributes();
         this.setup_terrain_chunk_vertex();
     }
 

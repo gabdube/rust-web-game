@@ -157,7 +157,7 @@ impl DemoGame {
             return;
         }
 
-        world.animation_update();
+        self.output.update_animations();
         world.last_animation_tick = self.time;
     }
 
