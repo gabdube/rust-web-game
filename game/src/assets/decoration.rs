@@ -1,4 +1,4 @@
-use crate::{error::Error, shared::AABB};
+use crate::shared::AABB;
 
 
 #[derive(Copy, Clone, Default)]
@@ -32,12 +32,12 @@ pub struct DecorationBundle {
 
 impl DecorationBundle {
 
-    pub fn load(&mut self, csv: &str) -> Result<(), Error> {
+    pub fn load(&mut self, csv: &str) {
         fn parse(v: &str) -> f32 {
             str::parse::<f32>(v).unwrap_or(0.0)
         }
 
-        crate::shared::split_csv(csv, |args| {
+        crate::shared::split_csv::<5, _>(csv, |args| {
             let name = args[0];
             let left = parse(args[1]);
             let top = parse(args[2]);
@@ -48,8 +48,6 @@ impl DecorationBundle {
                 base.aabb = AABB { left, top, right, bottom };
             }
         });
-
-        Ok(())
     }
 
     fn match_name(&mut self, name: &str) -> Option<&mut DecorationBase> {

@@ -223,8 +223,6 @@ impl DemoGame {
         * Generates sprites from the different world objects
         * Regroup and order sprites by their Y coordinates from the highest (rendered first), to the lowest (rendered last)
         * Generate batches of commands for the engine to render
-
-        TODO: To optimize draw calls, sprites that cannot overlap with eachother should be renderer separately
     */
     fn render_sprites(&mut self) {
         let world = &mut self.world;
@@ -309,7 +307,7 @@ impl DemoGame {
 
     fn gen_static_sprites(world: &crate::world::World, output: &mut GameOutput) {
         let texture_id = world.static_resources_texture.id;
-        let sprites_groups = [&world.decorations, &world.structures];
+        let sprites_groups = [&world.decorations, &world.structures, &world.resources];
         let builder = &mut output.sprites_builder;
         for group in sprites_groups {
             for unit in group {

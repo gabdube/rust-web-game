@@ -10,6 +10,9 @@ pub use decoration::*;
 mod structures;
 pub use structures::*;
 
+mod resources;
+pub use resources::*;
+
 use animations::AnimationsBundle;
 use fnv::FnvHashMap;
 use crate::error::Error;
@@ -26,6 +29,7 @@ pub struct Assets {
     pub terrain: TerrainTilemap,
     pub decorations: DecorationBundle,
     pub structures: StructuresBundle,
+    pub resources: ResourcesBundle,
     pub animations: AnimationsBundle,
 }
 
@@ -35,7 +39,7 @@ impl Assets {
         let mut error: Option<Error> = None;
 
         // Assets index
-        crate::shared::split_csv(&init.assets_bundle, |args| {
+        crate::shared::split_csv::<5, _>(&init.assets_bundle, |args| {
             let result = match args[0] {
                 "TEXTURE" => {
                     self.load_texture(args)
@@ -110,8 +114,10 @@ impl Assets {
                 self.terrain.load(csv_string.as_str())?;
             },
             "static_sprites" => {
-                self.decorations.load(csv_string.as_str())?;
-                self.structures.load(csv_string.as_str())?;
+                let sprites = csv_string.as_str();
+                self.decorations.load(sprites);
+                self.structures.load(sprites);
+                self.resources.load(sprites);
             },
             name => {
                 warn!("Unknown csv: {:?}", name);
@@ -125,19 +131,21 @@ impl Assets {
 impl crate::store::SaveAndLoad for Assets {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_string_hashmap(&self.textures);
+        writer.save(&self.terrain);
         writer.write(&self.decorations);
         writer.write(&self.structures);
+        writer.write(&self.resources);
         writer.write(&self.animations);
-        writer.save(&self.terrain);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let mut assets = Assets::default();
         assets.textures = reader.read_string_hashmap();
+        assets.terrain = reader.load();
         assets.decorations = reader.read();
         assets.structures = reader.read();
+        assets.resources = reader.read();
         assets.animations = reader.read();
-        assets.terrain = reader.load();
         assets
     }
 }

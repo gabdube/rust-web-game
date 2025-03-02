@@ -158,23 +158,26 @@ pub fn aabb(position: Position<f32>, size: Size<f32>) -> AABB {
 }
 
 
-pub fn split_csv<CB: FnMut(&[&str])>(csv: &str, mut callback: CB) {
+/// Split a csv string into up to `MAX_ARGS` parameters. Calls `callback` for each line splitted.
+pub fn split_csv<const MAX_ARGS: usize, CB: FnMut(&[&str])>(csv: &str, mut callback: CB) {
     let mut start = 0;
     let mut end = 0;
     let mut chars_iter = csv.chars();
-    let mut args: [&str; 8] = [""; 8];
+    let mut args: [&str; MAX_ARGS] = [""; MAX_ARGS];
     while let Some(c) = chars_iter.next() {
         end += 1;
         if c == '\n' {
             let line = &csv[start..end];
             let mut args_count = 0;
             for substr in line.split(';') {
-                args[args_count] = substr;
-                args_count += 1;
+                if args_count < MAX_ARGS {
+                    args[args_count] = substr;
+                    args_count += 1;
+                }
             }
 
             if args_count > 1 {
-                callback(&args[0..(args_count-1)]);
+                callback(&args[0..args_count]);
             }
 
             start = end;

@@ -18,7 +18,7 @@ impl TerrainTilemap {
 
     pub fn load(&mut self, csv: &str) -> Result<(), Error> {
         let mut index = 0;
-        crate::shared::split_csv(csv, |args| {
+        crate::shared::split_csv::<3, _>(csv, |args| {
             let x = str::parse::<f32>(args[1]).unwrap_or(0.0);
             let y = str::parse::<f32>(args[2]).unwrap_or(0.0);
             self.cells_texture_coordinates[index] = [x, y];

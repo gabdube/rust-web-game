@@ -11,8 +11,8 @@ const SRC_ROOT: &str = "build/assets/tiny_sword/";
 const DST_ROOT: &str = "build/assets/";
 const DST_NAME_IMAGE: &str = "static_resources.png";
 const DST_NAME_CSV: &str = "static_resources.csv";
-const DST_WIDTH: usize = 1024;
 
+const DST_WIDTH: usize = 890; // Manually tune this number to minimise wasted space
 const PIXEL_SIZE: usize = 4; // Size of rgba u8
 
 const SRC_ASSET_MAP: &[(&str, &str)] = &[

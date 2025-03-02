@@ -1,7 +1,7 @@
 mod terrain;
 use terrain::Terrain;
 
-use crate::assets::{AnimationBase, Texture, DecorationBase, StructureBase};
+use crate::assets::{AnimationBase, DecorationBase, ResourceBase, StructureBase, Texture};
 use crate::error::Error;
 use crate::shared::AABB;
 use crate::store::SaveAndLoad;
@@ -50,6 +50,7 @@ pub struct World {
 
     pub decorations: Vec<BaseStatic>,
     pub structures: Vec<BaseStatic>,
+    pub resources: Vec<BaseStatic>,
 }
 
 impl World {
@@ -88,68 +89,76 @@ impl World {
         self.sheeps.clear();
         self.decorations.clear();
         self.structures.clear();
+        self.resources.clear();
         self.terrain.reset();
     }
 
     pub fn init_terrain(&mut self, width: u32, height: u32) {
-        self.total_sprite_count += 1;
         self.terrain.init_terrain(width, height);
     }
 
-    pub fn create_pawn(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_pawn(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+        self.total_sprite_count += 1;
         Self::create_inner_actor(&mut self.pawns, position, animation)
     }
 
-    pub fn update_pawn_position(&mut self, pawn_id: usize, position: &Position<f32>) {
-        self.pawns[pawn_id].position = *position;
+    pub fn update_pawn_position(&mut self, pawn_id: usize, position: Position<f32>) {
+        self.pawns[pawn_id].position = position;
     }
 
-    pub fn create_warrior(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_warrior(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         Self::create_inner_actor(&mut self.warriors, position, animation)
     }
 
-    pub fn create_archer(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_archer(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         Self::create_inner_actor(&mut self.archers, position, animation)
     }
 
-    pub fn create_torch_goblin(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_torch_goblin(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         Self::create_inner_actor(&mut self.torch_goblins, position, animation)
     }
 
-    pub fn create_tnt_goblin(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_tnt_goblin(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         Self::create_inner_actor(&mut self.tnt_goblins, position, animation)
     }
     
-    pub fn create_sheep(&mut self, position: &Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_sheep(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         Self::create_inner_actor(&mut self.sheeps, position, animation)
     }
 
-    pub fn create_decoration(&mut self, position: &Position<f32>, deco: &DecorationBase) -> usize {
+    pub fn create_decoration(&mut self, position: Position<f32>, deco: &DecorationBase) -> usize {
         self.total_sprite_count += 1;
         let index = self.decorations.len();
-        self.decorations.push(BaseStatic { position: *position, aabb: deco.aabb });
+        self.decorations.push(BaseStatic { position, aabb: deco.aabb });
         index
     }
 
-    pub fn create_structure(&mut self, position: &Position<f32>, structure: &StructureBase) -> usize {
+    pub fn create_structure(&mut self, position: Position<f32>, structure: &StructureBase) -> usize {
         self.total_sprite_count += 1;
         let index = self.structures.len();
-        self.structures.push(BaseStatic { position: *position, aabb: structure.aabb });
+        self.structures.push(BaseStatic { position, aabb: structure.aabb });
+        index
+    }
+
+    pub fn create_resource(&mut self, position: Position<f32>, resource: &ResourceBase) -> usize {
+        self.total_sprite_count += 1;
+        let index = self.resources.len();
+        self.resources.push(BaseStatic { position, aabb: resource.aabb });
         index
     }
 
     fn create_inner_actor(
         base: &mut Vec<BaseUnit>,
-        position: &Position<f32>,
+        position: Position<f32>,
         animation: &AnimationBase
     ) -> usize {
         let index = base.len();
-        base.push(BaseUnit { position: *position, animation: *animation, ..Default::default()});
+        base.push(BaseUnit { position, animation: *animation, ..Default::default()});
         return index
     }
 
@@ -178,6 +187,7 @@ impl SaveAndLoad for World {
 
         writer.write_slice(&self.decorations);
         writer.write_slice(&self.structures);
+        writer.write_slice(&self.resources);
 
         writer.write(&self.static_resources_texture);
         writer.write_u32(self.total_sprite_count);
@@ -206,6 +216,7 @@ impl SaveAndLoad for World {
 
         let decorations = reader.read_slice().to_vec();
         let structures = reader.read_slice().to_vec();
+        let resources = reader.read_slice().to_vec();
 
         let static_resources_texture = reader.read();
         let total_sprite_count = reader.read_u32();
@@ -239,6 +250,7 @@ impl SaveAndLoad for World {
 
             decorations,
             structures,
+            resources,
         }
     }
 
@@ -272,7 +284,8 @@ impl Default for World {
             sheeps: Vec::with_capacity(16),
 
             decorations: Vec::with_capacity(16),
-            structures: Vec::with_capacity(16)
+            structures: Vec::with_capacity(16),
+            resources: Vec::with_capacity(16)
         }
     }
 }
