@@ -5,6 +5,7 @@
 /build/assets/tiny_sword/
 .DS_Store
 *.png
+*.kra
 node_modules
 package-lock.json
 todo.md

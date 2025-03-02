@@ -65,8 +65,8 @@ const SRC_ASSET_MAP: &[(&str, &str)] = &[
 
 /// Sprites that are a subset of a bigger image
 const SRC_ASSET_MAP_2: &[(&str, &str, Rect)] = &[
-    ("explosive_barrel", "Factions/Goblins/Troops/Barrel/Red/Barrel_Red.png", Rect { left: 37, top: 27, right: 92, bottom: 99 }),
-    ("tree_stump", "Resources/Trees/Tree.png", Rect { left: 78, top: 525, right: 118, bottom: 561 }),
+    ("explosive_barrel", "Factions/Goblins/Troops/Barrel/Red/Barrel_Red.png", Rect { left: 39, top: 29, right: 89, bottom: 99 }),
+    ("tree_stump", "Resources/Trees/Tree.png", Rect { left: 79, top: 530, right: 115, bottom: 560 }),
 ];
 
 struct Sprite {
@@ -115,7 +115,7 @@ pub fn generate_sprites() {
 // Loading images
 //
 
-fn load_simple_image(path: &str) -> (Vec<u8>, OutputInfo) {
+fn load_image_base(path: &str) -> (Vec<u8>, OutputInfo) {
     let final_path = format!("{SRC_ROOT}{path}");
     let file = match File::open(&final_path) {
         Ok(f) => f,
@@ -138,30 +138,65 @@ fn load_simple_image(path: &str) -> (Vec<u8>, OutputInfo) {
     (bytes, image_info)
 }
 
-fn load_sub_image(path: &str, rect: &Rect) -> (Vec<u8>, OutputInfo) {
-    let (bytes_all, mut src_image_info) = load_simple_image(path);
+fn copy_sprite_bytes(src_image_info: &OutputInfo, src_rect: &Rect, src_bytes: &[u8]) -> Vec<u8> {
+    let width = src_rect.width() as usize;
+    let height = src_rect.height() as usize;
+    let mut dst_bytes = Vec::with_capacity(width * height * PIXEL_SIZE);
 
-    let width = rect.width() as usize;
-    let height = rect.height() as usize;
-    let mut bytes = Vec::with_capacity(width * height * PIXEL_SIZE);
-
-    // Copies the subset of the image delimited by `rect` into its own buffer
-    let top = rect.top as usize;
-    let bottom = rect.bottom as usize;
-    let left = rect.left as usize;
+    let top = src_rect.top as usize;
+    let bottom = src_rect.bottom as usize;
+    let left = src_rect.left as usize;
     let dst_line_size = width * PIXEL_SIZE;
 
     for i in top..bottom {
         let bytes_start = (i * src_image_info.line_size) + (left * PIXEL_SIZE);
-        if bytes_start+dst_line_size > bytes_all.len() {
-            println!("{} {:?}", i, path);
-        };
-        bytes.extend_from_slice(&bytes_all[bytes_start..bytes_start+dst_line_size]);
+        dst_bytes.extend_from_slice(&src_bytes[bytes_start..bytes_start+dst_line_size]);
     }
 
-    src_image_info.width = width as u32;
-    src_image_info.height = height as u32;
-    src_image_info.line_size = dst_line_size;
+    dst_bytes
+}
+
+fn load_simple_image(path: &str) -> (Vec<u8>, OutputInfo) {
+    let (bytes_all, mut src_image_info) = load_image_base(path);
+
+    // Strip the extra whitespace around the sprites
+    let mut rect = Rect::default();
+    rect.left = u32::MAX;
+    rect.top = u32::MAX;
+
+    for y in 0..src_image_info.height {
+        for x in 0..src_image_info.width {
+            let [x2, y2] = [x as usize, y as usize];
+            let pixel_offset = (y2 * src_image_info.line_size) + (x2 * PIXEL_SIZE);
+            let a: u8 = bytes_all[pixel_offset + 3];
+            if a != 0 {
+                rect.left = u32::min(rect.left, x);
+                rect.right = u32::max(rect.right, x);
+                rect.top = u32::min(rect.top, y);
+                rect.bottom = u32::max(rect.bottom, y);
+            }
+        }
+    }
+
+    if rect.width() == 0 || rect.height() == 0 {
+        panic!("Failed to read {:?} pixels", path);
+    }
+    
+    let bytes = copy_sprite_bytes(&src_image_info, &rect, &bytes_all);
+
+    src_image_info.width = rect.width();
+    src_image_info.height = rect.height();
+    src_image_info.line_size = rect.width() as usize * PIXEL_SIZE;
+
+    (bytes, src_image_info)
+}
+
+fn load_sub_image(path: &str, rect: &Rect) -> (Vec<u8>, OutputInfo) {
+    let (bytes_all, mut src_image_info) = load_image_base(path);
+    let bytes = copy_sprite_bytes(&src_image_info, &rect, &bytes_all);
+    src_image_info.width = rect.width() as u32;
+    src_image_info.height = rect.height() as u32;
+    src_image_info.line_size = rect.width() as usize * PIXEL_SIZE;
 
     (bytes, src_image_info)
 }
@@ -345,11 +380,11 @@ fn copy_sprites(state: &mut AssetsState) {
 fn generate_tilemap(state: &mut AssetsState) {
     order_sprites(state);
     pack_sprites(state);
-    for sprite in state.sprites.iter() {
-        println!("{:?} {:?}", sprite.name, sprite.dst_rect);
-    }
-
     copy_sprites(state);
+
+    // for sprite in state.sprites.iter() {
+    //     println!("{:?} {:?}", sprite.name, sprite.dst_rect);
+    // }
 }
 
 //

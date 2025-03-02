@@ -43,6 +43,8 @@ impl StructuresBundle {
             }
         });
 
+        dbg!("{:?}", self.knights_castle.aabb);
+
         Ok(())
     }
 
