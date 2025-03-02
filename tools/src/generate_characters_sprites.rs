@@ -3,7 +3,7 @@
 
     Actors sprites must be manually added to the `load_actors` functions
 
-    Call this script using `cargo run -p tools --release -- -c generate_animated_sprites -f [optional_filters]`
+    Call this script using `cargo run -p tools --release -- -c generate_characters_sprites -f [optional_filters]`
 */
 use std::fs::File;
 use crate::shared::{Rect, Size, Offset, size};

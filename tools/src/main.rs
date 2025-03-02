@@ -1,7 +1,7 @@
 mod shared;
-mod generate_static_sprites;
-mod generate_animated_sprites;
-mod generate_effects_sprites;
+mod sprites;
+mod generate_objects_sprites;
+mod generate_characters_sprites;
 
 fn filters() -> Option<Vec<String>> {
     let index = ::std::env::args().position(|arg| arg.as_str() == "-f" || arg.as_str() == "--filters" )?;
@@ -26,14 +26,11 @@ fn main() {
     };
 
     match cmd.as_str() {
-        "generate_animated_sprites" => {
-            generate_animated_sprites::generate_sprites(&filters);
+        "generate_characters_sprites" => {
+            generate_characters_sprites::generate_sprites(&filters);
         },
-        "generate_static_sprites" => {
-            generate_static_sprites::generate_sprites();
-        },
-        "generate_effects_sprites" => {
-            generate_effects_sprites::generate_effects();
+        "generate_objects_sprites" => {
+            generate_objects_sprites::generate_sprites();
         },
         _ => {
             eprintln!("Unknown command name {:?}", cmd);

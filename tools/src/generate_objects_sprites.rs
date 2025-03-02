@@ -1,11 +1,12 @@
 /*!
-    Packs static (non animated) sprites into a single atlas. Also generates a csv file with the name/uv offsets
+    Packs objects sprites into a single atlas. Also generates a csv file with the name/uv offsets
 
-    Call this script using `cargo run -p tools --release -- -c generate_static_sprites`
+    Call this script using `cargo run -p tools --release -- -c generate_objects_sprites`
 */
 use png::OutputInfo;
 use std::{cmp::Ordering, fs::File, u32};
-use crate::shared::{Rect, Size, size};
+use crate::sprites::AnimationInfo;
+use crate::shared::{Rect, Size, rect, size};
 
 const SRC_ROOT: &str = "build/assets/tiny_sword/";
 const DST_ROOT: &str = "build/assets/";
@@ -15,6 +16,7 @@ const DST_NAME_CSV: &str = "static_resources.csv";
 const DST_WIDTH: usize = 890; // Manually tune this number to minimise wasted space
 const PIXEL_SIZE: usize = 4; // Size of rgba u8
 
+/// Sprites that are single images. Blank space around the sprites will be cropped
 const SRC_ASSET_MAP: &[(&str, &str)] = &[
     // Deco
     ("shroom_small", "Deco/01.png"),
@@ -65,9 +67,19 @@ const SRC_ASSET_MAP: &[(&str, &str)] = &[
 
 /// Sprites that are a subset of a bigger image
 const SRC_ASSET_MAP_2: &[(&str, &str, Rect)] = &[
-    ("explosive_barrel", "Factions/Goblins/Troops/Barrel/Red/Barrel_Red.png", Rect { left: 39, top: 29, right: 89, bottom: 99 }),
-    ("tree_stump", "Resources/Trees/Tree.png", Rect { left: 79, top: 530, right: 115, bottom: 560 }),
+    ("explosive_barrel", "Factions/Goblins/Troops/Barrel/Red/Barrel_Red.png", rect(39, 29, 89, 99)),
+    ("tree_stump", "Resources/Trees/Tree.png", rect(79, 530, 115, 560)),
 ];
+
+/// Animated sprites
+const SRC_ASSET_MAP_3: &[(&str, &str, AnimationInfo)] = &[
+    ("tree_idle", "Resources/Trees/Tree.png", AnimationInfo::new(rect(0, 0, 768, 192), size(192, 192))),
+    ("tree_cut", "Resources/Trees/Tree.png", AnimationInfo::new(rect(0, 192, 384, 384), size(192, 192))),
+    ("gold_spawn", "Resources/Resources/G_Spawn.png", AnimationInfo::new(rect(0, 0, 896, 128), size(128, 128))),
+    ("meat_spawn", "Resources/Resources/M_Spawn.png", AnimationInfo::new(rect(0, 0, 896, 128), size(128, 128))),
+    ("wood_spawn", "Resources/Resources/W_Spawn.png", AnimationInfo::new(rect(0, 0, 896, 128), size(128, 128))),
+];
+
 
 struct Sprite {
     pub bytes: Vec<u8>,
