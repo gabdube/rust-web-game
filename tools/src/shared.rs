@@ -36,6 +36,13 @@ impl Rect {
     pub fn fits(&self, width: u32, height: u32) -> bool {
         self.width() >= width && self.height() >= height
     }
+
+    pub fn size(&self) -> Size {
+        Size {
+            width: self.width(),
+            height: self.height(),
+        }
+    }
 }
 
 pub const fn size(width: u32, height: u32) -> Size {
