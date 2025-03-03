@@ -1,4 +1,6 @@
 //! Helpers to load sprites from images
+mod optimize_animation;
+
 use png::OutputInfo;
 use std::fs::File;
 use crate::shared::{Rect, Size, rect, size};
@@ -21,8 +23,11 @@ impl AnimationInfo {
 }
 
 pub enum SpriteInfo {
+    /// The sprite spans the whole image
     Simple,
+    /// The sprite in a subsection of the image delimited by `Rect`
     SimpleSub(Rect),
+    /// The sprite is an animation
     Animated(AnimationInfo),
 }
 
@@ -40,10 +45,14 @@ impl SpriteInfo {
     }
 }
 
+/// A 2D sprite data extracted from an image
 #[derive(Default)]
 pub struct SpriteData {
+    /// Pixel data of the sprite
     pub pixels: Vec<u8>,
-    pub area: Rect,
+    /// Size of the whole sprite
+    pub size: Size,
+    /// Size of a single frame in an animation. For simple sprites, this is the value of `size`
     pub frame_size: Size,
 }
 
@@ -58,20 +67,26 @@ impl SpriteData {
         match sprite_info {
             SpriteInfo::Simple => {
                 let src_rect = rect(0, 0, image_info.width, image_info.height);
-                let mut optimized_rect = Rect::default();
-                optimize_simple_sprite(image_info.line_size, &src_rect, &bytes, &mut optimized_rect, &mut sprite.pixels);
-                sprite.area = rect(0, 0, optimized_rect.width(), optimized_rect.height());
-                sprite.frame_size = size(optimized_rect.width(), optimized_rect.height());
+                optimize_simple_sprite(image_info.line_size, &src_rect, &bytes, &mut sprite.size, &mut sprite.pixels);
+                sprite.frame_size = sprite.size;
             },
             SpriteInfo::SimpleSub(src_rect) => {
-                let mut optimized_rect = Rect::default();
-                optimize_simple_sprite(image_info.line_size, &src_rect, &bytes, &mut optimized_rect, &mut sprite.pixels);
-                sprite.area = rect(0, 0, optimized_rect.width(), optimized_rect.height());
-                sprite.frame_size = size(optimized_rect.width(), optimized_rect.height());
+                optimize_simple_sprite(image_info.line_size, &src_rect, &bytes, &mut sprite.size, &mut sprite.pixels);
+                sprite.frame_size = sprite.size;
 
             },
             SpriteInfo::Animated(animated) => {
-                todo!();
+                let mut params = optimize_animation::OptimizeAnimationParams {
+                    src_line_size: image_info.line_size,
+                    src_rect: animated.area,
+                    src_frame_size: animated.frame_size,
+                    src_bytes: &bytes,
+                    optimized_size: &mut sprite.size,
+                    optimized_frame_size: &mut sprite.frame_size,
+                    dst_bytes: &mut sprite.pixels
+                };
+
+                optimize_animation::optimize_animation(&mut params);
             }
         }
 
@@ -79,7 +94,7 @@ impl SpriteData {
     }
 
     pub fn line_size(&self) -> usize {
-        self.area.width() as usize * PIXEL_SIZE
+        self.size.width as usize * PIXEL_SIZE
     }
 
 }
@@ -111,11 +126,13 @@ fn optimize_simple_sprite(
     src_line_size: usize,
     src_rect: &Rect,
     src_bytes: &[u8],
-    optimized_rect: &mut Rect,
+    dst_size: &mut Size,
     dst_bytes: &mut Vec<u8>
 ) {
-    optimize_sprite_rect(src_line_size, src_rect, src_bytes, optimized_rect);
-    optimize_sprite_copy(src_line_size, src_bytes, optimized_rect, dst_bytes);
+    let mut optimized_rect = Rect::default();
+    optimize_sprite_rect(src_line_size, src_rect, src_bytes, &mut optimized_rect);
+    optimize_sprite_copy(src_line_size, src_bytes, &mut optimized_rect, dst_bytes);
+    *dst_size = size(optimized_rect.width(), optimized_rect.height());
 }
 
 fn optimize_sprite_rect(
@@ -124,15 +141,13 @@ fn optimize_sprite_rect(
     src_bytes: &[u8],
     optimized_rect: &mut Rect,
 ) {
-    let mut rect = Rect::default();
-    rect.left = u32::MAX;
-    rect.top = u32::MAX;
+    let mut rect = rect(u32::MAX, u32::MAX, 0, 0);
 
     for y in src_rect.top..src_rect.bottom {
         for x in src_rect.left..src_rect.right {
             let [x2, y2] = [x as usize, y as usize];
-            let pixel_offset = (y2 * src_line_size) + (x2 * PIXEL_SIZE);
-            let a: u8 = src_bytes[pixel_offset + 3];
+            let pixel_offset = (y2 * src_line_size) + (x2 * PIXEL_SIZE) + 3;
+            let a: u8 = src_bytes[pixel_offset];
             if a != 0 {
                 rect.left = u32::min(rect.left, x);
                 rect.right = u32::max(rect.right, x);

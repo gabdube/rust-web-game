@@ -13,9 +13,9 @@ const DST_ROOT: &str = "build/assets/";
 const DST_NAME_IMAGE: &str = "static_resources.png";
 const DST_NAME_CSV: &str = "static_resources.csv";
 
-const DST_WIDTH: usize = 890; // Manually tune this number to minimise wasted space
+const DST_WIDTH: usize = 936; // Manually tune this number to minimise wasted space
 
-/// Sprites that are single images. Blank space around the sprites will be cropped
+/// Sprites to pack in the objects atlas
 static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     // Deco
     ("shroom_small", "Deco/01.png", SpriteInfo::auto()),
@@ -64,11 +64,15 @@ static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     ("wood_noshadow", "Resources/Resources/W_Idle_(NoShadow).png", SpriteInfo::auto()),
     ("wood", "Resources/Resources/W_Idle.png", SpriteInfo::auto()),
     ("tree_stump", "Resources/Trees/Tree.png", SpriteInfo::sub(79, 530, 115, 560)),
-    //("tree_idle", "Resources/Trees/Tree.png", SpriteInfo::animated(rect(0, 0, 768, 192), size(192, 192))),
-    //("tree_cut", "Resources/Trees/Tree.png", SpriteInfo::animated(rect(0, 192, 384, 384), size(192, 192))),
-    //("gold_spawn", "Resources/Resources/G_Spawn.png", SpriteInfo::animated(rect(0, 0, 896, 128), size(128, 128))),
-    //("meat_spawn", "Resources/Resources/M_Spawn.png", SpriteInfo::animated(rect(0, 0, 896, 128), size(128, 128))),
-    //("wood_spawn", "Resources/Resources/W_Spawn.png", SpriteInfo::animated(rect(0, 0, 896, 128), size(128, 128))),
+    ("tree_idle", "Resources/Trees/Tree.png", SpriteInfo::animated(rect(0, 0, 768, 192), size(192, 192))),
+    ("tree_cut", "Resources/Trees/Tree.png", SpriteInfo::animated(rect(0, 192, 384, 384), size(192, 192))),
+    ("gold_spawn", "Resources/Resources/G_Spawn.png", SpriteInfo::animated(rect(0, 0, 896, 128), size(128, 128))),
+    ("meat_spawn", "Resources/Resources/M_Spawn.png", SpriteInfo::animated(rect(0, 0, 896, 128), size(128, 128))),
+    ("wood_spawn", "Resources/Resources/W_Spawn.png", SpriteInfo::animated(rect(0, 0, 896, 128), size(128, 128))),
+
+    // Effects
+    ("fire", "Effects/Fire/Fire.png", SpriteInfo::animated(rect(0, 0, 896, 128), size(128, 128))),
+    ("explosion", "Effects/Explosion/Explosions.png", SpriteInfo::animated(rect(0, 0, 1728, 192), size(192, 192))),
 ];
 
 struct AssetsState {
@@ -171,7 +175,7 @@ impl<'a> PackingState<'a> {
     }
 }
 
-/// Maps the state data into a format that can be processed by `pack_sprites`
+/// Maps the state data into a format that can be processed by `pack_sprites` and sort them by size
 fn generate_pack_sprites(state: &mut AssetsState) -> Vec<PackSprite> {
     fn sort_sprites(sprite1: &PackSprite, sprite2: &PackSprite) -> Ordering {
         if sprite2.size.height < sprite1.size.height {
@@ -184,16 +188,25 @@ fn generate_pack_sprites(state: &mut AssetsState) -> Vec<PackSprite> {
     }
 
     let mut sprites: Vec<PackSprite> = state.sprites_data.iter().enumerate()
-        .map(|(index, sprite)| PackSprite { 
-            index: index as u32,
-            size: sprite.area.size(),
-            rect: Default::default()
-        })
+        .map(|(index, sprite)| 
+            PackSprite { 
+                index: index as u32,
+                size: sprite.size,
+                rect: Default::default()
+            }
+        )
         .collect();
 
     sprites.sort_unstable_by(sort_sprites);
 
     sprites
+}
+
+fn check_min_dimensions(sprites: &Vec<PackSprite>) {
+    let min_width = sprites.iter().map(|v| v.size.width ).max().unwrap_or(0) as usize;
+    if min_width > DST_WIDTH {
+        panic!("MIN_WIDTH ({DST_WIDTH}) must be at least as large as the longest sprite {min_width}");
+    }
 }
 
 /// Fill a row with sprites
@@ -255,6 +268,7 @@ fn pack_sprites(state: &mut AssetsState, mut sprites: Vec<PackSprite>) {
     state.output_image_info.height = top;
 }
 
+/// Allocate space for the tilemap and copy the sprites from `AssetsState` into it
 fn copy_sprites(state: &mut AssetsState) {
     fn copy_sprite(
         dst: &mut [u8], dst_x: usize, dst_y: usize, dst_stride: usize,
@@ -281,7 +295,7 @@ fn copy_sprites(state: &mut AssetsState) {
         let dst_rect = state.sprites_dst[i];
         let dst_x = dst_rect.left as usize;
         let dst_y = dst_rect.top as usize;
-        let height = sprite.area.height() as usize;
+        let height = sprite.size.height as usize;
         let src_stride = sprite.line_size();
         copy_sprite(
             &mut dst_bytes, dst_x, dst_y, dst_stride,
@@ -294,12 +308,9 @@ fn copy_sprites(state: &mut AssetsState) {
 
 fn generate_tilemap(state: &mut AssetsState) {
     let sprites = generate_pack_sprites(state);
+    check_min_dimensions(&sprites);
     pack_sprites(state, sprites);
     copy_sprites(state);
-
-    // for sprite in state.sprites.iter() {
-    //     println!("{:?} {:?}", sprite.name, sprite.dst_rect);
-    // }
 }
 
 //
