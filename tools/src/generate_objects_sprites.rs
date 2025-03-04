@@ -4,9 +4,10 @@
     Call this script using `cargo run -p tools --release -- -c generate_objects_sprites`
 */
 use png::OutputInfo;
-use std::{cmp::Ordering, fs::File, u32};
+use std::fs::File;
+use crate::packing::{PackSprite, PackingState};
 use crate::sprites::{SpriteData, SpriteInfo, PIXEL_SIZE};
-use crate::shared::{Rect, Size, rect, size};
+use crate::shared::{Rect, rect, size};
 
 const SRC_ROOT: &str = "build/assets/tiny_sword/";
 const DST_ROOT: &str = "build/assets/";
@@ -41,6 +42,8 @@ static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     ("goblin_house", "Factions/Goblins/Buildings/Wood_House/Goblin_House.png", SpriteInfo::auto()),
     ("goblin_house_destroyed", "Factions/Goblins/Buildings/Wood_House/Goblin_House_Destroyed.png", SpriteInfo::auto()),
     ("explosive_barrel", "Factions/Goblins/Troops/Barrel/Red/Barrel_Red.png", SpriteInfo::sub(39, 29, 89, 99)),
+    ("explosive_barrel_triggered", "Factions/Goblins/Troops/Barrel/Red/Barrel_Red.png", SpriteInfo::animated(rect(0, 640, 384, 768), size(128, 128))),
+    ("tnt", "Factions/Goblins/Troops/TNT/Dynamite/Dynamite.png", SpriteInfo::animated(rect(0, 0, 384, 64), size(64, 64))),
 
     // Knights
     ("knight_castle", "Factions/Knights/Buildings/Castle/Castle_Blue.png", SpriteInfo::auto()),
@@ -52,6 +55,9 @@ static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     ("knight_tower", "Factions/Knights/Buildings/Tower/Tower_Blue.png", SpriteInfo::auto()),
     ("knight_tower_construction", "Factions/Knights/Buildings/Tower/Tower_Construction.png", SpriteInfo::auto()),
     ("knight_tower_destroyed", "Factions/Knights/Buildings/Tower/Tower_Destroyed.png", SpriteInfo::auto()),
+    
+    ("arrow", "Factions/Knights/Troops/Archer/Arrow/Arrow.png", SpriteInfo::sub(0, 0, 64, 64)),
+    ("arrow_stuck", "Factions/Knights/Troops/Archer/Arrow/Arrow.png", SpriteInfo::sub(0, 64, 64, 128)),
 
     // Resources
     ("gold_mine", "Resources/Gold Mine/GoldMine_Active.png", SpriteInfo::auto()),
@@ -137,57 +143,16 @@ fn load_sprite_sources(state: &mut AssetsState) {
 // Generating tilemaps
 //
 
-struct PackSprite {
-    index: u32,
-    size: Size,
-    rect: Rect,
-}
-
-struct PackingState<'a> {
-    sprites: &'a mut [PackSprite],
-    processed: &'a mut [bool],
-    area: Rect,
-}
-
-impl<'a> PackingState<'a> {
-    fn store_next_sprite(&mut self) -> Option<Size> {
-        let index = self.processed.iter_mut().enumerate()
-            .position(|(index, processed)| {
-                if *processed == false {
-                    let size = self.sprites[index].size;
-                    self.area.fits(size.width, size.height)
-                } else {
-                    false
-                }
-            })?;
-
-        let pack = &mut self.sprites[index];
-        let size = pack.size;
-        pack.rect = Rect { left: self.area.left, top: self.area.top, right: self.area.left + size.width, bottom: self.area.top + size.height };
-
-        self.processed[index] = true;
-
-        Some(size)
-    }
-
-    fn has_remaining_items(&self) -> bool {
-        self.processed.iter().any(|processed| *processed )
+fn check_min_dimensions(state: &AssetsState) {
+    let min_width = state.sprites_data.iter().map(|v| v.size.width ).max().unwrap_or(0) as usize;
+    if min_width > DST_WIDTH {
+        panic!("MIN_WIDTH ({DST_WIDTH}) must be at least as large as the longest sprite {min_width}");
     }
 }
 
 /// Maps the state data into a format that can be processed by `pack_sprites` and sort them by size
-fn generate_pack_sprites(state: &mut AssetsState) -> Vec<PackSprite> {
-    fn sort_sprites(sprite1: &PackSprite, sprite2: &PackSprite) -> Ordering {
-        if sprite2.size.height < sprite1.size.height {
-            return Ordering::Less;
-        } else if sprite2.size.height > sprite1.size.height {
-            return Ordering::Greater;
-        } else {
-            return sprite2.size.width.cmp(&sprite1.size.width);
-        }
-    }
-
-    let mut sprites: Vec<PackSprite> = state.sprites_data.iter().enumerate()
+fn generate_pack_sprites(state: &mut AssetsState) -> PackingState {
+    let sprites = state.sprites_data.iter().enumerate()
         .map(|(index, sprite)| 
             PackSprite { 
                 index: index as u32,
@@ -197,75 +162,16 @@ fn generate_pack_sprites(state: &mut AssetsState) -> Vec<PackSprite> {
         )
         .collect();
 
-    sprites.sort_unstable_by(sort_sprites);
-
-    sprites
+    PackingState::new(sprites)
 }
 
-fn check_min_dimensions(sprites: &Vec<PackSprite>) {
-    let min_width = sprites.iter().map(|v| v.size.width ).max().unwrap_or(0) as usize;
-    if min_width > DST_WIDTH {
-        panic!("MIN_WIDTH ({DST_WIDTH}) must be at least as large as the longest sprite {min_width}");
-    }
-}
-
-/// Fill a row with sprites
-fn pack_row(mut state: PackingState) -> bool {
-    loop {
-        let size = match state.store_next_sprite() {
-            Some(value) => value,
-            None => { return state.has_remaining_items(); }
-        };
-
-        if size.height <= state.area.height() {
-            let state = PackingState {
-                sprites: state.sprites,
-                processed: state.processed,
-                area: Rect {
-                    left: state.area.left,
-                    top: state.area.top + size.height,
-                    right: state.area.left + size.width,
-                    bottom: state.area.bottom,
-                }
-            };
-            if !pack_row(state) {
-                return false;
-            }
-        }
-
-        state.area.left += size.width;
-    }
-}
-
-/// Compute the position of the sprites in the final atlas
-fn pack_sprites(state: &mut AssetsState, mut sprites: Vec<PackSprite>) {
-    let mut processed = vec![false; sprites.len()];
-    let mut top = 0;
-
-    loop {
-        let size = match processed.iter().enumerate().find(|(_, processed)| **processed == false ) {
-            Some((index, _)) => sprites[index].size,
-            None => { break; }
-        };
-
-        let pack_state = PackingState {
-            sprites: &mut sprites,
-            processed: &mut processed,
-            area: rect(0, top, DST_WIDTH as u32, top+size.height)
-        };
-        if !pack_row(pack_state) {
-            break;
-        }
-
-        top += size.height;
-    }
-
-    // Copy the generated packed rect into the asset state
-    for sprite in sprites {
+/// Transfer data from `PackState` to `AssetState`
+fn transfer_data(state: &mut AssetsState, pack: &PackingState) {
+    for sprite in pack.sprites() {
         state.sprites_dst[sprite.index as usize] = sprite.rect;
     }
 
-    state.output_image_info.height = top;
+    state.output_image_info.height = pack.size().height;
 }
 
 /// Allocate space for the tilemap and copy the sprites from `AssetsState` into it
@@ -307,9 +213,12 @@ fn copy_sprites(state: &mut AssetsState) {
 }
 
 fn generate_tilemap(state: &mut AssetsState) {
-    let sprites = generate_pack_sprites(state);
-    check_min_dimensions(&sprites);
-    pack_sprites(state, sprites);
+    check_min_dimensions(state);
+
+    let mut pack_state = generate_pack_sprites(state);
+    pack_state.compute(DST_WIDTH);
+
+    transfer_data(state, &pack_state);
     copy_sprites(state);
 }
 
@@ -351,7 +260,8 @@ fn write_tilemap_csv(state: &mut AssetsState) -> Result<(), Box<dyn ::std::error
 
     for (i, name) in state.sprite_names.iter().enumerate() {
         let [left, top, right, bottom] = state.sprites_dst[i].splat();
-        csv_out.push_str(&format!("{};{};{};{};{};\n", name, left, top, right, bottom));
+        let sprite_count = state.sprites_data[i].sprite_count();
+        csv_out.push_str(&format!("{};{};{};{};{};{};\n", name, sprite_count, left, top, right, bottom));
     }
 
     let out_path = format!("{DST_ROOT}{DST_NAME_CSV}");

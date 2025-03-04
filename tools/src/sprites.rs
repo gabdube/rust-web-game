@@ -97,6 +97,10 @@ impl SpriteData {
         self.size.width as usize * PIXEL_SIZE
     }
 
+    pub fn sprite_count(&self) -> usize {
+        (self.size.width / self.frame_size.width) as usize
+    }
+
 }
 
 fn load_image_base(path: &str) -> (Vec<u8>, OutputInfo) {
