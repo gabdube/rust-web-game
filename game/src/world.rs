@@ -27,25 +27,14 @@ pub struct World {
     pub total_sprite_count: u32,
 
     pub static_resources_texture: Texture,
+    pub units_texture: Texture,
 
     pub terrain: Terrain,
-
-    pub pawn_texture: Texture,
     pub pawns: Vec<BaseUnit>,
-
-    pub warrior_texture: Texture,
     pub warriors: Vec<BaseUnit>,
-
-    pub archer_texture: Texture,
     pub archers: Vec<BaseUnit>,
-
-    pub torch_goblin_texture: Texture,
     pub torch_goblins: Vec<BaseUnit>,
-
-    pub tnt_goblin_texture: Texture,
     pub tnt_goblins: Vec<BaseUnit>,
-
-    pub sheep_texture: Texture,
     pub sheeps: Vec<BaseUnit>,
 
     pub decorations: Vec<BaseStatic>,
@@ -60,19 +49,8 @@ impl World {
     }
 
     pub fn init_assets(&mut self, assets: &crate::assets::Assets) -> Result<(), Error> {
-        let textures = [
-            (&mut self.pawn_texture, "pawn"),
-            (&mut self.warrior_texture, "warrior"),
-            (&mut self.archer_texture, "archer"),
-            (&mut self.torch_goblin_texture, "torch_goblin"),
-            (&mut self.tnt_goblin_texture, "tnt_goblin"),
-            (&mut self.sheep_texture, "sheep"),
-        ];
-
-        for (texture, name) in textures {
-            *texture = assets.textures.get(name).copied()
-                .ok_or_else(|| assets_err!("{} texture missing", name) )?;
-        }
+        self.units_texture = assets.textures.get("units").copied()
+            .ok_or_else(|| assets_err!("units texture missing") )?;
 
         self.static_resources_texture = assets.textures.get("static_resources").copied()
             .ok_or_else(|| assets_err!("static_resources texture missing") )?;
@@ -121,7 +99,7 @@ impl World {
         Self::create_inner_actor(&mut self.torch_goblins, position, animation)
     }
 
-    pub fn create_tnt_goblin(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_dynamite_goblin(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         Self::create_inner_actor(&mut self.tnt_goblins, position, animation)
     }
@@ -167,51 +145,29 @@ impl World {
 impl SaveAndLoad for World {
 
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        writer.write(&self.pawn_texture);
         writer.write_slice(&self.pawns);
-
-        writer.write(&self.warrior_texture);
         writer.write_slice(&self.warriors);
-
-        writer.write(&self.archer_texture);
         writer.write_slice(&self.archers);
-
-        writer.write(&self.torch_goblin_texture);
         writer.write_slice(&self.torch_goblins);
-
-        writer.write(&self.tnt_goblin_texture);
         writer.write_slice(&self.tnt_goblins);
-
-        writer.write(&self.sheep_texture);
         writer.write_slice(&self.sheeps);
-
         writer.write_slice(&self.decorations);
         writer.write_slice(&self.structures);
         writer.write_slice(&self.resources);
 
         writer.write(&self.static_resources_texture);
+        writer.write(&self.units_texture);
         writer.write_u32(self.total_sprite_count);
 
         writer.save(&self.terrain);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let pawn_texture = reader.read();
         let pawns = reader.read_slice().to_vec();
-
-        let warrior_texture = reader.read();
         let warriors = reader.read_slice().to_vec();
-
-        let archer_texture = reader.read();
         let archers = reader.read_slice().to_vec();
-
-        let torch_goblin_texture = reader.read();
         let torch_goblins = reader.read_slice().to_vec();
-
-        let tnt_goblin_texture = reader.read();
         let tnt_goblins = reader.read_slice().to_vec();
-
-        let sheep_texture = reader.read();
         let sheeps = reader.read_slice().to_vec();
 
         let decorations = reader.read_slice().to_vec();
@@ -219,6 +175,7 @@ impl SaveAndLoad for World {
         let resources = reader.read_slice().to_vec();
 
         let static_resources_texture = reader.read();
+        let units_texture = reader.read();
         let total_sprite_count = reader.read_u32();
 
         let terrain = reader.load();
@@ -227,25 +184,15 @@ impl SaveAndLoad for World {
             last_animation_tick: 0.0,
             total_sprite_count,
             static_resources_texture,
+            units_texture,
 
             terrain,
 
-            pawn_texture,
             pawns,
-
-            warrior_texture,
             warriors,
-
-            archer_texture,
             archers,
-
-            torch_goblin_texture,
             torch_goblins,
-
-            tnt_goblin_texture,
             tnt_goblins,
-
-            sheep_texture,
             sheeps,
 
             decorations,
@@ -262,25 +209,15 @@ impl Default for World {
             last_animation_tick: 0.0,
             total_sprite_count: 0,
             static_resources_texture: Texture { id: 0 },
+            units_texture: Texture { id: 0 },
 
             terrain: Terrain::default(),
     
-            pawn_texture: Texture { id: 0 },
             pawns: Vec::with_capacity(16),
-
-            warrior_texture: Texture { id: 0 },
             warriors: Vec::with_capacity(16),
-
-            archer_texture: Texture { id: 0 },
             archers: Vec::with_capacity(16),
-
-            torch_goblin_texture: Texture { id: 0 },
             torch_goblins: Vec::with_capacity(16),
-
-            tnt_goblin_texture: Texture { id: 0 },
             tnt_goblins: Vec::with_capacity(16),
-
-            sheep_texture: Texture { id: 0 },
             sheeps: Vec::with_capacity(16),
 
             decorations: Vec::with_capacity(16),

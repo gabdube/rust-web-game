@@ -254,21 +254,22 @@ impl DemoGame {
     }
 
     fn gen_sprites(world: &crate::world::World, output: &mut GameOutput) {
-        let sprites_by_texture_id = [
-            (world.pawn_texture, &world.pawns),
-            (world.warrior_texture, &world.warriors),
-            (world.archer_texture, &world.archers),
-            (world.torch_goblin_texture, &world.torch_goblins),
-            (world.tnt_goblin_texture, &world.tnt_goblins),
-            (world.sheep_texture, &world.sheeps),
+        let texture_id = world.units_texture.id;
+        let sprite_groups = [
+            &world.pawns,
+            &world.warriors,
+            &world.archers,
+            &world.torch_goblins,
+            &world.tnt_goblins,
+            &world.sheeps,
         ];
 
         let builder = &mut output.sprites_builder;
-        for (texture_id, units) in sprites_by_texture_id {
-            for unit in units.iter() {
+        for sprites in sprite_groups {
+            for unit in sprites.iter() {
                 let sprite = Self::build_actor_sprite(unit);
                 builder.push(TempSprite {
-                    texture_id: texture_id.id,
+                    texture_id,
                     y: unit.position.y,
                     sprite
                 });
@@ -277,18 +278,19 @@ impl DemoGame {
     }
 
     fn gen_sprites_with_animation(world: &mut crate::world::World, output: &mut GameOutput) {
-        let sprites_by_texture_id = [
-            (world.pawn_texture, &mut world.pawns),
-            (world.warrior_texture, &mut world.warriors),
-            (world.archer_texture, &mut world.archers),
-            (world.torch_goblin_texture, &mut world.torch_goblins),
-            (world.tnt_goblin_texture, &mut world.tnt_goblins),
-            (world.sheep_texture, &mut world.sheeps),
+        let texture_id = world.units_texture.id;
+        let sprite_groups = [
+            &mut world.pawns,
+            &mut world.warriors,
+            &mut world.archers,
+            &mut world.torch_goblins,
+            &mut world.tnt_goblins,
+            &mut world.sheeps,
         ];
 
         let builder = &mut output.sprites_builder;
-        for (texture_id, units) in sprites_by_texture_id {
-            for unit in units.iter_mut() {
+        for sprites in sprite_groups {
+            for unit in sprites.iter_mut() {
                 if unit.current_frame == unit.animation.last_frame {
                     unit.current_frame = 0;
                 } else {
@@ -297,7 +299,7 @@ impl DemoGame {
 
                 let sprite = Self::build_actor_sprite(unit);
                 builder.push(TempSprite {
-                    texture_id: texture_id.id,
+                    texture_id,
                     y: unit.position.y,
                     sprite
                 });
@@ -379,7 +381,7 @@ impl DemoGame {
         sprite.position[1] = position.y - animation.sprite_height;
         sprite.size[0] = animation.sprite_width;
         sprite.size[1] = animation.sprite_height;
-        sprite.texcoord_offset[0] = animation.x + (animation.sprite_width * i) + (animation.padding * i);
+        sprite.texcoord_offset[0] = animation.x + (animation.sprite_width * i);
         sprite.texcoord_offset[1] = animation.y;
         sprite.texcoord_size[0] = sprite.size[0];
         sprite.texcoord_size[1] = sprite.size[1];

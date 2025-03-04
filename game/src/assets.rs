@@ -44,9 +44,6 @@ impl Assets {
                 "TEXTURE" => {
                     self.load_texture(args)
                 },
-                "JSON" => {
-                    self.load_json(init, args)
-                },
                 "CSV" => {
                     self.load_csv(init, args)
                 },
@@ -77,31 +74,6 @@ impl Assets {
         Ok(())
     }
 
-    fn load_json(&mut self, init: &crate::DemoGameInit, args: &[&str]) -> Result<(), Error> {
-        let &json_name = args.get(2)
-            .ok_or_else(|| assets_err!("Missing json name") )?;
-
-        let &data_type = args.get(1)
-            .ok_or_else(|| assets_err!("Missing json data type") )?;
-
-        let json_string = init.text_assets.get(json_name)
-            .ok_or_else(|| assets_err!("Failed to match json name to json data") )?;
-
-        let json_value = serde_json::from_str::<serde_json::Value>(json_string.as_str())
-            .map_err(|err| assets_err!("Failed to parse json data: {err}") )?;
-
-        match data_type {
-            "animation" => {
-                self.animations.load_animation(json_name, json_value)?;
-            },
-            name => {
-                return Err(assets_err!("Unknown json data type: {:?}", name));
-            }
-        };
-
-        Ok(())
-    }
-
     fn load_csv(&mut self, init: &crate::DemoGameInit, args: &[&str]) -> Result<(), Error> {
         let &csv_name = args.get(1)
             .ok_or_else(|| assets_err!("Missing csv name") )?;
@@ -118,6 +90,10 @@ impl Assets {
                 self.decorations.load(sprites);
                 self.structures.load(sprites);
                 self.resources.load(sprites);
+            },
+            "units_sprites" => {
+                let sprites = csv_string.as_str();
+                self.animations.load_animations(sprites)?;
             },
             name => {
                 warn!("Unknown csv: {:?}", name);

@@ -31,12 +31,12 @@ impl StructuresBundle {
             str::parse::<f32>(v).unwrap_or(0.0)
         }
 
-        crate::shared::split_csv::<5, _>(csv, |args| {
+        crate::shared::split_csv::<6, _>(csv, |args| {
             let name = args[0];
-            let left = parse(args[1]);
-            let top = parse(args[2]);
-            let right = parse(args[3]);
-            let bottom = parse(args[4]);
+            let left = parse(args[2]);
+            let top = parse(args[3]);
+            let right = parse(args[4]);
+            let bottom = parse(args[5]);
 
             if let Some(base) = self.match_name(name) {
                 base.aabb = AABB { left, top, right, bottom };

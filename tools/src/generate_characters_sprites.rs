@@ -14,15 +14,15 @@ const DST_WIDTH: usize = 1420; // Manually tune this number to minimise wasted s
 /// Sprites to pack in the objects atlas
 static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     // Goblin
-    ("gobin_dynamite_idle", "Factions/Goblins/Troops/TNT/Red/TNT_Red.png", SpriteInfo::animated(rect(0, 0, 1152, 192), size(192, 192))),
-    ("gobin_dynamite_walk", "Factions/Goblins/Troops/TNT/Red/TNT_Red.png", SpriteInfo::animated(rect(0, 192, 1152, 384), size(192, 192))),
-    ("gobin_dynamite_throw", "Factions/Goblins/Troops/TNT/Red/TNT_Red.png", SpriteInfo::animated(rect(0, 384, 1344, 576), size(192, 192))),
+    ("gobindynamite_idle", "Factions/Goblins/Troops/TNT/Red/TNT_Red.png", SpriteInfo::animated(rect(0, 0, 1152, 192), size(192, 192))),
+    ("gobindynamite_walk", "Factions/Goblins/Troops/TNT/Red/TNT_Red.png", SpriteInfo::animated(rect(0, 192, 1152, 384), size(192, 192))),
+    ("gobindynamite_throw", "Factions/Goblins/Troops/TNT/Red/TNT_Red.png", SpriteInfo::animated(rect(0, 384, 1344, 576), size(192, 192))),
 
-    ("gobin_torch_idle", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 0, 1344, 192), size(192, 192))),
-    ("gobin_torch_walk", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 192, 1152, 384), size(192, 192))),
-    ("gobin_torch_strike_horz", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 384, 1152, 576), size(192, 192))),
-    ("gobin_torch_strike_bottom", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 576, 1152, 768), size(192, 192))),
-    ("gobin_torch_strike_top", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 768, 1152, 960), size(192, 192))),
+    ("gobintorch_idle", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 0, 1344, 192), size(192, 192))),
+    ("gobintorch_walk", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 192, 1152, 384), size(192, 192))),
+    ("gobintorch_strike_horz", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 384, 1152, 576), size(192, 192))),
+    ("gobintorch_strike_bottom", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 576, 1152, 768), size(192, 192))),
+    ("gobintorch_strike_top", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 768, 1152, 960), size(192, 192))),
 
     // Sheep
     ("sheep_idle", "Resources/Sheep/HappySheep_Idle.png", SpriteInfo::animated(rect(0, 0, 1024, 128), size(128, 128))),
@@ -58,6 +58,7 @@ static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     // Death
     ("death_spawn", "Factions/Knights/Troops/Dead/Dead.png", SpriteInfo::animated(rect(0, 0, 896, 128), size(128, 128))),
     ("death_despawn", "Factions/Knights/Troops/Dead/Dead.png", SpriteInfo::animated(rect(0, 128, 896, 256), size(128, 128))),
+    ("death_idle", "Factions/Knights/Troops/Dead/Dead.png", SpriteInfo::sub(768, 0, 896, 128)),
 ];
 
 struct AssetsState {

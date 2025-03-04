@@ -21,7 +21,6 @@ export class EngineAssets {
     textures: Map<string, Texture> = new Map();
     textures_by_id: Texture[] = [];
 
-    json: Map<string, string> = new Map();
     csv: Map<string, string> = new Map();
     shaders: Map<string, Shader> = new Map();
 
@@ -63,12 +62,6 @@ export class EngineAssets {
                     const path = args[2];
                     asset_loading_promises.push(this.load_texture(texture_id, name, path));
                     texture_id += 1;
-                    break;
-                }
-                case "JSON": {
-                    const name = args[2];
-                    const path = args[3];
-                    asset_loading_promises.push(this.load_json(name, path));
                     break;
                 }
                 case "CSV": {
@@ -113,17 +106,6 @@ export class EngineAssets {
 
         this.textures.set(name, texture);
         this.textures_by_id[texture_id] = texture;
-
-        return true;
-    }
-
-    private async load_json(name: string, path: string): Promise<boolean> {
-        const json_text = await fetch_text(path);
-        if (!json_text) {
-            return false;
-        }
-    
-        this.json.set(name, json_text);
 
         return true;
     }

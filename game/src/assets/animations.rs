@@ -1,9 +1,8 @@
-use serde_json::Value as JsonValue;
 use crate::error::Error;
+use crate::shared::split_csv;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct AnimationBase {
-    pub padding: f32,
     pub x: f32,
     pub y: f32,
     pub sprite_width: f32,
@@ -35,12 +34,12 @@ pub struct PawnAnimation {
 impl PawnAnimation {
     fn set_animation_by_name(&mut self, name: &str, animation: AnimationBase) -> Option<()> {
         let target = match name {
-            "idle" => Some(&mut self.idle),
-            "walk" => Some(&mut self.walk),
-            "hammer" => Some(&mut self.hammer),
-            "axe" => Some(&mut self.axe),
-            "idle_hold" => Some(&mut self.idle_hold),
-            "idle_walk" => Some(&mut self.idle_walk),
+            "pawn_idle" => Some(&mut self.idle),
+            "pawn_walk" => Some(&mut self.walk),
+            "pawn_hammer" => Some(&mut self.hammer),
+            "pawn_axe" => Some(&mut self.axe),
+            "pawn_idle_hold" => Some(&mut self.idle_hold),
+            "pawn_walk_hold" => Some(&mut self.idle_walk),
             _ => None,
         }?;
 
@@ -64,14 +63,14 @@ pub struct WarriorAnimation {
 impl WarriorAnimation {
     fn set_animation_by_name(&mut self, name: &str, animation: AnimationBase) -> Option<()> {
         let target = match name {
-            "idle" => Some(&mut self.idle),
-            "walk" => Some(&mut self.walk),
-            "strike-horz-1" => Some(&mut self.strike_h1),
-            "strike-horz-2" => Some(&mut self.strike_h2),
-            "strike-bottom-1" => Some(&mut self.strike_b1),
-            "strike-bottom-2" => Some(&mut self.strike_b2),
-            "strike-top-1" => Some(&mut self.strike_t1),
-            "strike-top-2" => Some(&mut self.strike_t2),
+            "warrior_idle" => Some(&mut self.idle),
+            "warrior_walk" => Some(&mut self.walk),
+            "warrior_strike_horz1" => Some(&mut self.strike_h1),
+            "warrior_strike_horz2" => Some(&mut self.strike_h2),
+            "warrior_strike_bottom1" => Some(&mut self.strike_b1),
+            "warrior_strike_bottom2" => Some(&mut self.strike_b2),
+            "warrior_strike_top1" => Some(&mut self.strike_t1),
+            "warrior_strike_top2" => Some(&mut self.strike_t2),
             _ => None,
         }?;
 
@@ -95,13 +94,13 @@ pub struct ArcherAnimation {
 impl ArcherAnimation {
     fn set_animation_by_name(&mut self, name: &str, animation: AnimationBase) -> Option<()> {
         let target = match name {
-            "idle" => Some(&mut self.idle),
-            "walk" => Some(&mut self.walk),
-            "fire-top" => Some(&mut self.fire_top),
-            "fire-top-horz" => Some(&mut self.fire_top_h),
-            "fire-horz" => Some(&mut self.fire_h),
-            "fire-bottom-horz" => Some(&mut self.fire_bottom_h),
-            "fire-bottom" => Some(&mut self.fire_bottom),
+            "archer_idle" => Some(&mut self.idle),
+            "archer_walk" => Some(&mut self.walk),
+            "archer_shoot_top" => Some(&mut self.fire_top),
+            "archer_shoot_top_horz" => Some(&mut self.fire_top_h),
+            "archer_shoot_horz" => Some(&mut self.fire_h),
+            "archer_shoot_bottom_horz" => Some(&mut self.fire_bottom_h),
+            "archer_shoot_bottom" => Some(&mut self.fire_bottom),
             _ => None,
         }?;
 
@@ -120,15 +119,14 @@ pub struct TorchGoblinAnimation {
     pub strike_t: AnimationBase,
 }
 
-
 impl TorchGoblinAnimation {
     fn set_animation_by_name(&mut self, name: &str, animation: AnimationBase) -> Option<()> {
         let target = match name {
-            "idle" => Some(&mut self.idle),
-            "walk" => Some(&mut self.walk),
-            "strike-horz" => Some(&mut self.strike_h),
-            "strike-bottom" => Some(&mut self.strike_b),
-            "strike-top" => Some(&mut self.strike_t),
+            "gobintorch_idle" => Some(&mut self.idle),
+            "gobintorch_walk" => Some(&mut self.walk),
+            "gobintorch_strike_horz" => Some(&mut self.strike_h),
+            "gobintorch_strike_bottom" => Some(&mut self.strike_b),
+            "gobintorch_strike_top" => Some(&mut self.strike_t),
             _ => None,
         }?;
 
@@ -138,20 +136,19 @@ impl TorchGoblinAnimation {
     }
 }
 
-
 #[derive(Default, Copy, Clone)]
-pub struct TntGoblinAnimation {
+pub struct DynamiteGoblinAnimation {
     pub idle: AnimationBase,
     pub walk: AnimationBase,
     pub throw: AnimationBase,
 }
 
-impl TntGoblinAnimation {
+impl DynamiteGoblinAnimation {
     fn set_animation_by_name(&mut self, name: &str, animation: AnimationBase) -> Option<()> {
         let target = match name {
-            "idle" => Some(&mut self.idle),
-            "walk" => Some(&mut self.walk),
-            "throw" => Some(&mut self.throw),
+            "gobindynamite_idle" => Some(&mut self.idle),
+            "gobindynamite_walk" => Some(&mut self.walk),
+            "gobindynamite_throw" => Some(&mut self.throw),
             _ => None,
         }?;
 
@@ -170,8 +167,8 @@ pub struct SheepAnimation {
 impl SheepAnimation {
     fn set_animation_by_name(&mut self, name: &str, animation: AnimationBase) -> Option<()> {
         let target = match name {
-            "idle" => Some(&mut self.idle),
-            "walk" => Some(&mut self.walk),
+            "sheep_idle" => Some(&mut self.idle),
+            "sheep_walk" => Some(&mut self.walk),
             _ => None,
         }?;
 
@@ -188,65 +185,46 @@ pub struct AnimationsBundle {
     pub warrior: WarriorAnimation,
     pub archer: ArcherAnimation,
     pub torch_goblin: TorchGoblinAnimation,
-    pub tnt_goblin: TntGoblinAnimation,
+    pub dynamite_goblin: DynamiteGoblinAnimation,
     pub sheep: SheepAnimation,
 }
 
 impl AnimationsBundle {
 
-    pub fn load_animation(&mut self, name: &str, json: JsonValue) -> Result<(), Error>{
-        let animations = json.get("animations")
-            .and_then(|value| value.as_array() )
-            .ok_or_else(|| assets_err!("Missing json key \"animations\"") )?;
+    pub fn load_animations(&mut self, source_csv: &str) -> Result<(), Error> {
+        fn parse(v: &str) -> f32 { str::parse::<f32>(v).unwrap_or(0.0) }
 
-        for animation in animations {
-            let animation_name = animation.get("name")
-                .and_then(|value| value.as_str() )
-                .ok_or_else(|| assets_err!("Missing json key \"animations.name\"") )?;
-
-            let sprite_count: u32 = parse_u32(&animation["count"]);
-            let padding: f32 = parse_f32(&animation["padding"]);
-            let x: f32 = parse_f32(&animation["x"]);
-            let y: f32 = parse_f32(&animation["y"]);
-            let sprite_width: f32 = parse_f32(&animation["width"]);
-            let sprite_height: f32 = parse_f32(&animation["height"]);
-
+        split_csv::<6, _>(source_csv, |args| {
+            let name = args[0];
+            let frame_count = parse(args[1]);
+            let left = parse(args[2]);
+            let top = parse(args[3]);
+            let right = parse(args[4]);
+            let bottom = parse(args[5]);
+            let sprite_width = (right-left) / frame_count;
+            let sprite_height = bottom - top;
             let animation = AnimationBase {
-                padding,
-                x, y,
-                sprite_width, sprite_height,
-                last_frame: (sprite_count - 1) as u8,
+                x: left,
+                y: top,
+                sprite_width,
+                sprite_height,
+                last_frame: (frame_count as u8) - 1,
             };
 
-            let result = match name {
-                "pawn_sprites" => self.pawn.set_animation_by_name(animation_name, animation),
-                "warrior_sprites" => self.warrior.set_animation_by_name(animation_name, animation),
-                "archer_sprites" => self.archer.set_animation_by_name(animation_name, animation),
-                "torch_goblins_sprites" => self.torch_goblin.set_animation_by_name(animation_name, animation),
-                "tnt_goblin_sprites" => self.tnt_goblin.set_animation_by_name(animation_name, animation),
-                "sheep_sprites" => self.sheep.set_animation_by_name(animation_name, animation),
-                _ => { 
-                    warn!("Unknown animation group name: {:?}", name);
-                    continue;
-                }
+            let sprite_type = name.split('_').next().unwrap_or("");
+            match sprite_type {
+                "gobindynamite" => self.dynamite_goblin.set_animation_by_name(name, animation),
+                "gobintorch" => self.torch_goblin.set_animation_by_name(name, animation),
+                "sheep" => self.sheep.set_animation_by_name(name, animation),
+                "pawn" => self.pawn.set_animation_by_name(name, animation),
+                "archer" => self.archer.set_animation_by_name(name, animation),
+                "warrior" => self.warrior.set_animation_by_name(name, animation),
+                "death" => Some(()),
+                _ => Some(())
             };
-
-            if result.is_none() {
-                return Err(assets_err!("Unknown animation {:?} for animation group {:?}", animation_name, name));
-            }
-        }
+        });
 
         Ok(())
     }
 
-}
-
-#[inline]
-fn parse_u32(item: &JsonValue) -> u32 {
-    item.as_u64().map(|v| v as u32).unwrap_or(0)
-}
-
-#[inline]
-fn parse_f32(item: &JsonValue) -> f32 {
-    item.as_f64().map(|v| v as f32).unwrap_or(0.0)
 }
