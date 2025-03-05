@@ -74,9 +74,18 @@ impl DemoGame {
             view_size: init.initial_window_size,
             ..DemoGame::default()
         };
-    
+
         demo_app.load_asset_bundle(&init)?;
-        demo_app.init_gameplay();
+
+        #[cfg(feature="editor")]
+        {
+            demo_app.init_editor(crate::state::TestId::PawnAi);
+        }
+
+        #[cfg(not(feature="editor"))]
+        {
+            demo_app.init_gameplay();
+        }
     
         dbg!("Game client initialized. Game client size: {}", size_of::<DemoGame>());
 
@@ -84,21 +93,35 @@ impl DemoGame {
     }
 
     pub fn on_reload(&mut self) {
-        self.init_gameplay();
+        #[cfg(feature="editor")]
+        {
+            self.init_editor(crate::state::TestId::PawnAi);
+        }
+
+        #[cfg(not(feature="editor"))]
+        {
+            self.init_gameplay();
+        }
     }
 
     pub fn update(&mut self, time: f64) -> bool {
         self.update_time(time);
 
-        match self.state {
+        match &mut self.state {
             state::GameState::MainMenu => {},
             state::GameState::Gameplay(_) => {
                 self.gameplay_update();
             },
+
+            #[cfg(feature="editor")]
+            state::GameState::Editor(_) => {
+                self.editor_update();
+            },
+
             state::GameState::Startup => {
                 set_last_error(undefined_err!("Update should never be called while in startup state"));
                 return false;
-            }
+            },
         }
 
         self.update_animations();

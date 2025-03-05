@@ -53,6 +53,16 @@ pub struct IRect {
     pub bottom: i32,
 }
 
+impl IRect {
+    pub fn width(&self) -> i32 {
+        self.right - self.left
+    }
+
+    pub fn height(&self) -> i32 {
+        self.bottom - self.top
+    }
+}
+
 pub const fn size(width: u32, height: u32) -> Size {
     Size { width, height }
 }

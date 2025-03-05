@@ -1,13 +1,21 @@
 mod gameplay;
 use gameplay::GameplayState;
 
+#[cfg(feature="editor")]
+mod editor;
+#[cfg(feature="editor")]
+pub use editor::{EditorState, TestId};
+
 use crate::store::SaveAndLoad;
 
 
 pub enum GameState {
     Startup,
     MainMenu,
-    Gameplay(GameplayState)
+    Gameplay(GameplayState),
+    
+    #[cfg(feature="editor")]
+    Editor(EditorState)
 }
 
 impl SaveAndLoad for GameState {
@@ -23,6 +31,12 @@ impl SaveAndLoad for GameState {
                 writer.write_u32(3);
                 writer.save(inner);
             },
+
+            #[cfg(feature="editor")]
+            GameState::Editor(inner) => {
+                writer.write_u32(4);
+                writer.save(inner);
+            }
         };
     }
 
@@ -30,9 +44,13 @@ impl SaveAndLoad for GameState {
         match reader.read_u32() {
             1 => GameState::Startup,
             2 => GameState::MainMenu,
-            3 => {
-                let inner_state = reader.load();
-                GameState::Gameplay(inner_state)
+            3 => GameState::Gameplay(reader.load()),
+            4 => {
+                #[cfg(feature="editor")]
+                { GameState::Editor(reader.load()) }
+
+                #[cfg(not(feature="editor"))]
+                { GameState::Startup }
             },
             _ => GameState::Startup
         }

@@ -3,9 +3,10 @@ mod optimize_animation;
 
 use png::OutputInfo;
 use std::fs::File;
-use crate::shared::{Rect, Size, rect, size};
+use crate::shared::{Rect, IRect, Size, rect, size, irect};
 
 pub const PIXEL_SIZE: usize = 4; // Size of rgba u8
+const PADDING: i32 = 1; // Value added when scanning sprites
 
 pub struct AnimationInfo {
     /// Total area of an animation
@@ -133,19 +134,19 @@ fn optimize_simple_sprite(
     dst_size: &mut Size,
     dst_bytes: &mut Vec<u8>
 ) {
-    let mut optimized_rect = Rect::default();
+    let mut optimized_rect = IRect::default();
     optimize_sprite_rect(src_line_size, src_rect, src_bytes, &mut optimized_rect);
     optimize_sprite_copy(src_line_size, src_bytes, &mut optimized_rect, dst_bytes);
-    *dst_size = size(optimized_rect.width(), optimized_rect.height());
+    *dst_size = size(optimized_rect.width() as u32, optimized_rect.height() as u32);
 }
 
 fn optimize_sprite_rect(
     src_line_size: usize,
     src_rect: &Rect,
     src_bytes: &[u8],
-    optimized_rect: &mut Rect,
+    optimized_rect: &mut IRect,
 ) {
-    let mut rect = rect(u32::MAX, u32::MAX, 0, 0);
+    let mut rect = irect(i32::MAX, i32::MAX, i32::MIN, i32::MIN);
 
     for y in src_rect.top..src_rect.bottom {
         for x in src_rect.left..src_rect.right {
@@ -153,13 +154,18 @@ fn optimize_sprite_rect(
             let pixel_offset = (y2 * src_line_size) + (x2 * PIXEL_SIZE) + 3;
             let a: u8 = src_bytes[pixel_offset];
             if a != 0 {
-                rect.left = u32::min(rect.left, x);
-                rect.right = u32::max(rect.right, x);
-                rect.top = u32::min(rect.top, y);
-                rect.bottom = u32::max(rect.bottom, y);
+                rect.left = i32::min(rect.left, x as i32);
+                rect.right = i32::max(rect.right, x as i32);
+                rect.top = i32::min(rect.top, y as i32);
+                rect.bottom = i32::max(rect.bottom, y as i32);
             }
         }
     }
+
+    rect.left = i32::max(rect.left - PADDING, 0);
+    rect.top = i32::max(rect.top - PADDING, 0);
+    rect.right = i32::min(rect.right + PADDING, src_rect.right as i32);
+    rect.bottom = i32::min(rect.bottom - PADDING, src_rect.bottom as i32);
 
     *optimized_rect = rect;
 }
@@ -167,7 +173,7 @@ fn optimize_sprite_rect(
 fn optimize_sprite_copy(
     src_line_size: usize,
     src_bytes: &[u8],
-    optimized_rect: &Rect,
+    optimized_rect: &IRect,
     dst_bytes: &mut Vec<u8>
 ) {
     let width = optimized_rect.width() as usize;

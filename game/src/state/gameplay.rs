@@ -36,7 +36,7 @@ impl DemoGame {
 
     pub fn gameplay_update(&mut self) {
         let inputs = &self.inputs;
-        let state = Self::state(&mut self.state);
+        let state = state(&mut self.state);
 
         if inputs.right_mouse_clicked() {
             state.grab_view();
@@ -51,7 +51,7 @@ impl DemoGame {
             }
         }
     }
-
+ 
     fn init_gameplay_test(&mut self) {
         self.world.reset();
         self.world.init_terrain(32, 32);
@@ -59,7 +59,7 @@ impl DemoGame {
         self.world.create_pawn(pos(100.0, 100.0), &self.assets.animations.pawn.idle);
         self.world.create_warrior(pos(200.0, 100.0), &self.assets.animations.warrior.idle);
         self.world.create_archer(pos(300.0, 100.0), &self.assets.animations.archer.idle);
-        self.world.create_sheep(pos(100.0, 200.0), &self.assets.animations.sheep.walk);
+        self.world.create_sheep(pos(100.0, 200.0), &self.assets.animations.sheep.idle);
         self.world.create_torch_goblin(pos(200.0, 200.0), &self.assets.animations.torch_goblin.idle);
         self.world.create_dynamite_goblin(pos(300.0, 200.0), &self.assets.animations.dynamite_goblin.idle);
 
@@ -70,11 +70,12 @@ impl DemoGame {
         self.output.sync_world();
     }
 
-    fn state(state: &mut GameState) -> &mut GameplayState {
-        match state {
-            GameState::Gameplay(inner) => inner,
-            _ => unsafe { std::hint::unreachable_unchecked() }  // state will always be gameplay in this module
-        }
+}
+
+fn state(state: &mut GameState) -> &mut GameplayState {
+    match state {
+        GameState::Gameplay(inner) => inner,
+        _ => unsafe { std::hint::unreachable_unchecked() }  // state will always be gameplay in this module
     }
 }
 

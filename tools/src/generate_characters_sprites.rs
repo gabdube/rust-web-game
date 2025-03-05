@@ -9,7 +9,7 @@ const DST_ROOT: &str = "build/assets/";
 const DST_NAME_IMAGE: &str = "units.png";
 const DST_NAME_CSV: &str = "units.csv";
 
-const DST_WIDTH: usize = 1420; // Manually tune this number to minimise wasted space
+const DST_WIDTH: usize = 1650; // Manually tune this number to minimise wasted space
 
 /// Sprites to pack in the objects atlas
 static ASSETS: &[(&str, &str, SpriteInfo)] = &[

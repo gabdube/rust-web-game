@@ -3,6 +3,8 @@ use std::u32;
 use crate::shared::{Offset, Rect, IRect, Size, rect, irect, size};
 use super::PIXEL_SIZE;
 
+const PADDING: i32 = 2; // Value added when scanning sprites
+
 #[derive(Copy, Clone, Debug)]
 struct SpriteScan {
     rect: IRect,
@@ -62,6 +64,11 @@ fn scan_single_sprite(params: &OptimizeAnimationParams, scan_rect: &Rect) -> Spr
             }
         }
     }
+
+    rect.left = i32::max(rect.left - PADDING, 0);
+    rect.top = i32::max(rect.top - PADDING, 0);
+    rect.right = i32::min(rect.right + PADDING, params.src_rect.right as i32);
+    rect.bottom = i32::min(rect.bottom - PADDING, params.src_rect.bottom as i32);
 
     let center_x = (scan_rect.left + (scan_rect.width() / 2)) as i32;
     let center_y = (scan_rect.top + (scan_rect.height() / 2)) as i32;
