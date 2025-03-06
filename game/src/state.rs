@@ -1,3 +1,5 @@
+mod shared_state;
+
 mod gameplay;
 use gameplay::GameplayState;
 

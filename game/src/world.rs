@@ -3,9 +3,28 @@ use terrain::Terrain;
 
 use crate::assets::{AnimationBase, DecorationBase, ResourceBase, StructureBase, Texture};
 use crate::error::Error;
-use crate::shared::AABB;
+use crate::shared::{AABB, aabb, size};
 use crate::store::SaveAndLoad;
 use crate::Position;
+
+#[derive(Debug)]
+pub enum WorldObjectType {
+    Pawn,
+    Warrior,
+    Archer,
+    TorchGoblin,
+    DynamiteGoblin,
+    Sheep,
+    Decoration,
+    Structure,
+    Resource
+}
+
+#[derive(Debug)]
+pub struct WorldObject {
+    id: u32,
+    ty: WorldObjectType,
+}
 
 #[derive(Copy, Clone, Default, Debug)]
 pub struct BaseUnit {
@@ -13,6 +32,16 @@ pub struct BaseUnit {
     pub animation: AnimationBase,
     pub current_frame: u8,
     pub flipped: bool,
+}
+
+impl BaseUnit {
+    pub const fn aabb(&self) -> AABB {
+        let mut position = self.position;
+        let size = size(self.animation.sprite_width, self.animation.sprite_height);
+        position.x -= size.width * 0.5;
+        position.y -= size.height;
+        aabb(position, size)
+    }
 }
 
 #[derive(Copy, Clone, Default, Debug)]
@@ -128,6 +157,43 @@ impl World {
         let index = self.resources.len();
         self.resources.push(BaseStatic { position, aabb: resource.aabb });
         index
+    }
+
+    pub fn actor_at(&self, position: Position<f32>) -> Option<WorldObject> {
+        let types = [
+            WorldObjectType::Pawn,
+            WorldObjectType::Warrior,
+            WorldObjectType::Archer,
+            WorldObjectType::TorchGoblin,
+            WorldObjectType::DynamiteGoblin,
+            WorldObjectType::Sheep,
+        ];
+        let groups = [
+            &self.pawns,
+            &self.warriors,
+            &self.archers,
+            &self.torch_goblins,
+            &self.tnt_goblins,
+            &self.sheeps,
+        ];
+
+        for (group, ty) in groups.into_iter().zip(types) {
+            for (id, actor) in group.iter().enumerate() {
+                if actor.aabb().point_inside(position) {
+                    return Some(WorldObject { id: id as u32, ty })
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn object_at(&self, position: Position<f32>) -> Option<WorldObject> {
+        if let Some(actor) = self.actor_at(position) {
+            return Some(actor);
+        }
+
+        None
     }
 
     fn create_inner_actor(

@@ -41,6 +41,10 @@ impl InputState {
         self.mouse_buttons[MouseButton::Right as usize] == ButtonState::JustReleased
     }
 
+    pub fn left_mouse_clicked(&self) -> bool {
+        self.mouse_buttons[MouseButton::Left as usize] == ButtonState::JustPressed
+    }
+
     pub fn mouse_delta(&self) -> Option<Position<f32>> {
         let delta = self.mouse_position - self.last_mouse_position;
         if delta.x != 0.0 || delta.y != 0.0 {

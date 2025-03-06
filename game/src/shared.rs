@@ -138,17 +138,27 @@ impl AABB {
         true
     }
 
+    pub const fn point_inside(&self, point: Position<f32>) -> bool {
+        point.x >= self.left && point.x <= self.right && point.y >= self.top && point.y <= self.bottom
+    }
+
 }
 
 //
 // Helpers method
 //
 
-pub fn pos<T:Copy>(x: T, y: T) -> Position<T> {
+pub const fn pos<T:Copy>(x: T, y: T) -> Position<T> {
     Position { x, y }
 }
 
-pub fn aabb(position: Position<f32>, size: Size<f32>) -> AABB {
+
+pub const fn size<T:Copy>(width: T, height: T) -> Size<T> {
+    Size { width, height }
+}
+
+
+pub const fn aabb(position: Position<f32>, size: Size<f32>) -> AABB {
     AABB {
         left: position.x,
         top: position.y,
