@@ -54,6 +54,7 @@ class RendererShaders {
     draw_sprites_position_attrloc: number;
     draw_sprites_instance_position_attrloc: number;
     draw_sprites_instance_texcoord_attrloc: number;
+    draw_sprites_instance_data_attrloc: number;
     draw_sprites_view_position: WebGLUniformLocation;
     draw_sprites_view_size: WebGLUniformLocation;
     draw_sprites: WebGLProgram;
@@ -268,12 +269,17 @@ export class WebGL2Backend {
 
         location = this.shaders.draw_sprites_instance_position_attrloc;
         ctx.enableVertexAttribArray(location);
-        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 32, attributes_offset);
+        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 36, attributes_offset);
         ctx.vertexAttribDivisor(location, 1);
 
         location = this.shaders.draw_sprites_instance_texcoord_attrloc;
         ctx.enableVertexAttribArray(location);
-        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 32, attributes_offset+16);
+        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 36, attributes_offset+16);
+        ctx.vertexAttribDivisor(location, 1);
+
+        location = this.shaders.draw_sprites_instance_data_attrloc;
+        ctx.enableVertexAttribArray(location);
+        ctx.vertexAttribIPointer(location, 1, ctx.INT, 36, attributes_offset+32);
         ctx.vertexAttribDivisor(location, 1);
 
         ctx.bindVertexArray(null);
@@ -615,6 +621,7 @@ export class WebGL2Backend {
         shaders.draw_sprites_position_attrloc = ctx.getAttribLocation(sprites_program, "in_position");
         shaders.draw_sprites_instance_position_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_position");
         shaders.draw_sprites_instance_texcoord_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_texcoord");
+        shaders.draw_sprites_instance_data_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_data");
         shaders.draw_sprites_view_position = ctx.getUniformLocation(sprites_program, "view_position") as any;
         shaders.draw_sprites_view_size = ctx.getUniformLocation(sprites_program, "view_size") as any;
         shaders.draw_sprites = sprites_program;
@@ -690,8 +697,8 @@ export class WebGL2Backend {
     private setup_sprites_attributes() {
         const ctx = this.ctx;
 
-        // Base sprites buffer can hold 128 sprites
-        const base_capacity = 128;
+        // Base sprites buffer can hold 512 sprites
+        const base_capacity = 512;
         this.buffers.sprites_attributes = ctx.createBuffer();
         ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_attributes);
         ctx.bufferData(ctx.ARRAY_BUFFER, SPRITE_DATA_SIZE * base_capacity, ctx.DYNAMIC_DRAW);

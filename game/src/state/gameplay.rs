@@ -35,21 +35,7 @@ impl DemoGame {
     }
 
     pub fn gameplay_update(&mut self) {
-        let inputs = &self.inputs;
-        let state = state(&mut self.state);
-
-        if inputs.right_mouse_clicked() {
-            state.grab_view();
-        } else if inputs.right_mouse_released() {
-            state.release_view();
-        }
-
-        if state.dragging_view() {
-            if let Some(delta) = inputs.mouse_delta() {
-                self.view_offset -= delta;
-                self.output.sync_view();
-            }
-        }
+        dragging_view_updates(self);
     }
  
     fn init_gameplay_test(&mut self) {
@@ -63,6 +49,24 @@ impl DemoGame {
         self.output.sync_world();
     }
 
+}
+
+fn dragging_view_updates(game: &mut DemoGame) {
+    let inputs = &game.inputs;
+    let state = state(&mut game.state);
+    
+    if inputs.right_mouse_clicked() {
+        state.grab_view();
+    } else if inputs.right_mouse_released() {
+        state.release_view();
+    }
+
+    if state.dragging_view() {
+        if let Some(delta) = inputs.mouse_delta() {
+            game.view_offset -= delta;
+            game.output.sync_view();
+        }
+    }
 }
 
 fn state(state: &mut GameState) -> &mut GameplayState {

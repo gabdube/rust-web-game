@@ -1,3 +1,6 @@
+/// Structures and system to transfer data from the rust app to an external reader (in this case javascript)
+/// Data with `repr(C)` will be directly read from memory by the engine
+
 use crate::shared::{aabb, Position};
 use crate::DemoGame;
 
@@ -50,8 +53,7 @@ pub union DrawUpdateParams {
     pub update_view_offset: Position<f32>,
 }
 
-/// A generic draw update that will be read by the renderer
-/// Must be `repr(C)` because it will be directly read from memory by the engine
+/// A generic draw update that will be read by the renderere
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct DrawUpdate {
@@ -60,7 +62,8 @@ pub struct DrawUpdate {
 }
 
 /// Information on how to render a sprites on the GPU
-/// Memory layout must match `in_instance_position` and `in_instance_texcoord` in `sprites.vert.glsl`
+/// Memory layout must match `in_instance_position`, `in_instance_texcoord`, `in_instance_data` in `sprites.vert.glsl`
+/// If this struct size change, it must also be updatedin `game_interface.ts`
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct SpriteData {
@@ -68,6 +71,7 @@ pub struct SpriteData {
     pub size: [f32; 2],
     pub texcoord_offset: [f32; 2],
     pub texcoord_size: [f32; 2],
+    pub data: i32,
 }
 
 /// Texture coordinates for the 4 vertex of a sprite the terrain data buffer
@@ -81,7 +85,7 @@ pub struct TerrainChunkTexcoord {
 }
 
 
-/// Temporary storage for sprites when regrouping by texture_id and clusters
+/// Temporary storage for sprites when regrouping by texture_id and y position
 pub struct TempSprite {
     pub texture_id: u32,
     pub y: f32,
@@ -236,18 +240,19 @@ impl DemoGame {
         output.sprites_builder.reserve(total_sprites);
 
         // Generate sprites
-        Self::gen_static_sprites(world, output);
-
         if output.must_update_animation() {
             Self::gen_sprites_with_animation(world, output);
         } else {
             Self::gen_sprites(world, output);
         }
 
-        // Order sprites
+        Self::gen_static_sprites(world, output);
+        //Self::gen_selected_sprites(world, output);
+
+        // Order
         Self::order_sprites(output);
 
-        // Generate commands
+        // Commands
         Self::gen_commands(output);
        
         output.clear_update_animation();
@@ -291,11 +296,8 @@ impl DemoGame {
         let builder = &mut output.sprites_builder;
         for sprites in sprite_groups {
             for unit in sprites.iter_mut() {
-                if unit.current_frame == unit.animation.last_frame {
-                    unit.current_frame = 0;
-                } else {
-                    unit.current_frame += 1;
-                }
+                unit.current_frame += 1;
+                unit.current_frame = unit.current_frame * ((unit.current_frame < unit.animation.last_frame) as u8);
 
                 let sprite = Self::build_actor_sprite(unit);
                 builder.push(TempSprite {
@@ -376,21 +378,18 @@ impl DemoGame {
         let position = unit.position;
         let animation = unit.animation;
         let i = unit.current_frame as f32;
+        let flipped = (unit.flipped as u8) as f32;
 
         sprite.position[0] = position.x - (animation.sprite_width * 0.5);
         sprite.position[1] = position.y - animation.sprite_height;
         sprite.size[0] = animation.sprite_width;
         sprite.size[1] = animation.sprite_height;
-        sprite.texcoord_offset[0] = animation.x + (animation.sprite_width * i);
+        sprite.texcoord_offset[0] = animation.x + (animation.sprite_width * i) + (animation.sprite_width * flipped);
         sprite.texcoord_offset[1] = animation.y;
-        sprite.texcoord_size[0] = sprite.size[0];
-        sprite.texcoord_size[1] = sprite.size[1];
-     
-        if unit.flipped {
-            sprite.texcoord_offset[0] += sprite.size[0];
-            sprite.texcoord_size[0] *= -1.0;
-        }
-     
+        sprite.texcoord_size[0] = animation.sprite_width * (1.0 - 2.0 * flipped);
+        sprite.texcoord_size[1] = animation.sprite_height;
+        sprite.data = 1 * (unit.selected as i32);
+
         sprite
     }
 
@@ -406,6 +405,7 @@ impl DemoGame {
         sprite.texcoord_offset[1] = aabb.top;
         sprite.texcoord_size[0] = sprite.size[0];
         sprite.texcoord_size[1] = sprite.size[1];
+        sprite.data = 1 * (base.selected as i32);
         sprite
     }
 

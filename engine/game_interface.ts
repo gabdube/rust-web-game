@@ -4,7 +4,7 @@ import { DemoGame } from "../build/game/game";
 
 const OUTPUT_INDEX_SIZE: number = 32;  // size_of(OutputIndex)
 const DRAW_UPDATE_SIZE: number = 16;   // size_of(DrawUpdate)
-export const SPRITE_DATA_SIZE: number = 32;       // size_of(SpriteData)
+export const SPRITE_DATA_SIZE: number = 36;       // size_of(SpriteData)
 const TERRAIN_CHUNK_TEXT_COORD_SIZE: number = 32; //size_of(TerrainChunkTexcoord)
 
 const OUTPUT_INDEX_DRAW_UPDATES_OFFSET: number = 4;

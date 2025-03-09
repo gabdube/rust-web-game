@@ -53,6 +53,14 @@ impl<'a> SaveFileReader<'a> {
         T::load(self)
     }
 
+    pub fn load_option<T: super::SaveAndLoad>(&mut self) -> Option<T> {
+        let option = self.read_u32();
+        match option == 1 {
+            true => Some(T::load(self)),
+            false => None
+        }
+    }
+
     pub fn read<T: Copy>(&mut self) -> T {
         assert!(align_of::<T>() == super::ALIGN, "Alignment of T must be at least 4 bytes");
         let u32_count = size_of::<T>() / super::ALIGN;

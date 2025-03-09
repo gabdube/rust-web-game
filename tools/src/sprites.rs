@@ -15,14 +15,6 @@ pub struct AnimationInfo {
     pub frame_size: Size,
 }
 
-impl AnimationInfo {
-
-    pub const fn new(area: Rect, size: Size) -> Self {
-        AnimationInfo { area, frame_size: size }
-    }
-
-}
-
 pub enum SpriteInfo {
     /// The sprite spans the whole image
     Simple,

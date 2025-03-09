@@ -152,11 +152,9 @@ pub const fn pos<T:Copy>(x: T, y: T) -> Position<T> {
     Position { x, y }
 }
 
-
 pub const fn size<T:Copy>(width: T, height: T) -> Size<T> {
     Size { width, height }
 }
-
 
 pub const fn aabb(position: Position<f32>, size: Size<f32>) -> AABB {
     AABB {
@@ -166,7 +164,6 @@ pub const fn aabb(position: Position<f32>, size: Size<f32>) -> AABB {
         bottom: position.y + size.height
     }
 }
-
 
 /// Split a csv string into up to `MAX_ARGS` parameters. Calls `callback` for each line splitted.
 pub fn split_csv<const MAX_ARGS: usize, CB: FnMut(&[&str])>(csv: &str, mut callback: CB) {

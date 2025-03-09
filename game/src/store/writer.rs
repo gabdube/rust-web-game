@@ -34,7 +34,19 @@ impl SaveFileWriter {
     }
 
     pub fn save<T: super::SaveAndLoad>(&mut self, value: &T) {
-        value.save(self)
+        value.save(self);
+    }
+
+    pub fn save_option<T: super::SaveAndLoad>(&mut self, value: &Option<T>) {
+        match value.as_ref() {
+            Some(value) => {
+                self.write_u32(1);
+                value.save(self);
+            },
+            None => {
+                self.write_u32(0);
+            }
+        }
     }
 
     pub fn write<T: Copy>(&mut self, data: &T) {
