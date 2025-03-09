@@ -11,6 +11,7 @@ mod assets;
 mod world;
 mod output;
 mod state;
+mod actions;
 
 use shared::*;
 
@@ -50,17 +51,24 @@ impl DemoGameInit {
     }
 }
 
+#[derive(Default)]
+pub struct DemoGameTiming {
+    time: f64,
+    last_animation_tick: f64,
+    frame_delta: f32,
+}
 
 /// The game state
 #[wasm_bindgen]
 pub struct DemoGame {
-    time: f64,
+    timing: DemoGameTiming,
     view_offset: Position<f32>,
     view_size: Size<f32>,
     assets: assets::Assets,
     inputs: inputs::InputState,
     world: world::World,
     output: output::GameOutput,
+    actions: actions::ActionsManager,
     state: state::GameState,
 }
 
@@ -124,7 +132,7 @@ impl DemoGame {
             },
         }
 
-        self.update_animations();
+        self.update_actions();
         self.update_output();
         self.inputs.after_update();
 
@@ -168,20 +176,18 @@ impl DemoGame {
 impl DemoGame {
 
     fn update_time(&mut self, new_time: f64) {
-        self.time = new_time;
-    }
-
-    fn update_animations(&mut self) {
         const ANIMATION_INTERVAL: f64 = 1000.0 / 16.0; // 16fps
 
-        let world = &mut self.world;
-        let delta = self.time - world.last_animation_tick;
-        if delta < ANIMATION_INTERVAL {
-            return;
+        self.timing.frame_delta = (new_time - self.timing.time) as f32;
+        self.timing.time = new_time;
+        
+        // This only sets the update animation flag in output
+        // Sprite animation are computed at sprite generation in `output.gen_sprites_with_animation` 
+        let delta = new_time - self.timing.last_animation_tick;
+        if delta > ANIMATION_INTERVAL {
+            self.output.update_animations();
+            self.timing.last_animation_tick = new_time;
         }
-
-        self.output.update_animations();
-        world.last_animation_tick = self.time;
     }
 
     fn init_world_assets(&mut self) -> Option<()> {
@@ -207,13 +213,14 @@ impl DemoGame {
 impl Default for DemoGame {
     fn default() -> Self {
         DemoGame {
-            time: 0.0,
+            timing: DemoGameTiming::default(),
             view_offset: Position::default(),
             view_size: Size::default(),
             assets: assets::Assets::default(),
             inputs: inputs::InputState::default(),
             output: output::GameOutput::default(),
             world: world::World::default(),
+            actions: actions::ActionsManager::default(),
             state: state::GameState::Startup,
         }
     }
@@ -221,20 +228,22 @@ impl Default for DemoGame {
 
 impl store::SaveAndLoad for DemoGame {
     fn save(&self, writer: &mut store::SaveFileWriter) {
+        writer.save(&self.assets);
+        writer.save(&self.world);
+        writer.save(&self.actions);
+        writer.save(&self.state);
         writer.save(&self.view_offset);
         writer.save(&self.view_size);
-        writer.save(&self.state);
-        writer.save(&self.world);
-        writer.save(&self.assets);
     }
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
         let mut demo_app = DemoGame::default();
+        demo_app.assets = reader.load();
+        demo_app.world = reader.load();
+        demo_app.actions = reader.load();
+        demo_app.state = reader.load();
         demo_app.view_offset = reader.load();
         demo_app.view_size = reader.load();
-        demo_app.state = reader.load();
-        demo_app.world = reader.load();
-        demo_app.assets = reader.load();
 
         demo_app
     }

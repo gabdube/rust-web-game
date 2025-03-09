@@ -326,6 +326,8 @@ function show_critical_error(error: Error) {
     show(panel);
 }
 
+let last_p = performance.now();
+
 function run(engine: Engine) {
     update(engine, performance.now());
     render(engine);

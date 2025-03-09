@@ -15,12 +15,22 @@ flat out int data;
 void main() {
     data = in_instance_data;
     
+    float flipped = float(in_instance_data & 2);
     vec2 uv_offset = in_instance_texcoord.xy;
     vec2 uv_size = in_instance_texcoord.zw;
-    uv = vec2(
-        uv_offset.x + (in_position.x * uv_size.x),  
-        uv_offset.y + (in_position.y * uv_size.y)
-    );
+
+    if (flipped > 0.0) {
+        uv = vec2(
+            uv_offset.x + ((1.0 - in_position.x) * uv_size.x),  
+            uv_offset.y + (in_position.y * uv_size.y)
+        );
+    } else {
+        uv = vec2(
+            uv_offset.x + (in_position.x * uv_size.x),  
+            uv_offset.y + (in_position.y * uv_size.y)
+        );
+    }
+
     texcoord_bounds = vec4(
         in_instance_texcoord.x,
         in_instance_texcoord.y,

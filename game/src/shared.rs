@@ -1,7 +1,7 @@
 use std::{ops, fmt::Debug};
 use crate::store::SaveAndLoad;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Position<T: Copy> {
     pub x: T,
     pub y: T,

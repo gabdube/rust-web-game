@@ -3,8 +3,6 @@ use crate::state::GameState;
 use crate::world::WorldObject;
 use crate::{DemoGame, pos};
 
-const DRAGGING_VIEW: u8 = 0b01;
-
 #[repr(u32)]
 #[derive(Copy, Clone)]
 pub enum TestId {
@@ -24,21 +22,6 @@ impl TestId {
 pub struct EditorState {
     current_test: TestId,
     selected_object: Option<WorldObject>,
-    flags: u8,
-}
-
-impl EditorState {
-    pub fn grab_view(&mut self) {
-        self.flags |= DRAGGING_VIEW;
-    }
-
-    pub fn release_view(&mut self) {
-        self.flags &= !DRAGGING_VIEW;
-    }
-
-    pub fn dragging_view(&mut self) -> bool {
-        self.flags & DRAGGING_VIEW != 0
-    }
 }
 
 impl DemoGame {
@@ -47,7 +30,6 @@ impl DemoGame {
         let inner_state = EditorState {
             current_test: test,
             selected_object: None,
-            flags: 0,
         };
 
         self.init_test_terrain();
@@ -63,10 +45,12 @@ impl DemoGame {
     }
 
     pub fn editor_update(&mut self) {
-        dragging_view_updates(self);
-
         if self.inputs.left_mouse_clicked() {
             on_left_mouse(self);
+        }
+
+        if self.inputs.right_mouse_clicked() {
+            on_right_mouse(self)
         }
     }
 
@@ -77,9 +61,9 @@ impl DemoGame {
     }
 
     fn init_pawn_tests(&mut self) {
-        self.world.create_pawn(pos(100.0, 100.0), &self.assets.animations.pawn.idle);
-        self.world.create_pawn(pos(100.0, 200.0), &self.assets.animations.pawn.idle);
-        self.world.create_pawn(pos(100.0, 300.0), &self.assets.animations.pawn.axe);
+        self.world.create_pawn(pos(500.0, 100.0), &self.assets.animations.pawn.idle);
+        self.world.create_pawn(pos(500.0, 200.0), &self.assets.animations.pawn.idle);
+        self.world.create_pawn(pos(500.0, 300.0), &self.assets.animations.pawn.idle);
     }
 
 }
@@ -92,10 +76,27 @@ fn on_left_mouse(game: &mut DemoGame) {
     let new_selected = game.world.object_at(cursor_world_position);
 
     match (state.selected_object, new_selected) {
-        (None, None) => {},
+        (None, None) | (Some(_), None) => {},
         (None, Some(new)) => set_new_object_selection(game, new),
-        (Some(old), None) => {},
         (Some(old), Some(new)) => replace_object_selection(game, old, new),
+    }
+}
+
+fn on_right_mouse(game: &mut DemoGame) {
+    use crate::actions::Action;
+
+    let state = state(&mut game.state);
+    let selected_object = match state.selected_object{
+        Some(obj) => obj,
+        None => { return; }
+    };
+
+    let inputs = &game.inputs;
+    let cursor_world_position = inputs.mouse_position + game.view_offset;
+    let target_object = game.world.object_at(cursor_world_position);
+
+    if target_object.is_none() {
+        game.actions.push(Action::move_to(selected_object, cursor_world_position))
     }
 }
 
@@ -112,25 +113,6 @@ fn replace_object_selection(game: &mut DemoGame, old_selection: WorldObject, new
     state.selected_object = Some(new_selection);
 }
 
-
-fn dragging_view_updates(game: &mut DemoGame) {
-    let inputs = &game.inputs;
-    let state = state(&mut game.state);
-    
-    if inputs.right_mouse_clicked() {
-        state.grab_view();
-    } else if inputs.right_mouse_released() {
-        state.release_view();
-    }
-
-    if state.dragging_view() {
-        if let Some(delta) = inputs.mouse_delta() {
-            game.view_offset -= delta;
-            game.output.sync_view();
-        }
-    }
-}
-
 fn state(state: &mut GameState) -> &mut EditorState {
     match state {
         GameState::Editor(inner) => inner,
@@ -141,7 +123,6 @@ fn state(state: &mut GameState) -> &mut EditorState {
 impl crate::store::SaveAndLoad for EditorState {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_u32(self.current_test as u32);
-        writer.write_u32(self.flags as u32);
         writer.save_option(&self.selected_object);
     }
 
@@ -153,7 +134,6 @@ impl crate::store::SaveAndLoad for EditorState {
         EditorState {
             current_test,
             selected_object,
-            flags,
         }
     }
 }

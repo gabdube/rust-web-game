@@ -22,8 +22,8 @@ pub enum WorldObjectType {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct WorldObject {
-    id: u32,
-    ty: WorldObjectType,
+    pub id: u32,
+    pub ty: WorldObjectType,
 }
 
 #[derive(Copy, Clone, Default, Debug)]
@@ -54,7 +54,6 @@ pub struct BaseStatic {
 
 /// The game world data. Includes actors, terrain, and decorations
 pub struct World {
-    pub last_animation_tick: f64,
     pub total_sprite_count: u32,
 
     pub static_resources_texture: Texture,
@@ -111,10 +110,6 @@ impl World {
     pub fn create_pawn(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         Self::create_inner_actor(&mut self.pawns, position, animation)
-    }
-
-    pub fn update_pawn_position(&mut self, pawn_id: usize, position: Position<f32>) {
-        self.pawns[pawn_id].position = position;
     }
 
     pub fn create_warrior(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
@@ -302,7 +297,6 @@ impl SaveAndLoad for World {
         let terrain = reader.load();
 
         World {
-            last_animation_tick: 0.0,
             total_sprite_count,
             static_resources_texture,
             units_texture,
@@ -329,7 +323,6 @@ impl SaveAndLoad for World {
 impl Default for World {
     fn default() -> Self {
         World {
-            last_animation_tick: 0.0,
             total_sprite_count: 0,
             static_resources_texture: Texture { id: 0 },
             units_texture: Texture { id: 0 },

@@ -378,17 +378,17 @@ impl DemoGame {
         let position = unit.position;
         let animation = unit.animation;
         let i = unit.current_frame as f32;
-        let flipped = (unit.flipped as u8) as f32;
 
         sprite.position[0] = position.x - (animation.sprite_width * 0.5);
         sprite.position[1] = position.y - animation.sprite_height;
         sprite.size[0] = animation.sprite_width;
         sprite.size[1] = animation.sprite_height;
-        sprite.texcoord_offset[0] = animation.x + (animation.sprite_width * i) + (animation.sprite_width * flipped);
+        sprite.texcoord_offset[0] = animation.x + (animation.sprite_width * i);
         sprite.texcoord_offset[1] = animation.y;
-        sprite.texcoord_size[0] = animation.sprite_width * (1.0 - 2.0 * flipped);
+        sprite.texcoord_size[0] = animation.sprite_width;
         sprite.texcoord_size[1] = animation.sprite_height;
-        sprite.data = 1 * (unit.selected as i32);
+        sprite.data += 1 * (unit.selected as i32);
+        sprite.data += 2 * (unit.flipped as i32);
 
         sprite
     }
