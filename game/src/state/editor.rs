@@ -1,4 +1,5 @@
 //! Special debugging state to test features
+use crate::actions::Action;
 use crate::state::GameState;
 use crate::world::WorldObject;
 use crate::{DemoGame, pos};
@@ -84,7 +85,7 @@ fn on_left_mouse(game: &mut DemoGame) {
 }
 
 fn on_right_mouse(game: &mut DemoGame) {
-    use crate::actions::Action;
+    use crate::world::WorldObjectType;
 
     let state = state(&mut game.state);
     let selected_object = match state.selected_object{
@@ -96,11 +97,39 @@ fn on_right_mouse(game: &mut DemoGame) {
     let cursor_world_position = inputs.mouse_position + game.view_offset;
     let target_object = game.world.object_at(cursor_world_position);
 
-    if target_object.is_none() {
-        let action = Action::move_to(selected_object, cursor_world_position);
-        game.actions.remove(action);
-        game.actions.push(Action::move_to(selected_object, cursor_world_position));
+    match selected_object.ty {
+        WorldObjectType::Pawn => {
+            if target_object.is_none() {
+                let action = Action::move_to(selected_object, cursor_world_position);
+                game.actions.cancel(action);
+                game.actions.push(action);
+            }
+            
+            if let Some(target_object) = target_object {
+                match target_object.ty {
+                    WorldObjectType::Tree => move_pawn_to_tree(game, selected_object, target_object),
+                    _ => {},
+                }
+            }
+        },
+        _ => {},
     }
+}
+
+fn move_pawn_to_tree(game: &mut DemoGame, selected_object: WorldObject, target: WorldObject) {
+    let pawn_x = game.world.pawns[selected_object.id as usize].position.x;
+    let mut target_position = game.world.trees[target.id as usize].position;
+    target_position.y += 10.0;
+    if target_position.x > pawn_x {
+        target_position.x -= 60.0;
+    } else {
+        target_position.x += 60.0;
+    }
+
+    let action = Action::move_to(selected_object, target_position);
+    let action2 = Action::cut_tree(selected_object, target);
+    game.actions.cancel(action);
+    game.actions.push_and_queue(action, action2);
 }
 
 fn set_new_object_selection(game: &mut DemoGame, new_selection: WorldObject) {

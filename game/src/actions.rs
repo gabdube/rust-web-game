@@ -1,13 +1,18 @@
-use crate::assets::Assets;
-use crate::shared::{Position, pos};
-use crate::world::{World, WorldObject, WorldObjectType};
+mod move_pawn;
+mod cut_tree;
+
+use std::u32;
+
+use crate::shared::Position;
+use crate::world::{WorldObject, WorldObjectType};
 use crate::DemoGame;
 
 /// Different action types. See [Action]
 #[derive(Copy, Clone)]
 pub enum ActionType {
     Completed,
-    MovePawn { id: u32, target: Position<f32> }
+    MovePawn { id: u32, target: Position<f32> },
+    CutTree { pawn_id: u32, tree_id: u32 }
 }
 
 #[derive(Copy, Clone)]
@@ -23,6 +28,7 @@ pub enum ActionState {
 #[derive(Copy, Clone)]
 pub struct Action {
     ty: ActionType,
+    next: u32,
     state: ActionState,
 }
 
@@ -34,7 +40,16 @@ impl Action {
             _ => ActionType::Completed
         };
 
-        Action { ty, state: ActionState::Initial }
+        Action { ty, next: u32::MAX, state: ActionState::Initial }
+    }
+
+    pub fn cut_tree(pawn: WorldObject, tree: WorldObject) -> Self {
+        let ty = match [pawn.ty, tree.ty] {
+            [WorldObjectType::Pawn, WorldObjectType::Tree] => ActionType::CutTree { pawn_id: pawn.id, tree_id: tree.id },
+            _ => ActionType::Completed
+        };
+
+        Action { ty, next: u32::MAX, state: ActionState::Initial }
     }
 
     pub fn is_completed(&self) -> bool {
@@ -43,13 +58,15 @@ impl Action {
     
 }
 
-/// Manages actions objects
+/// Manages actions. Actions are bits of code that must be evaluated every frame.
 pub struct ActionsManager {
     active: Vec<Action>,
+    queued: Vec<Action>,
 }
 
 impl ActionsManager {
 
+    /// Push a new action into the action manager. If the action type is "Completed", this does nothing
     pub fn push(&mut self, action: Action) {
         if matches!(action.ty, ActionType::Completed) {
             return;
@@ -62,8 +79,50 @@ impl ActionsManager {
         }
     }
 
+    /// Push a new action into the action manager in a queued state and return the ID of the queued task.
+    /// Queued task will be executed after its parent task is fully executed
+    pub fn push_queued(&mut self, action: Action) -> u32 {
+        let id;
+
+        let last_completed = self.queued.iter().position(|action| action.is_completed() );
+        match last_completed {
+            Some(index) => { 
+                id = index as u32;
+                self.queued[index] = action;
+            },
+            None => {
+                id = self.queued.len() as u32;
+                self.queued.push(action)
+            }
+        }
+
+        id
+    }
+
+    /// Push an action then execute a second action when it finish
+    /// If the base action type is "Completed", this does nothing
+    pub fn push_and_queue(&mut self, mut action: Action, then: Action) {
+        if matches!(action.ty, ActionType::Completed) {
+            return;
+        }
+
+        let queued_index = self.push_queued(then);
+        action.next = queued_index;
+
+        let last_completed = self.active.iter().position(|action| action.is_completed() );
+        match last_completed {
+            Some(index) => { 
+                self.active[index] = action;
+            },
+            None => {
+                self.active.push(action)
+            }
+        }
+    }
+
     /// Sets all instances of actions in the active list to "completed"
-    pub fn remove(&mut self, action: Action) {
+    /// If the action has queued work, it also cancels all of it.
+    pub fn cancel(&mut self, action: Action) {
         for action2 in self.active.iter_mut() {
             if action2.ty == action.ty {
                 action2.ty = ActionType::Completed;
@@ -78,74 +137,52 @@ impl DemoGame {
 
     pub fn update_actions(&mut self) {
         let manager = &mut self.actions;
-        let world = &mut self.world;
         let frame_delta = self.timing.frame_delta;
 
         for action in manager.active.iter_mut() {
-            match action.ty {
-                ActionType::MovePawn { id, target } => {
-                    match action.state {
-                        ActionState::Initial => move_pawn_initial(world, &self.assets, id),
-                        ActionState::Running => move_pawn_running(world, &mut action.state, frame_delta, id, target),
-                        ActionState::Finalizing => move_pawn_finalize(world, &self.assets, &mut action.state, id),
-                        ActionState::Finalized => {},
-                    }
-                },
-                ActionType::Completed => {},
+            if matches!(action.ty, ActionType::Completed) {
+                continue;
             }
 
-            match action.state {
-                ActionState::Initial => { action.state = ActionState::Running; },
-                ActionState::Finalized => { action.ty = ActionType::Completed; },
-                _ => {},
+            match action.ty {
+                ActionType::MovePawn { id, target } => {
+                    let mut params = move_pawn::MovePawnParams {
+                        world: &mut self.world,
+                        assets: &self.assets,
+                        pawn_id: id,
+                        frame_delta,
+                        target
+                    };
+                    move_pawn::move_pawn(&mut action.state, &mut params);
+                },
+                ActionType::CutTree { pawn_id, tree_id } => {
+                    let mut params = cut_tree::CutTreeParams {
+                        world: &mut self.world,
+                        assets: &self.assets,
+                        pawn_id,
+                        tree_id,
+                    };
+                    cut_tree::cut_tree(&mut action.state, &mut params);
+                },
+                ActionType::Completed => unreachable!(),
+            }
+
+            if matches!(action.state, ActionState::Finalized) {
+                action.ty = ActionType::Completed;
+                if action.next != u32::MAX {
+                    ::std::mem::swap(action, &mut manager.queued[action.next as usize]);
+                }
             }
         }
     }
 
 }
 
-fn move_pawn_initial(world: &mut World, assets: &Assets, id: u32) {
-    let index = id as usize;
-    world.pawns[index].animation = assets.animations.pawn.walk;
-}
-
-fn move_pawn_running(world: &mut World, state: &mut ActionState, frame_delta: f32, id: u32, target: Position<f32>) {
-    let index = id as usize;
-    let current_position = world.pawns[index].position;
-
-    let angle = f32::atan2(target.y - current_position.y, target.x - current_position.x);
-    let speed = 0.2f32 * frame_delta;
-    let move_x = speed * f32::cos(angle);
-    let move_y = speed * f32::sin(angle);
-    let mut updated_position = pos(current_position.x + move_x, current_position.y + move_y);
-
-    world.pawns[index].flipped = move_x < 0.0;
-
-    if (move_x > 0.0 && updated_position.x > target.x) || (move_x < 0.0 && updated_position.x < target.x) {
-        updated_position.x = target.x;
-    }
-
-    if (move_y > 0.0 && updated_position.y > target.y) || (move_y < 0.0 && updated_position.y < target.y) {
-        updated_position.y = target.y;
-    }
-
-    if updated_position == target {
-        *state = ActionState::Finalizing;
-    }
-
-    world.pawns[index].position = updated_position;
-}
-
-fn move_pawn_finalize(world: &mut World, assets: &Assets, state: &mut ActionState, id: u32) {
-    let index = id as usize;
-    world.pawns[index].animation = assets.animations.pawn.idle;
-    *state = ActionState::Finalized;
-}
-
 impl Default for ActionsManager {
     fn default() -> Self {
         ActionsManager {
             active: Vec::with_capacity(32),
+            queued: Vec::with_capacity(32)
         }
     }
 }
@@ -164,12 +201,15 @@ impl crate::store::SaveAndLoad for ActionsManager {
 
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_slice(&self.active);
+        writer.write_slice(&self.queued);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let active = reader.read_slice().to_vec();
+        let queued = reader.read_slice().to_vec();
         ActionsManager {
-            active
+            active,
+            queued,
         }
     }
 }
