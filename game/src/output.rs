@@ -247,7 +247,6 @@ impl DemoGame {
         }
 
         Self::gen_static_sprites(world, output);
-        //Self::gen_selected_sprites(world, output);
 
         // Order
         Self::order_sprites(output);
@@ -259,18 +258,18 @@ impl DemoGame {
     }
 
     fn gen_sprites(world: &crate::world::World, output: &mut GameOutput) {
-        let texture_id = world.units_texture.id;
         let sprite_groups = [
-            &world.pawns,
-            &world.warriors,
-            &world.archers,
-            &world.torch_goblins,
-            &world.tnt_goblins,
-            &world.sheeps,
+            (world.units_texture.id, &world.pawns),
+            (world.units_texture.id, &world.warriors),
+            (world.units_texture.id, &world.archers),
+            (world.units_texture.id, &world.torch_goblins),
+            (world.units_texture.id, &world.tnt_goblins),
+            (world.units_texture.id, &world.sheeps),
+            (world.static_resources_texture.id, &world.trees),
         ];
 
         let builder = &mut output.sprites_builder;
-        for sprites in sprite_groups {
+        for (texture_id, sprites) in sprite_groups {
             for unit in sprites.iter() {
                 let sprite = Self::build_actor_sprite(unit);
                 builder.push(TempSprite {
@@ -283,21 +282,21 @@ impl DemoGame {
     }
 
     fn gen_sprites_with_animation(world: &mut crate::world::World, output: &mut GameOutput) {
-        let texture_id = world.units_texture.id;
         let sprite_groups = [
-            &mut world.pawns,
-            &mut world.warriors,
-            &mut world.archers,
-            &mut world.torch_goblins,
-            &mut world.tnt_goblins,
-            &mut world.sheeps,
+            (world.units_texture.id, &mut world.pawns),
+            (world.units_texture.id, &mut world.warriors),
+            (world.units_texture.id, &mut world.archers),
+            (world.units_texture.id, &mut world.torch_goblins),
+            (world.units_texture.id, &mut world.tnt_goblins),
+            (world.units_texture.id, &mut world.sheeps),
+            (world.static_resources_texture.id, &mut world.trees),
         ];
 
         let builder = &mut output.sprites_builder;
-        for sprites in sprite_groups {
+        for (texture_id, sprites) in sprite_groups {
             for unit in sprites.iter_mut() {
                 unit.current_frame += 1;
-                unit.current_frame = unit.current_frame * ((unit.current_frame < unit.animation.last_frame) as u8);
+                unit.current_frame = unit.current_frame * ((unit.current_frame <= unit.animation.last_frame) as u8);
 
                 let sprite = Self::build_actor_sprite(unit);
                 builder.push(TempSprite {
@@ -373,7 +372,7 @@ impl DemoGame {
         });
     }
 
-    fn build_actor_sprite(unit: &crate::world::BaseUnit) -> SpriteData {
+    fn build_actor_sprite(unit: &crate::world::BaseAnimated) -> SpriteData {
         let mut sprite = SpriteData::default();
         let position = unit.position;
         let animation = unit.animation;

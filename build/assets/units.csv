@@ -31,4 +31,4 @@ warrior_strike_top1;6;0;510;912;621;
 warrior_strike_top2;6;0;728;1038;832;
 death_spawn;7;1080;1166;1521;1236;
 death_despawn;7;342;1300;692;1352;
-death_idle;1;1500;0;1540;39;
+death_idle;1;1500;0;1544;43;

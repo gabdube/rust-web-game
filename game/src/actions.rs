@@ -18,12 +18,6 @@ pub enum ActionState {
     Finalized,
 }
 
-impl ActionState {
-    pub fn finalizing(&self) -> bool {
-        matches!(self, ActionState::Finalizing)
-    }
-}
-
 /// An action is a function that gets spread across a certain amount of time
 /// Active actions gets evaluated at every game steps until they are completed
 #[derive(Copy, Clone)]
@@ -65,6 +59,16 @@ impl ActionsManager {
         match last_completed {
             Some(index) => { self.active[index] = action; },
             None => self.active.push(action)
+        }
+    }
+
+    /// Sets all instances of actions in the active list to "completed"
+    pub fn remove(&mut self, action: Action) {
+        for action2 in self.active.iter_mut() {
+            if action2.ty == action.ty {
+                action2.ty = ActionType::Completed;
+                action2.state = ActionState::Finalized;
+            }
         }
     }
 
@@ -142,6 +146,16 @@ impl Default for ActionsManager {
     fn default() -> Self {
         ActionsManager {
             active: Vec::with_capacity(32),
+        }
+    }
+}
+
+impl PartialEq for ActionType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ActionType::Completed, ActionType::Completed) => true,
+            (ActionType::MovePawn { id: id1, .. }, ActionType::MovePawn { id: id2, .. }) => { id1 == id2 },
+            _ => false,
         }
     }
 }

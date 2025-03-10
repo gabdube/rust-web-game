@@ -61,9 +61,10 @@ impl DemoGame {
     }
 
     fn init_pawn_tests(&mut self) {
-        self.world.create_pawn(pos(500.0, 100.0), &self.assets.animations.pawn.idle);
-        self.world.create_pawn(pos(500.0, 200.0), &self.assets.animations.pawn.idle);
-        self.world.create_pawn(pos(500.0, 300.0), &self.assets.animations.pawn.idle);
+        self.world.create_pawn(pos(100.0, 100.0), &self.assets.animations.pawn.idle);
+        self.world.create_pawn(pos(100.0, 200.0), &self.assets.animations.pawn.idle);
+        self.world.create_pawn(pos(100.0, 300.0), &self.assets.animations.pawn.idle);
+        self.world.create_tree(pos(300.0, 250.0), &self.assets.resources.tree_idle);
     }
 
 }
@@ -96,7 +97,9 @@ fn on_right_mouse(game: &mut DemoGame) {
     let target_object = game.world.object_at(cursor_world_position);
 
     if target_object.is_none() {
-        game.actions.push(Action::move_to(selected_object, cursor_world_position))
+        let action = Action::move_to(selected_object, cursor_world_position);
+        game.actions.remove(action);
+        game.actions.push(Action::move_to(selected_object, cursor_world_position));
     }
 }
 
@@ -128,7 +131,6 @@ impl crate::store::SaveAndLoad for EditorState {
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let current_test = TestId::from_u32(reader.read_u32());
-        let flags = reader.read_u32() as u8;
         let selected_object = reader.load_option();
         
         EditorState {

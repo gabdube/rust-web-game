@@ -17,7 +17,8 @@ pub enum WorldObjectType {
     Sheep,
     Decoration,
     Structure,
-    Resource
+    Resource,
+    Tree,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -27,7 +28,7 @@ pub struct WorldObject {
 }
 
 #[derive(Copy, Clone, Default, Debug)]
-pub struct BaseUnit {
+pub struct BaseAnimated {
     pub position: Position<f32>,
     pub animation: AnimationBase,
     pub current_frame: u8,
@@ -35,7 +36,7 @@ pub struct BaseUnit {
     pub flipped: bool,
 }
 
-impl BaseUnit {
+impl BaseAnimated {
     pub const fn aabb(&self) -> AABB {
         let mut position = self.position;
         let size = size(self.animation.sprite_width, self.animation.sprite_height);
@@ -60,16 +61,17 @@ pub struct World {
     pub units_texture: Texture,
 
     pub terrain: Terrain,
-    pub pawns: Vec<BaseUnit>,
-    pub warriors: Vec<BaseUnit>,
-    pub archers: Vec<BaseUnit>,
-    pub torch_goblins: Vec<BaseUnit>,
-    pub tnt_goblins: Vec<BaseUnit>,
-    pub sheeps: Vec<BaseUnit>,
+    pub pawns: Vec<BaseAnimated>,
+    pub warriors: Vec<BaseAnimated>,
+    pub archers: Vec<BaseAnimated>,
+    pub torch_goblins: Vec<BaseAnimated>,
+    pub tnt_goblins: Vec<BaseAnimated>,
+    pub sheeps: Vec<BaseAnimated>,
 
     pub decorations: Vec<BaseStatic>,
     pub structures: Vec<BaseStatic>,
     pub resources: Vec<BaseStatic>,
+    pub trees: Vec<BaseAnimated>,
 
     pub selected: Vec<WorldObject>
 }
@@ -77,7 +79,7 @@ pub struct World {
 impl World {
 
     pub fn total_sprites(&mut self) -> usize {
-        self.total_sprite_count as usize + self.selected.len()
+        self.total_sprite_count as usize
     }
 
     pub fn init_assets(&mut self, assets: &crate::assets::Assets) -> Result<(), Error> {
@@ -100,6 +102,7 @@ impl World {
         self.decorations.clear();
         self.structures.clear();
         self.resources.clear();
+        self.trees.clear();
         self.terrain.reset();
     }
 
@@ -137,6 +140,11 @@ impl World {
         Self::create_inner_actor(&mut self.sheeps, position, animation)
     }
 
+    pub fn create_tree(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+        self.total_sprite_count += 1;
+        Self::create_inner_actor(&mut self.trees, position, animation)
+    }
+
     pub fn create_decoration(&mut self, position: Position<f32>, deco: &DecorationBase) -> usize {
         self.total_sprite_count += 1;
         let index = self.decorations.len();
@@ -158,7 +166,7 @@ impl World {
         index
     }
 
-    pub fn actor_at(&self, position: Position<f32>) -> Option<WorldObject> {
+    pub fn animated_at(&self, position: Position<f32>) -> Option<WorldObject> {
         let types = [
             WorldObjectType::Pawn,
             WorldObjectType::Warrior,
@@ -166,6 +174,7 @@ impl World {
             WorldObjectType::TorchGoblin,
             WorldObjectType::DynamiteGoblin,
             WorldObjectType::Sheep,
+            WorldObjectType::Tree,
         ];
         let groups = [
             &self.pawns,
@@ -174,6 +183,7 @@ impl World {
             &self.torch_goblins,
             &self.tnt_goblins,
             &self.sheeps,
+            &self.trees,
         ];
 
         for (group, ty) in groups.into_iter().zip(types) {
@@ -187,15 +197,40 @@ impl World {
         None
     }
 
-    pub fn object_at(&self, position: Position<f32>) -> Option<WorldObject> {
-        if let Some(actor) = self.actor_at(position) {
-            return Some(actor);
+    pub fn other_at(&self, position: Position<f32>) -> Option<WorldObject> {
+        let types = [
+            WorldObjectType::Structure,
+            WorldObjectType::Resource,
+        ];
+        let groups = [
+            &self.structures,
+            &self.resources,
+        ];
+
+        for (group, ty) in groups.into_iter().zip(types) {
+            for (id, resource) in group.iter().enumerate() {
+                if resource.aabb.point_inside(position) {
+                    return Some(WorldObject { id: id as u32, ty })
+                }
+            }
         }
 
         None
     }
 
-    pub fn get_actor_mut<'a>(&'a mut self, obj: WorldObject) -> Option<&'a mut BaseUnit> {
+    pub fn object_at(&self, position: Position<f32>) -> Option<WorldObject> {
+        if let Some(animated) = self.animated_at(position) {
+            return Some(animated);
+        }
+
+        if let Some(resource) = self.other_at(position) {
+            return Some(resource);
+        }
+
+        None
+    }
+
+    pub fn get_actor_mut<'a>(&'a mut self, obj: WorldObject) -> Option<&'a mut BaseAnimated> {
         let objects = match obj.ty {
             WorldObjectType::Pawn => &mut self.pawns,
             WorldObjectType::Warrior => &mut self.warriors,
@@ -203,6 +238,7 @@ impl World {
             WorldObjectType::TorchGoblin => &mut self.torch_goblins,
             WorldObjectType::DynamiteGoblin => &mut self.tnt_goblins,
             WorldObjectType::Sheep => &mut self.sheeps,
+            WorldObjectType::Tree => &mut self.trees,
             _ => { return None }
         };
 
@@ -244,12 +280,12 @@ impl World {
     }
 
     fn create_inner_actor(
-        base: &mut Vec<BaseUnit>,
+        base: &mut Vec<BaseAnimated>,
         position: Position<f32>,
         animation: &AnimationBase
     ) -> usize {
         let index = base.len();
-        base.push(BaseUnit { position, animation: *animation, ..Default::default()});
+        base.push(BaseAnimated { position, animation: *animation, ..Default::default()});
         return index
     }
 
@@ -267,6 +303,7 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.decorations);
         writer.write_slice(&self.structures);
         writer.write_slice(&self.resources);
+        writer.write_slice(&self.trees);
         writer.write_slice(&self.selected);
 
         writer.write(&self.static_resources_texture);
@@ -287,6 +324,7 @@ impl SaveAndLoad for World {
         let decorations = reader.read_slice().to_vec();
         let structures = reader.read_slice().to_vec();
         let resources = reader.read_slice().to_vec();
+        let trees = reader.read_slice().to_vec();
 
         let selected = reader.read_slice().to_vec();
 
@@ -313,6 +351,7 @@ impl SaveAndLoad for World {
             decorations,
             structures,
             resources,
+            trees,
 
             selected,
         }
@@ -339,6 +378,7 @@ impl Default for World {
             decorations: Vec::with_capacity(16),
             structures: Vec::with_capacity(16),
             resources: Vec::with_capacity(16),
+            trees: Vec::with_capacity(16),
 
             selected: Vec::with_capacity(8),
         }
@@ -362,6 +402,7 @@ impl SaveAndLoad for WorldObject {
             6 => WorldObjectType::Decoration,
             7 => WorldObjectType::Structure,
             8 => WorldObjectType::Resource, 
+            9 => WorldObjectType::Tree,
             _ => WorldObjectType::Pawn,
         };
 

@@ -1,4 +1,6 @@
+use crate::assets::animations::AnimationBase;
 use crate::shared::AABB;
+
 
 #[derive(Copy, Clone, Default)]
 pub struct ResourceBase {
@@ -15,6 +17,9 @@ pub struct ResourcesBundle {
     pub meat_shadowless: ResourceBase,
     pub wood: ResourceBase,
     pub wood_shadowless: ResourceBase,
+
+    pub tree_idle: AnimationBase,
+    pub tree_cut: AnimationBase,
 }
 
 impl ResourcesBundle {
@@ -26,18 +31,33 @@ impl ResourcesBundle {
 
         crate::shared::split_csv::<6, _>(csv, |args| {
             let name = args[0];
+            let frame_count = str::parse::<u32>(args[1]).unwrap_or(1);
             let left = parse(args[2]);
             let top = parse(args[3]);
             let right = parse(args[4]);
             let bottom = parse(args[5]);
 
-            if let Some(base) = self.match_name(name) {
-                base.aabb = AABB { left, top, right, bottom };
+            if frame_count == 1 {
+                if let Some(base) = self.match_static_name(name) {
+                    base.aabb = AABB { left, top, right, bottom };
+                }
+            } else {
+                if let Some(base) = self.match_animated_name(name) {
+                    let sprite_width = (right-left) / (frame_count as f32);
+                    let sprite_height = bottom - top;
+                    *base = AnimationBase {
+                        x: left,
+                        y: top,
+                        sprite_width,
+                        sprite_height,
+                        last_frame: (frame_count as u8) - 1,
+                    };
+                }
             }
         });
     }
 
-    fn match_name(&mut self, name: &str) -> Option<&mut ResourceBase> {
+    fn match_static_name(&mut self, name: &str) -> Option<&mut ResourceBase> {
         match name {
             "explosive_barrel" => Some(&mut self.explosive_barrel),
             "gold" => Some(&mut self.gold),
@@ -47,6 +67,14 @@ impl ResourcesBundle {
             "wood" => Some(&mut self.wood),
             "wood_noshadow" => Some(&mut self.wood_shadowless),
             _ => None,
+        }
+    }
+
+    fn match_animated_name(&mut self, name: &str) -> Option<&mut AnimationBase> {
+        match name {
+            "tree_idle" => Some(&mut self.tree_idle),
+            "tree_cut" => Some(&mut self.tree_cut),
+            _ => None
         }
     }
 
