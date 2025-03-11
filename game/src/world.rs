@@ -5,7 +5,6 @@ mod extra_data;
 pub use extra_data::*;
 
 use crate::assets::{AnimationBase, DecorationBase, ResourceBase, StructureBase, Texture};
-use crate::error::Error;
 use crate::shared::{AABB, aabb, size};
 use crate::store::SaveAndLoad;
 use crate::Position;
@@ -85,16 +84,6 @@ impl World {
 
     pub fn total_sprites(&mut self) -> usize {
         self.total_sprite_count as usize
-    }
-
-    pub fn init_assets(&mut self, assets: &crate::assets::Assets) -> Result<(), Error> {
-        self.units_texture = assets.textures.get("units").copied()
-            .ok_or_else(|| assets_err!("units texture missing") )?;
-
-        self.static_resources_texture = assets.textures.get("static_resources").copied()
-            .ok_or_else(|| assets_err!("static_resources texture missing") )?;
-
-        Ok(())
     }
 
     pub fn reset(&mut self) {

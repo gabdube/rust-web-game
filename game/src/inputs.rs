@@ -58,7 +58,7 @@ impl InputState {
     // Updates
     //
 
-    pub fn after_update(&mut self) {
+    pub fn after_state_process(&mut self) {
         self.last_mouse_position = self.mouse_position;
         
         for state in self.mouse_buttons.iter_mut() {
@@ -77,6 +77,11 @@ impl InputState {
     }
 
 }
+
+
+//
+// Other Impls
+//
 
 impl Default for InputState {
     fn default() -> Self {

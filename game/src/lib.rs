@@ -58,18 +58,28 @@ pub struct DemoGameTiming {
     frame_delta: f32,
 }
 
-/// The game state
-#[wasm_bindgen]
-pub struct DemoGame {
-    timing: DemoGameTiming,
+#[derive(Default, Copy, Clone)]
+pub struct DemoGameGlobalData {
     view_offset: Position<f32>,
     view_size: Size<f32>,
-    assets: assets::Assets,
+}
+
+/// The game data
+pub struct DemoGameData {
+    global: DemoGameGlobalData,
     inputs: inputs::InputState,
+    timing: DemoGameTiming,
+    assets: assets::Assets,
     world: world::World,
+    state: state::GameState,
+}
+
+/// The game data and the game state
+#[wasm_bindgen]
+pub struct DemoGame {
+    data: DemoGameData,
     output: output::GameOutput,
     actions: actions::ActionsManager,
-    state: state::GameState,
 }
 
 #[wasm_bindgen]
@@ -79,21 +89,26 @@ impl DemoGame {
         ::std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 
         let mut demo_app = DemoGame {
-            view_size: init.initial_window_size,
+            data: DemoGameData {
+                global: DemoGameGlobalData {
+                    view_size: init.initial_window_size,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
             ..DemoGame::default()
         };
 
-        demo_app.load_asset_bundle(&init)?;
+        if let Err(e) = assets::init_assets(&mut demo_app, &init) {
+            set_last_error(e);
+            return None;
+        }
 
         #[cfg(feature="editor")]
-        {
-            demo_app.init_editor(crate::state::TestId::PawnAi);
-        }
+        state::editor::init(&mut demo_app, crate::state::TestId::PawnAi);
 
         #[cfg(not(feature="editor"))]
-        {
-            demo_app.init_gameplay();
-        }
+        state::gameplay::init(&mut demo_app);
     
         dbg!("Game client initialized. Game client size: {}", size_of::<DemoGame>());
 
@@ -102,40 +117,17 @@ impl DemoGame {
 
     pub fn on_reload(&mut self) {
         #[cfg(feature="editor")]
-        {
-            self.init_editor(crate::state::TestId::PawnAi);
-        }
+        state::editor::init(self, crate::state::TestId::PawnAi);
 
         #[cfg(not(feature="editor"))]
-        {
-            self.init_gameplay();
-        }
+        state::gameplay::init(self);
     }
 
     pub fn update(&mut self, time: f64) -> bool {
-        self.update_time(time);
-
-        match &mut self.state {
-            state::GameState::MainMenu => {},
-            state::GameState::Gameplay(_) => {
-                self.gameplay_update();
-            },
-
-            #[cfg(feature="editor")]
-            state::GameState::Editor(_) => {
-                self.editor_update();
-            },
-
-            state::GameState::Startup => {
-                set_last_error(undefined_err!("Update should never be called while in startup state"));
-                return false;
-            },
-        }
-
-        self.update_actions();
-        self.update_output();
-        self.inputs.after_update();
-
+        self.update_timing(time);
+        state::process(self);
+        actions::process(self);
+        output::update_output(self);
         return true
     }
 
@@ -144,12 +136,12 @@ impl DemoGame {
     }
 
     pub fn update_view_size(&mut self, width: f32, height: f32) {
-        self.view_size.width = width;
-        self.view_size.height = height;
+        self.data.global.view_size.width = width;
+        self.data.global.view_size.height = height;
     }
 
     pub fn update_mouse_position(&mut self, x: f32, y: f32) {
-        self.inputs.update_mouse_position(x, y);
+        self.data.inputs.update_mouse_position(x, y);
     }
 
     pub fn update_mouse_buttons(&mut self, button: u8, pressed: bool) -> bool {
@@ -166,7 +158,7 @@ impl DemoGame {
             false => inputs::ButtonState::JustReleased,
         };
 
-        self.inputs.update_mouse_buttons(button, state);
+        self.data.inputs.update_mouse_buttons(button, state);
 
         return true;
     }
@@ -175,75 +167,62 @@ impl DemoGame {
 
 impl DemoGame {
 
-    fn update_time(&mut self, new_time: f64) {
+    fn update_timing(&mut self, new_time: f64) {
         const ANIMATION_INTERVAL: f64 = 1000.0 / 16.0; // 16fps
+        let timing = &mut self.data.timing;
+        timing.frame_delta = (new_time - timing.time) as f32;
+        timing.time = new_time;
 
-        self.timing.frame_delta = (new_time - self.timing.time) as f32;
-        self.timing.time = new_time;
-        
         // This only sets the update animation flag in output
         // Sprite animation are computed at sprite generation in `output.gen_sprites_with_animation` 
-        let delta = new_time - self.timing.last_animation_tick;
+        let delta = new_time - timing.last_animation_tick;
         if delta > ANIMATION_INTERVAL {
             self.output.update_animations();
-            self.timing.last_animation_tick = new_time;
+            timing.last_animation_tick = new_time;
         }
     }
 
-    fn init_world_assets(&mut self) -> Option<()> {
-        if let Err(e) = self.world.init_assets(&self.assets) {
-            set_last_error(e);
-            None
-        } else {
-            Some(())
+}
+
+impl Default for DemoGameData {
+    fn default() -> Self {
+        DemoGameData {
+            global: DemoGameGlobalData::default(),
+            inputs: inputs::InputState::default(),
+            assets: assets::Assets::default(),
+            world: world::World::default(),
+            timing: DemoGameTiming::default(),
+            state: state::GameState::Startup,
         }
     }
-
-    fn load_asset_bundle(&mut self, init: &DemoGameInit) -> Option<()> {
-        if let Err(e) = self.assets.load_bundle(&init) {
-            set_last_error(e);
-            return None;
-        }
-
-        self.init_world_assets()
-    }
-
 }
 
 impl Default for DemoGame {
     fn default() -> Self {
         DemoGame {
-            timing: DemoGameTiming::default(),
-            view_offset: Position::default(),
-            view_size: Size::default(),
-            assets: assets::Assets::default(),
-            inputs: inputs::InputState::default(),
+            data: DemoGameData::default(),
             output: output::GameOutput::default(),
-            world: world::World::default(),
             actions: actions::ActionsManager::default(),
-            state: state::GameState::Startup,
         }
     }
 }
 
 impl store::SaveAndLoad for DemoGame {
     fn save(&self, writer: &mut store::SaveFileWriter) {
-        writer.save(&self.assets);
-        writer.save(&self.world);
+        writer.write(&self.data.global);
+        writer.save(&self.data.assets);
+        writer.save(&self.data.world);
+        writer.save(&self.data.state);
         writer.save(&self.actions);
-        writer.save(&self.state);
-        writer.save(&self.view_offset);
-        writer.save(&self.view_size);
     }
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
         let mut demo_app = DemoGame::default();
-        demo_app.assets = reader.load();
-        demo_app.world = reader.load();
+        demo_app.data.global = reader.read();
+        demo_app.data.assets = reader.load();
+        demo_app.data.world = reader.load();
+        demo_app.data.state = reader.load();
         demo_app.actions = reader.load();
-        demo_app.state = reader.load();
-        demo_app.view_offset = reader.load();
-        demo_app.view_size = reader.load();
 
         demo_app
     }

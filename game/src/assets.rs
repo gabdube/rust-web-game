@@ -1,5 +1,6 @@
 mod animations;
 pub use animations::AnimationBase;
+use animations::AnimationsBundle;
 
 mod terrain_tilemap;
 pub use terrain_tilemap::{TerrainTilemap, TerrainCell};
@@ -13,9 +14,10 @@ pub use structures::*;
 mod resources;
 pub use resources::*;
 
-use animations::AnimationsBundle;
 use fnv::FnvHashMap;
+
 use crate::error::Error;
+use crate::{DemoGame, DemoGameInit};
 
 #[derive(Copy, Clone)]
 pub struct Texture {
@@ -34,34 +36,6 @@ pub struct Assets {
 }
 
 impl Assets {
-
-    pub fn load_bundle(&mut self, init: &crate::DemoGameInit) -> Result<(), Error> {
-        let mut error: Option<Error> = None;
-
-        // Assets index
-        crate::shared::split_csv::<5, _>(&init.assets_bundle, |args| {
-            let result = match args[0] {
-                "TEXTURE" => {
-                    self.load_texture(args)
-                },
-                "CSV" => {
-                    self.load_csv(init, args)
-                },
-                "SHADER" => Ok(()),
-                _ => { Err(assets_err!("Unknown asset type {:?}", args[0])) }
-            };
-
-            if let Err(new_error) = result {
-                crate::shared::merge_error(&mut error, new_error)
-            }
-        });
-
-        if let Some(err) = error {
-            return Err(err);
-        }
-
-        Ok(())
-    }
 
     fn load_texture(&mut self, args: &[&str]) -> Result<(), Error> {
         let name = args.get(1)
@@ -103,6 +77,58 @@ impl Assets {
         Ok(())
     }
 }
+
+pub fn init_assets(game: &mut DemoGame, init: &DemoGameInit) -> Result<(), Error> {
+    import_assets_index(game, &init)?;
+    init_world_assets(game)?;
+    Ok(())
+}
+
+fn import_assets_index(game: &mut DemoGame, init: &DemoGameInit) -> Result<(), Error> {
+    let mut error: Option<Error> = None;
+    let assets = &mut game.data.assets;
+
+    // Assets index
+    crate::shared::split_csv::<5, _>(&init.assets_bundle, |args| {
+        let result = match args[0] {
+            "TEXTURE" => {
+                assets.load_texture(args)
+            },
+            "CSV" => {
+                assets.load_csv(init, args)
+            },
+            "SHADER" => Ok(()),
+            _ => { Err(assets_err!("Unknown asset type {:?}", args[0])) }
+        };
+
+        if let Err(new_error) = result {
+            crate::shared::merge_error(&mut error, new_error)
+        }
+    });
+
+    if let Some(err) = error {
+        return Err(err);
+    }
+
+    Ok(())
+}
+
+fn init_world_assets(game: &mut DemoGame) -> Result<(), Error> {
+    let world = &mut game.data.world;
+    let assets = &game.data.assets;
+
+    world.units_texture = assets.textures.get("units").copied()
+        .ok_or_else(|| assets_err!("units texture missing") )?;
+
+    world.static_resources_texture = assets.textures.get("static_resources").copied()
+        .ok_or_else(|| assets_err!("static_resources texture missing") )?;
+
+    Ok(())
+}
+
+//
+// Other Impls
+//
 
 impl crate::store::SaveAndLoad for Assets {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {

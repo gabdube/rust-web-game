@@ -1,15 +1,14 @@
 mod shared_state;
 
-mod gameplay;
-use gameplay::GameplayState;
+pub mod gameplay;
+pub use gameplay::GameplayState;
 
 #[cfg(feature="editor")]
-mod editor;
+pub mod editor;
 #[cfg(feature="editor")]
 pub use editor::{EditorState, TestId};
 
 use crate::store::SaveAndLoad;
-
 
 pub enum GameState {
     Startup,
@@ -18,6 +17,32 @@ pub enum GameState {
     
     #[cfg(feature="editor")]
     Editor(EditorState)
+}
+
+pub fn process(game: &mut crate::DemoGame) {
+    use crate::state::GameState;
+
+    match game.data.state {
+        GameState::MainMenu => {
+
+        },
+        GameState::Gameplay(_) => {
+            
+        },
+        GameState::Editor(_) => {
+            if game.data.inputs.left_mouse_clicked() {
+                crate::state::editor::on_left_mouse(game);
+            }
+
+            if game.data.inputs.right_mouse_clicked() {
+                crate::state::editor::on_right_mouse(game);
+            }
+        },
+        GameState::Startup => {
+        }
+    }
+
+    game.data.inputs.after_state_process();
 }
 
 impl SaveAndLoad for GameState {

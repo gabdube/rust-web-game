@@ -134,45 +134,29 @@ impl ActionsManager {
 
 }
 
-impl DemoGame {
+pub fn process(game: &mut DemoGame) {
+    let data = &mut game.data;
+    let actions = &mut game.actions;
 
-    pub fn update_actions(&mut self) {
-        let manager = &mut self.actions;
-        let frame_delta = self.timing.frame_delta;
+    for action in actions.active.iter_mut() {
+        if matches!(action.ty, ActionType::Completed) {
+            continue;
+        }
 
-        for action in manager.active.iter_mut() {
-            if matches!(action.ty, ActionType::Completed) {
-                continue;
-            }
+        match action.ty {
+            ActionType::MovePawn { id, target } => {
+                move_pawn::move_pawn(data, action, id, target);
+            },
+            ActionType::CutTree { pawn_id, tree_id } => {
+                cut_tree::cut_tree(data, action, pawn_id, tree_id);
+            },
+            ActionType::Completed => unreachable!(),
+        }
 
-            match action.ty {
-                ActionType::MovePawn { id, target } => {
-                    let mut params = move_pawn::MovePawnParams {
-                        world: &mut self.world,
-                        assets: &self.assets,
-                        pawn_id: id,
-                        frame_delta,
-                        target
-                    };
-                    move_pawn::move_pawn(&mut action.state, &mut params);
-                },
-                ActionType::CutTree { pawn_id, tree_id } => {
-                    let mut params = cut_tree::CutTreeParams {
-                        world: &mut self.world,
-                        assets: &self.assets,
-                        pawn_id,
-                        tree_id,
-                    };
-                    cut_tree::cut_tree(&mut action.state, &mut params);
-                },
-                ActionType::Completed => unreachable!(),
-            }
-
-            if matches!(action.state, ActionState::Finalized) {
-                action.ty = ActionType::Completed;
-                if action.next != u32::MAX {
-                    ::std::mem::swap(action, &mut manager.queued[action.next as usize]);
-                }
+        if matches!(action.state, ActionState::Finalized) {
+            action.ty = ActionType::Completed;
+            if action.next != u32::MAX {
+                ::std::mem::swap(action, &mut actions.queued[action.next as usize]);
             }
         }
     }
