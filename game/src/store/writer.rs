@@ -49,6 +49,19 @@ impl SaveFileWriter {
         }
     }
 
+    pub fn save_slice<T: super::SaveAndLoad>(&mut self, values: &[T]) {
+        self.write_u32(values.len() as u32);
+        
+        if values.len() == 0 {
+            // 0 for the size and no data
+            return;
+        }
+
+        for value in values {
+            value.save(self);
+        }
+    }
+
     pub fn write<T: Copy>(&mut self, data: &T) {
         assert!(align_of::<T>() == super::ALIGN, "Data alignment must be 4 bytes");
 
@@ -71,6 +84,14 @@ impl SaveFileWriter {
     pub fn write_f32(&mut self, data: f32) {
         self.try_realloc(1);
         self.write_u32_inner(data.to_bits());
+    }
+
+    pub fn write_f64(&mut self, data: f64) {
+        self.try_realloc(2);
+        
+        let bits = data.to_bits();
+        self.write_u32_inner((bits >> 32) as u32);
+        self.write_u32_inner(bits as u32);
     }
 
     pub fn write_slice<T: Copy>(&mut self, values: &[T]) {

@@ -61,6 +61,16 @@ impl<'a> SaveFileReader<'a> {
         }
     }
 
+    pub fn load_vec<T: super::SaveAndLoad>(&mut self) -> Vec<T> {
+        let count = self.read_u32() as usize;
+        let mut values = Vec::with_capacity(count);
+        for _ in 0..count {
+            values.push(T::load(self));
+        }
+
+        values
+    }
+
     pub fn read<T: Copy>(&mut self) -> T {
         assert!(align_of::<T>() == super::ALIGN, "Alignment of T must be at least 4 bytes");
         let u32_count = size_of::<T>() / super::ALIGN;
@@ -84,6 +94,14 @@ impl<'a> SaveFileReader<'a> {
         let value = self.data[self.current_offset];
         self.current_offset += 1;
         f32::from_bits(value)
+    }
+
+    pub fn read_f64(&mut self) -> f64 {
+        let top = self.data[self.current_offset];
+        let bottom = self.data[self.current_offset + 1];
+        self.current_offset += 2;
+
+        f64::from_bits((bottom as u64) + ((top as u64) << 32))
     }
 
     pub fn read_slice<T: Copy>(&mut self) -> &[T] {

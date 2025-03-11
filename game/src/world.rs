@@ -1,6 +1,9 @@
 mod terrain;
 use terrain::Terrain;
 
+mod extra_data;
+pub use extra_data::*;
+
 use crate::assets::{AnimationBase, DecorationBase, ResourceBase, StructureBase, Texture};
 use crate::error::Error;
 use crate::shared::{AABB, aabb, size};
@@ -71,7 +74,9 @@ pub struct World {
     pub decorations: Vec<BaseStatic>,
     pub structures: Vec<BaseStatic>,
     pub resources: Vec<BaseStatic>,
+    
     pub trees: Vec<BaseAnimated>,
+    pub trees_data: Vec<TreeData>,
 
     pub selected: Vec<WorldObject>
 }
@@ -142,6 +147,7 @@ impl World {
 
     pub fn create_tree(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
+        self.trees_data.push(TreeData::default());
         Self::create_inner_actor(&mut self.trees, position, animation)
     }
 
@@ -304,6 +310,7 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.structures);
         writer.write_slice(&self.resources);
         writer.write_slice(&self.trees);
+        writer.save_slice(&self.trees_data);
         writer.write_slice(&self.selected);
 
         writer.write(&self.static_resources_texture);
@@ -325,6 +332,7 @@ impl SaveAndLoad for World {
         let structures = reader.read_slice().to_vec();
         let resources = reader.read_slice().to_vec();
         let trees = reader.read_slice().to_vec();
+        let trees_data = reader.load_vec();
 
         let selected = reader.read_slice().to_vec();
 
@@ -352,6 +360,7 @@ impl SaveAndLoad for World {
             structures,
             resources,
             trees,
+            trees_data,
 
             selected,
         }
@@ -378,7 +387,9 @@ impl Default for World {
             decorations: Vec::with_capacity(16),
             structures: Vec::with_capacity(16),
             resources: Vec::with_capacity(16),
+
             trees: Vec::with_capacity(16),
+            trees_data: Vec::with_capacity(16),
 
             selected: Vec::with_capacity(8),
         }

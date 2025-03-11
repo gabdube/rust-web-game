@@ -120,9 +120,10 @@ impl ActionsManager {
         }
     }
 
-    /// Sets all instances of actions in the active list to "completed"
+    /// Cancels all actions
     /// If the action has queued work, it also cancels all of it.
     pub fn cancel(&mut self, action: Action) {
+        // TODO
         for action2 in self.active.iter_mut() {
             if action2.ty == action.ty {
                 action2.ty = ActionType::Completed;

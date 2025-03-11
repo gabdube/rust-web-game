@@ -119,7 +119,9 @@ fn on_right_mouse(game: &mut DemoGame) {
 fn move_pawn_to_tree(game: &mut DemoGame, selected_object: WorldObject, target: WorldObject) {
     let pawn_x = game.world.pawns[selected_object.id as usize].position.x;
     let mut target_position = game.world.trees[target.id as usize].position;
+
     target_position.y += 10.0;
+
     if target_position.x > pawn_x {
         target_position.x -= 60.0;
     } else {
