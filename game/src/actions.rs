@@ -62,6 +62,7 @@ impl Action {
 pub struct ActionsManager {
     active: Vec<Action>,
     queued: Vec<Action>,
+    cancelled: Vec<Action>,
 }
 
 impl ActionsManager {
@@ -120,21 +121,58 @@ impl ActionsManager {
         }
     }
 
-    /// Cancels all actions
-    /// If the action has queued work, it also cancels all of it.
-    pub fn cancel(&mut self, action: Action) {
-        // TODO
-        for action2 in self.active.iter_mut() {
-            if action2.ty == action.ty {
-                action2.ty = ActionType::Completed;
-                action2.state = ActionState::Finalized;
-            }
+    /// Cancels all actions related to `object`
+    /// Queued actions will be set to `Completed` without executing the on cancelled logic
+    pub fn cancel_object_actions(&mut self, object: WorldObject) {
+        match object.ty {
+            WorldObjectType::Pawn => {
+                for action in self.active.iter_mut() {
+                    let cancel = match action.ty {
+                        ActionType::MovePawn { id, .. } => id == object.id,
+                        ActionType::CutTree { pawn_id, .. } => pawn_id == object.id,
+                        _ => false
+                    };
+
+                    if cancel {
+                        if action.next != u32::MAX {
+                            dbg!("TODO: cancel queued actions");
+                        }
+
+                        self.cancelled.push(*action);
+
+                        action.ty = ActionType::Completed;
+                        action.state = ActionState::Finalized;
+                        action.next = u32::MAX;
+                    }
+                }
+            },
+            _ => {},
         }
     }
 
 }
 
-pub fn process(game: &mut DemoGame) {
+pub fn update(game: &mut DemoGame) {
+    cancel_actions(game);
+    process_active_actions(game);
+}
+
+fn cancel_actions(game: &mut DemoGame) {
+    let data = &mut game.data;
+    let actions = &mut game.actions;
+
+    for action in actions.cancelled.iter_mut() {
+        match action.ty {
+            ActionType::Completed => {},
+            ActionType::MovePawn { id, .. } => move_pawn::cancel(data, id),
+            ActionType::CutTree { pawn_id, tree_id } => cut_tree::cancel(data, pawn_id, tree_id),
+        }
+    }
+
+    actions.cancelled.clear();
+}
+
+fn process_active_actions(game: &mut DemoGame) {
     let data = &mut game.data;
     let actions = &mut game.actions;
 
@@ -156,18 +194,20 @@ pub fn process(game: &mut DemoGame) {
         if matches!(action.state, ActionState::Finalized) {
             action.ty = ActionType::Completed;
             if action.next != u32::MAX {
-                ::std::mem::swap(action, &mut actions.queued[action.next as usize]);
+                let next_index = action.next as usize;
+                action.next = u32::MAX;
+                ::std::mem::swap(action, &mut actions.queued[next_index]);
             }
         }
     }
-
 }
 
 impl Default for ActionsManager {
     fn default() -> Self {
         ActionsManager {
             active: Vec::with_capacity(32),
-            queued: Vec::with_capacity(32)
+            queued: Vec::with_capacity(32),
+            cancelled: Vec::with_capacity(16),
         }
     }
 }
@@ -187,14 +227,17 @@ impl crate::store::SaveAndLoad for ActionsManager {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_slice(&self.active);
         writer.write_slice(&self.queued);
+        writer.write_slice(&self.cancelled);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let active = reader.read_slice().to_vec();
         let queued = reader.read_slice().to_vec();
+        let cancelled = reader.read_slice().to_vec();
         ActionsManager {
             active,
             queued,
+            cancelled,
         }
     }
 }

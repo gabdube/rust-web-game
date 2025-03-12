@@ -1,5 +1,5 @@
 mod animations;
-pub use animations::AnimationBase;
+pub use animations::{AnimationBase, PawnAnimation};
 use animations::AnimationsBundle;
 
 mod terrain_tilemap;

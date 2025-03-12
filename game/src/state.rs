@@ -19,7 +19,7 @@ pub enum GameState {
     Editor(EditorState)
 }
 
-pub fn process(game: &mut crate::DemoGame) {
+pub fn update(game: &mut crate::DemoGame) {
     use crate::state::GameState;
 
     match game.data.state {

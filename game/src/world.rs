@@ -280,7 +280,7 @@ impl World {
         animation: &AnimationBase
     ) -> usize {
         let index = base.len();
-        base.push(BaseAnimated { position, animation: *animation, ..Default::default()});
+        base.push(BaseAnimated { position, animation: *animation, current_frame: 0, ..Default::default()});
         return index
     }
 

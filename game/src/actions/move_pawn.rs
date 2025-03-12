@@ -1,27 +1,26 @@
 use crate::actions::{Action, ActionState};
-use crate::assets::Assets;
+use crate::assets::PawnAnimation;
 use crate::shared::{Position, pos};
-use crate::world::World;
+use crate::world::BaseAnimated;
 use crate::DemoGameData;
 
 struct MovePawnParams<'a> {
-    pub world: &'a mut World,
-    pub assets: &'a Assets,
+    pub pawn_animations: &'a PawnAnimation,
+    pub pawn_base: &'a mut BaseAnimated,
     pub frame_delta: f32,
-    pub pawn_id: u32,
     pub move_target: Position<f32>,
 }
 
 pub fn move_pawn(data: &mut DemoGameData, action: &mut Action, pawn_id: u32, move_target: Position<f32>) {
-    if data.world.pawns.get(pawn_id as usize).is_none() {
+    let pawn_index = pawn_id as usize;
+    if pawn_index >= data.world.pawns.len() {
         action.state = ActionState::Finalized;
     }
 
     let mut params = MovePawnParams {
-        world: &mut data.world,
-        assets: &data.assets,
+        pawn_animations: &data.assets.animations.pawn,
+        pawn_base: &mut data.world.pawns[pawn_index],
         frame_delta: data.timing.frame_delta,
-        pawn_id,
         move_target
     };
     
@@ -33,15 +32,20 @@ pub fn move_pawn(data: &mut DemoGameData, action: &mut Action, pawn_id: u32, mov
     }
 }
 
+pub fn cancel(data: &mut DemoGameData, pawn_id: u32) {
+    let pawn_index = pawn_id as usize;
+    if pawn_index < data.world.pawns.len() {
+        data.world.pawns[pawn_index].animation = data.assets.animations.pawn.idle;
+    }
+}
+
 fn move_pawn_initial(action: &mut Action, params: &mut MovePawnParams) {
-    let index = params.pawn_id as usize;
-    params.world.pawns[index].animation = params.assets.animations.pawn.walk;
+    params.pawn_base.animation = params.pawn_animations.walk;
     action.state = ActionState::Running;
 }
 
 fn move_pawn_running(action: &mut Action, params: &mut MovePawnParams) {
-    let index = params.pawn_id as usize;
-    let current_position = params.world.pawns[index].position;
+    let current_position = params.pawn_base.position;
     let target = params.move_target;
 
     let angle = f32::atan2(target.y - current_position.y, target.x - current_position.x);
@@ -50,7 +54,7 @@ fn move_pawn_running(action: &mut Action, params: &mut MovePawnParams) {
     let move_y = speed * f32::sin(angle);
     let mut updated_position = pos(current_position.x + move_x, current_position.y + move_y);
 
-    params.world.pawns[index].flipped = move_x < 0.0;
+    params.pawn_base.flipped = move_x < 0.0;
 
     if (move_x > 0.0 && updated_position.x > target.x) || (move_x < 0.0 && updated_position.x < target.x) {
         updated_position.x = target.x;
@@ -64,11 +68,10 @@ fn move_pawn_running(action: &mut Action, params: &mut MovePawnParams) {
         action.state = ActionState::Finalizing;
     }
 
-    params.world.pawns[index].position = updated_position;
+    params.pawn_base.position = updated_position;
 }
 
 fn move_pawn_finalize(action: &mut Action, params: &mut MovePawnParams) {
-    let index = params.pawn_id as usize;
-    params.world.pawns[index].animation = params.assets.animations.pawn.idle;
+    params.pawn_base.animation = params.pawn_animations.idle;
     action.state = ActionState::Finalized;
 }

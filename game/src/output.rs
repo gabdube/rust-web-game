@@ -162,7 +162,7 @@ impl GameOutput {
 
 
 /// Updates the current output buffers based on the game state
-pub fn update_output(game: &mut DemoGame) {
+pub fn update(game: &mut DemoGame) {
     game.output.clear();
     update_view(game);
     update_terrain(game);

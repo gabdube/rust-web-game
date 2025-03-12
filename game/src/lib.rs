@@ -67,8 +67,8 @@ pub struct DemoGameGlobalData {
 /// The game data
 pub struct DemoGameData {
     global: DemoGameGlobalData,
-    inputs: inputs::InputState,
     timing: DemoGameTiming,
+    inputs: inputs::InputState,
     assets: assets::Assets,
     world: world::World,
     state: state::GameState,
@@ -125,9 +125,9 @@ impl DemoGame {
 
     pub fn update(&mut self, time: f64) -> bool {
         self.update_timing(time);
-        state::process(self);
-        actions::process(self);
-        output::update_output(self);
+        state::update(self);
+        actions::update(self);
+        output::update(self);
         return true
     }
 

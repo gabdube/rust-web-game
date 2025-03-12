@@ -88,9 +88,8 @@ pub fn on_right_mouse(game: &mut DemoGame) {
     match selected_object.ty {
         WorldObjectType::Pawn => {
             if target_object.is_none() {
-                let action = Action::move_to(selected_object, cursor_world_position);
-                actions.cancel(action);
-                actions.push(action);
+                actions.cancel_object_actions(selected_object);
+                actions.push(Action::move_to(selected_object, cursor_world_position));
             }
             
             if let Some(target_object) = target_object {
@@ -110,6 +109,11 @@ fn move_pawn_to_tree(
     selected_object: WorldObject,
     target: WorldObject
 ) {
+    let tree_data = data.world.trees_data[target.id as usize];
+    if tree_data.life == 0 || tree_data.being_harvested {
+        return;
+    }
+
     let pawn_x = data.world.pawns[selected_object.id as usize].position.x;
     let mut target_position = data.world.trees[target.id as usize].position;
 
@@ -123,7 +127,7 @@ fn move_pawn_to_tree(
 
     let action = Action::move_to(selected_object, target_position);
     let action2 = Action::cut_tree(selected_object, target);
-    actions.cancel(action);
+    actions.cancel_object_actions(selected_object);
     actions.push_and_queue(action, action2);
 }
 
