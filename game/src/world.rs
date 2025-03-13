@@ -4,7 +4,7 @@ use terrain::Terrain;
 mod extra_data;
 pub use extra_data::*;
 
-use crate::assets::{AnimationBase, DecorationBase, ResourceBase, StructureBase, Texture};
+use crate::assets::{AnimationBase, Texture};
 use crate::shared::{AABB, aabb, size};
 use crate::store::SaveAndLoad;
 use crate::Position;
@@ -20,6 +20,7 @@ pub enum WorldObjectType {
     Decoration,
     Structure,
     Resource,
+    ResourceSpawn,
     Tree,
 }
 
@@ -73,6 +74,9 @@ pub struct World {
     pub decorations: Vec<BaseStatic>,
     pub structures: Vec<BaseStatic>,
     pub resources: Vec<BaseStatic>,
+
+    pub resources_spawn: Vec<BaseAnimated>,
+    pub resources_spawn_data: Vec<ResourceSpawnData>,
     
     pub trees: Vec<BaseAnimated>,
     pub trees_data: Vec<TreeData>,
@@ -96,7 +100,10 @@ impl World {
         self.decorations.clear();
         self.structures.clear();
         self.resources.clear();
+        self.resources_spawn.clear();
+        self.resources_spawn_data.clear();
         self.trees.clear();
+        self.trees_data.clear();
         self.terrain.reset();
     }
 
@@ -109,56 +116,10 @@ impl World {
         Self::create_inner_actor(&mut self.pawns, position, animation)
     }
 
-    pub fn create_warrior(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
-        self.total_sprite_count += 1;
-        Self::create_inner_actor(&mut self.warriors, position, animation)
-    }
-
-    pub fn create_archer(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
-        self.total_sprite_count += 1;
-        Self::create_inner_actor(&mut self.archers, position, animation)
-    }
-
-    pub fn create_torch_goblin(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
-        self.total_sprite_count += 1;
-        Self::create_inner_actor(&mut self.torch_goblins, position, animation)
-    }
-
-    pub fn create_dynamite_goblin(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
-        self.total_sprite_count += 1;
-        Self::create_inner_actor(&mut self.tnt_goblins, position, animation)
-    }
-    
-    pub fn create_sheep(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
-        self.total_sprite_count += 1;
-        Self::create_inner_actor(&mut self.sheeps, position, animation)
-    }
-
     pub fn create_tree(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         self.trees_data.push(TreeData::default());
         Self::create_inner_actor(&mut self.trees, position, animation)
-    }
-
-    pub fn create_decoration(&mut self, position: Position<f32>, deco: &DecorationBase) -> usize {
-        self.total_sprite_count += 1;
-        let index = self.decorations.len();
-        self.decorations.push(BaseStatic { position, aabb: deco.aabb, selected: false, });
-        index
-    }
-
-    pub fn create_structure(&mut self, position: Position<f32>, structure: &StructureBase) -> usize {
-        self.total_sprite_count += 1;
-        let index = self.structures.len();
-        self.structures.push(BaseStatic { position, aabb: structure.aabb, selected: false, });
-        index
-    }
-
-    pub fn create_resource(&mut self, position: Position<f32>, resource: &ResourceBase) -> usize {
-        self.total_sprite_count += 1;
-        let index = self.resources.len();
-        self.resources.push(BaseStatic { position, aabb: resource.aabb, selected: false });
-        index
     }
 
     pub fn animated_at(&self, position: Position<f32>) -> Option<WorldObject> {
@@ -169,6 +130,7 @@ impl World {
             WorldObjectType::TorchGoblin,
             WorldObjectType::DynamiteGoblin,
             WorldObjectType::Sheep,
+            WorldObjectType::ResourceSpawn,
             WorldObjectType::Tree,
         ];
         let groups = [
@@ -178,6 +140,7 @@ impl World {
             &self.torch_goblins,
             &self.tnt_goblins,
             &self.sheeps,
+            &self.resources_spawn,
             &self.trees,
         ];
 
@@ -298,8 +261,13 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.decorations);
         writer.write_slice(&self.structures);
         writer.write_slice(&self.resources);
+
+        writer.write_slice(&self.resources_spawn);
+        writer.save_slice(&self.resources_spawn_data);
+
         writer.write_slice(&self.trees);
         writer.save_slice(&self.trees_data);
+
         writer.write_slice(&self.selected);
 
         writer.write(&self.static_resources_texture);
@@ -320,6 +288,10 @@ impl SaveAndLoad for World {
         let decorations = reader.read_slice().to_vec();
         let structures = reader.read_slice().to_vec();
         let resources = reader.read_slice().to_vec();
+
+        let resources_spawn = reader.read_slice().to_vec();
+        let resources_spawn_data = reader.load_vec();
+
         let trees = reader.read_slice().to_vec();
         let trees_data = reader.load_vec();
 
@@ -348,6 +320,10 @@ impl SaveAndLoad for World {
             decorations,
             structures,
             resources,
+
+            resources_spawn,
+            resources_spawn_data,
+
             trees,
             trees_data,
 
@@ -376,6 +352,9 @@ impl Default for World {
             decorations: Vec::with_capacity(16),
             structures: Vec::with_capacity(16),
             resources: Vec::with_capacity(16),
+
+            resources_spawn: Vec::with_capacity(16),
+            resources_spawn_data: Vec::with_capacity(16),
 
             trees: Vec::with_capacity(16),
             trees_data: Vec::with_capacity(16),

@@ -1,14 +1,49 @@
 use crate::actions::{Action, ActionState};
-use crate::assets::Assets;
-use crate::world::{BaseAnimated, TreeData};
+use crate::assets::{Assets, AnimationBase};
+use crate::shared::pos;
+use crate::world::{World, BaseAnimated, TreeData};
 use crate::DemoGameData;
 
-struct CutTreeParams<'a> {
-    pub assets: &'a Assets,
-    pub pawn: &'a mut BaseAnimated,
-    pub tree: &'a mut BaseAnimated,
-    pub tree_data: &'a mut TreeData,
-    pub time: f64,
+// For initial & Running
+struct CutTreeParams1<'a> {
+    assets: &'a Assets,
+    pawn: &'a mut BaseAnimated,
+    tree: &'a mut BaseAnimated,
+    tree_data: &'a mut TreeData,
+    time: f64,
+}
+
+impl<'a> CutTreeParams1<'a> {
+    pub fn new(data: &'a mut DemoGameData, pawn_index: usize, tree_index: usize) -> Self {
+        CutTreeParams1 {
+            assets: &data.assets,
+            pawn: &mut data.world.pawns[pawn_index],
+            tree: &mut data.world.trees[tree_index],
+            tree_data: &mut data.world.trees_data[tree_index],
+            time: data.timing.time,
+        }
+    }
+}
+
+/// For Finalizing
+struct CutTreeParams2<'a> {
+    assets: &'a Assets,
+    world: &'a mut World,
+    pawn_index: usize,
+    tree_index: usize,
+    time: f64,
+}
+
+impl<'a> CutTreeParams2<'a> {
+    pub fn new(data: &'a mut DemoGameData, pawn_index: usize, tree_index: usize) -> Self {
+        CutTreeParams2 {
+            assets: &data.assets,
+            world: &mut data.world,
+            pawn_index,
+            tree_index,
+            time: data.timing.time,
+        }
+    }
 }
 
 pub fn cut_tree(data: &mut DemoGameData, action: &mut Action, pawn_id: u32, tree_id: u32) {
@@ -18,18 +53,10 @@ pub fn cut_tree(data: &mut DemoGameData, action: &mut Action, pawn_id: u32, tree
         action.state = ActionState::Finalized;
     }
 
-    let mut params = CutTreeParams {
-        assets: &data.assets,
-        pawn: &mut data.world.pawns[pawn_index],
-        tree: &mut data.world.trees[tree_index],
-        tree_data: &mut data.world.trees_data[tree_index],
-        time: data.timing.time,
-    };
-
     match action.state {
-        ActionState::Initial => cut_tree_initial(action, &mut params),
-        ActionState::Running => cut_tree_running(action, &mut params),
-        ActionState::Finalizing => cut_tree_finalize(action, &mut params),
+        ActionState::Initial => cut_tree_initial(action, CutTreeParams1::new(data, pawn_index, tree_index)),
+        ActionState::Running => cut_tree_running(action, CutTreeParams1::new(data, pawn_index, tree_index)),
+        ActionState::Finalizing => cut_tree_finalize(action, CutTreeParams2::new(data, pawn_index, tree_index)),
         ActionState::Finalized => {},
     }
 }
@@ -47,7 +74,7 @@ pub fn cancel(data: &mut DemoGameData, pawn_id: u32, tree_id: u32) {
     }
 }
 
-fn cut_tree_initial(action: &mut Action, params: &mut CutTreeParams) {
+fn cut_tree_initial(action: &mut Action, params: CutTreeParams1) {
     // A pawn is already harvesting the tree
     if params.tree_data.being_harvested || params.tree_data.life == 0 {
         action.state = ActionState::Finalizing;
@@ -65,12 +92,33 @@ fn cut_tree_initial(action: &mut Action, params: &mut CutTreeParams) {
     action.state = ActionState::Running;
 }
 
-fn cut_tree_running(action: &mut Action, params: &mut CutTreeParams) {
+fn cut_tree_running(action: &mut Action, params: CutTreeParams1) {
+    if params.tree_data.life > 0 && params.time - params.tree_data.last_drop_timestamp > 300.0 {
+        params.tree_data.life -= 1;
+        params.tree_data.last_drop_timestamp = params.time;
+    }
 
+    if params.tree_data.life == 0 {
+        action.state = ActionState::Finalizing;
+    }
 }
 
-fn cut_tree_finalize(action: &mut Action, params: &mut CutTreeParams) {
-    params.pawn.animation = params.assets.animations.pawn.idle;
+fn cut_tree_finalize(action: &mut Action, params: CutTreeParams2) {
+    let pawn = &mut params.world.pawns[params.pawn_index];
+    let tree = &mut params.world.trees[params.tree_index];
+    let tree_data = &mut params.world.trees_data[params.tree_index];
+    pawn.animation = params.assets.animations.pawn.idle;
+    tree.animation = AnimationBase::from_aabb(params.assets.resources.tree_stump.aabb);
+    tree_data.being_harvested = false;
+
+    // Spawns three wood resource around the tree
+    let center_pos = tree.position;
+    for _ in 0..3 {
+        let x = fastrand::i8(-10..10);
+        let y = fastrand::i8(-10..10);
+        let pos = pos(center_pos.x + x as f32, center_pos.y + y as f32);
+    }
+
     action.state = ActionState::Finalized;
 }
 

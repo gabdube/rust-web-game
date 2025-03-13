@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::shared::split_csv;
+use crate::shared::{AABB, split_csv};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct AnimationBase {
@@ -8,6 +8,18 @@ pub struct AnimationBase {
     pub sprite_width: f32,
     pub sprite_height: f32,
     pub last_frame: u8,
+}
+
+impl AnimationBase {
+    pub fn from_aabb(aabb: AABB) -> Self {
+        AnimationBase {
+            x: aabb.left,
+            y: aabb.top,
+            sprite_width: aabb.width(),
+            sprite_height: aabb.height(),
+            last_frame: 0,
+        }
+    }
 }
 
 #[derive(Default, Copy, Clone, PartialEq)]

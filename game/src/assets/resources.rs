@@ -17,9 +17,14 @@ pub struct ResourcesBundle {
     pub meat_shadowless: ResourceBase,
     pub wood: ResourceBase,
     pub wood_shadowless: ResourceBase,
+    pub tree_stump: ResourceBase,
 
     pub tree_idle: AnimationBase,
     pub tree_cut: AnimationBase,
+
+    pub gold_spawn: AnimationBase,
+    pub meat_spawn: AnimationBase,
+    pub wood_spawn: AnimationBase,
 }
 
 impl ResourcesBundle {
@@ -66,6 +71,7 @@ impl ResourcesBundle {
             "meat_noshadow" => Some(&mut self.meat_shadowless),
             "wood" => Some(&mut self.wood),
             "wood_noshadow" => Some(&mut self.wood_shadowless),
+            "tree_stump" => Some(&mut self.tree_stump),
             _ => None,
         }
     }
@@ -74,6 +80,9 @@ impl ResourcesBundle {
         match name {
             "tree_idle" => Some(&mut self.tree_idle),
             "tree_cut" => Some(&mut self.tree_cut),
+            "gold_spawn" => Some(&mut self.gold_spawn),
+            "meat_spawn" => Some(&mut self.meat_spawn),
+            "wood_spawn" => Some(&mut self.wood_spawn),
             _ => None
         }
     }

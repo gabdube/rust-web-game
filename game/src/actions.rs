@@ -34,6 +34,14 @@ pub struct Action {
 
 impl Action {
 
+    pub fn completed() -> Self {
+        Action {
+            ty: ActionType::Completed,
+            next: u32::MAX,
+            state: ActionState::Finalized,
+        }
+    }
+
     pub fn move_to(obj: WorldObject, position: Position<f32>) -> Self {
         let ty = match obj.ty {
             WorldObjectType::Pawn => ActionType::MovePawn { id: obj.id, target: position },
@@ -63,6 +71,7 @@ pub struct ActionsManager {
     active: Vec<Action>,
     queued: Vec<Action>,
     cancelled: Vec<Action>,
+    dirty_actions: u32,
 }
 
 impl ActionsManager {
@@ -73,11 +82,7 @@ impl ActionsManager {
             return;
         }
 
-        let last_completed = self.active.iter().position(|action| action.is_completed() );
-        match last_completed {
-            Some(index) => { self.active[index] = action; },
-            None => self.active.push(action)
-        }
+        self.active.push(action)
     }
 
     /// Push a new action into the action manager in a queued state and return the ID of the queued task.
@@ -109,24 +114,17 @@ impl ActionsManager {
 
         let queued_index = self.push_queued(then);
         action.next = queued_index;
-
-        let last_completed = self.active.iter().position(|action| action.is_completed() );
-        match last_completed {
-            Some(index) => { 
-                self.active[index] = action;
-            },
-            None => {
-                self.active.push(action)
-            }
-        }
+        self.active.push(action)
     }
 
     /// Cancels all actions related to `object`
     /// Queued actions will be set to `Completed` without executing the on cancelled logic
     pub fn cancel_object_actions(&mut self, object: WorldObject) {
+        let mut action_index = 0;
         match object.ty {
             WorldObjectType::Pawn => {
-                for action in self.active.iter_mut() {
+                while action_index < self.active.len() {
+                    let action = self.active[action_index];
                     let cancel = match action.ty {
                         ActionType::MovePawn { id, .. } => id == object.id,
                         ActionType::CutTree { pawn_id, .. } => pawn_id == object.id,
@@ -135,19 +133,33 @@ impl ActionsManager {
 
                     if cancel {
                         if action.next != u32::MAX {
-                            dbg!("TODO: cancel queued actions");
+                            self.cancel_queued_actions(action.next as usize);
                         }
 
-                        self.cancelled.push(*action);
-
-                        action.ty = ActionType::Completed;
-                        action.state = ActionState::Finalized;
-                        action.next = u32::MAX;
+                        self.cancelled.push(action);
+                        self.active[action_index] = Action::completed();
+                        self.dirty_actions += 1;
                     }
+
+                    action_index += 1;
                 }
             },
             _ => {},
         }
+    }
+
+    fn cancel_queued_actions(&mut self, queued_index: usize) {
+        let next_queued = self.queued[queued_index].next;
+        self.queued[queued_index] = Action::completed();
+        if next_queued != u32::MAX {
+            self.cancel_queued_actions(next_queued as usize);
+        }
+    }
+
+    /// Remove the completed actions from the active action list
+    fn clean(&mut self) {
+        self.active.retain(|action| !action.is_completed() );
+        self.dirty_actions = 0;
     }
 
 }
@@ -155,6 +167,10 @@ impl ActionsManager {
 pub fn update(game: &mut DemoGame) {
     cancel_actions(game);
     process_active_actions(game);
+
+    if game.actions.dirty_actions > 16 {
+        game.actions.clean();
+    }
 }
 
 fn cancel_actions(game: &mut DemoGame) {
@@ -192,10 +208,11 @@ fn process_active_actions(game: &mut DemoGame) {
         }
 
         if matches!(action.state, ActionState::Finalized) {
-            action.ty = ActionType::Completed;
-            if action.next != u32::MAX {
-                let next_index = action.next as usize;
-                action.next = u32::MAX;
+            let next_index = action.next as usize;
+            if action.next == u32::MAX {
+                *action = Action::completed();
+                actions.dirty_actions += 1;
+            } else {
                 ::std::mem::swap(action, &mut actions.queued[next_index]);
             }
         }
@@ -208,6 +225,7 @@ impl Default for ActionsManager {
             active: Vec::with_capacity(32),
             queued: Vec::with_capacity(32),
             cancelled: Vec::with_capacity(16),
+            dirty_actions: 0,
         }
     }
 }
@@ -228,16 +246,19 @@ impl crate::store::SaveAndLoad for ActionsManager {
         writer.write_slice(&self.active);
         writer.write_slice(&self.queued);
         writer.write_slice(&self.cancelled);
+        writer.write_u32(self.dirty_actions);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let active = reader.read_slice().to_vec();
         let queued = reader.read_slice().to_vec();
         let cancelled = reader.read_slice().to_vec();
+        let dirty_actions = reader.read_u32();
         ActionsManager {
             active,
             queued,
             cancelled,
+            dirty_actions,
         }
     }
 }

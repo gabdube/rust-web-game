@@ -160,8 +160,6 @@ impl GameOutput {
 
 }
 
-
-/// Updates the current output buffers based on the game state
 pub fn update(game: &mut DemoGame) {
     game.output.clear();
     update_view(game);
@@ -297,6 +295,7 @@ fn gen_sprites(world: &crate::world::World, output: &mut GameOutput) {
         (world.units_texture.id, &world.torch_goblins),
         (world.units_texture.id, &world.tnt_goblins),
         (world.units_texture.id, &world.sheeps),
+        (world.static_resources_texture.id, &world.resources_spawn),
         (world.static_resources_texture.id, &world.trees),
     ];
 
@@ -321,6 +320,7 @@ fn gen_sprites_with_animation(world: &mut crate::world::World, output: &mut Game
         (world.units_texture.id, &mut world.torch_goblins),
         (world.units_texture.id, &mut world.tnt_goblins),
         (world.units_texture.id, &mut world.sheeps),
+        (world.static_resources_texture.id, &mut world.resources_spawn),
         (world.static_resources_texture.id, &mut world.trees),
     ];
 

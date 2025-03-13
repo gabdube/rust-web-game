@@ -104,6 +104,14 @@ impl<'a> SaveFileReader<'a> {
         f64::from_bits((bottom as u64) + ((top as u64) << 32))
     }
 
+    pub fn read_u64(&mut self) -> u64 {
+        let top = self.data[self.current_offset];
+        let bottom = self.data[self.current_offset + 1];
+        self.current_offset += 2;
+
+        (bottom as u64) + ((top as u64) << 32)
+    }
+
     pub fn read_slice<T: Copy>(&mut self) -> &[T] {
         assert!(align_of::<T>() == super::ALIGN, "Alignment of T must be {} bytes", super::ALIGN);
 

@@ -80,6 +80,10 @@ function start_game_client(engine: Engine): boolean {
     const size = engine.renderer.canvas_size();
     init.set_initial_window_size(size.width, size.height);
 
+    const seed = new BigUint64Array(1);
+    crypto.getRandomValues(seed);
+    init.set_seed(seed[0]);
+
     for (let [name, json] of engine.assets.csv.entries()) {
         init.upload_text_asset(name, json);
     }

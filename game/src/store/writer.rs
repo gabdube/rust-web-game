@@ -94,6 +94,12 @@ impl SaveFileWriter {
         self.write_u32_inner(bits as u32);
     }
 
+    pub fn write_u64(&mut self, data: u64) {
+        self.try_realloc(2);
+        self.write_u32_inner((data >> 32) as u32);
+        self.write_u32_inner(data as u32);
+    }
+
     pub fn write_slice<T: Copy>(&mut self, values: &[T]) {
         let align = align_of::<T>();
         assert!(align == super::ALIGN, "Data align must be {}", super::ALIGN);

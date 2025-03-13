@@ -23,18 +23,20 @@ static LAST_ERROR: Mutex<Option<error::Error>> = Mutex::new(None);
 /// Initial data to initialize the game state 
 #[wasm_bindgen]
 pub struct DemoGameInit {
-    pub(crate) assets_bundle: String,
-    pub(crate) initial_window_size: Size<f32>,
     pub(crate) text_assets: fnv::FnvHashMap<String, String>,
+    pub(crate) assets_bundle: String,
+    pub(crate) seed: u64,
+    pub(crate) initial_window_size: Size<f32>,
 }
 
 #[wasm_bindgen]
 impl DemoGameInit {
     pub fn new() -> Self {
         DemoGameInit {
-            assets_bundle: String::new(),
-            initial_window_size: Size::default(),
             text_assets: fnv::FnvHashMap::default(),
+            assets_bundle: String::new(),
+            seed: 0,
+            initial_window_size: Size::default(),
         }
     }
 
@@ -49,6 +51,10 @@ impl DemoGameInit {
     pub fn upload_text_asset(&mut self, name: String, value: String) {
         self.text_assets.insert(name, value);
     }
+
+    pub fn set_seed(&mut self, seed: u64) {
+        self.seed = seed;
+    }
 }
 
 #[derive(Default)]
@@ -60,6 +66,7 @@ pub struct DemoGameTiming {
 
 #[derive(Default, Copy, Clone)]
 pub struct DemoGameGlobalData {
+    seed: u64,
     view_offset: Position<f32>,
     view_size: Size<f32>,
 }
@@ -91,6 +98,7 @@ impl DemoGame {
         let mut demo_app = DemoGame {
             data: DemoGameData {
                 global: DemoGameGlobalData {
+                    seed: init.seed,
                     view_size: init.initial_window_size,
                     ..Default::default()
                 },
@@ -98,6 +106,8 @@ impl DemoGame {
             },
             ..DemoGame::default()
         };
+
+        fastrand::seed(init.seed);
 
         if let Err(e) = assets::init_assets(&mut demo_app, &init) {
             set_last_error(e);
@@ -207,9 +217,25 @@ impl Default for DemoGame {
     }
 }
 
+impl store::SaveAndLoad for DemoGameGlobalData {
+    fn save(&self, writer: &mut store::SaveFileWriter) {
+        writer.write_u64(self.seed);
+        writer.write(&self.view_offset);
+        writer.write(&self.view_size);
+    }
+
+    fn load(reader: &mut store::SaveFileReader) -> Self {
+        DemoGameGlobalData {
+            seed: reader.read_u64(),
+            view_offset: reader.read(),
+            view_size: reader.read(),
+        }
+    }
+}
+
 impl store::SaveAndLoad for DemoGame {
     fn save(&self, writer: &mut store::SaveFileWriter) {
-        writer.write(&self.data.global);
+        writer.save(&self.data.global);
         writer.save(&self.data.assets);
         writer.save(&self.data.world);
         writer.save(&self.data.state);
@@ -218,7 +244,7 @@ impl store::SaveAndLoad for DemoGame {
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
         let mut demo_app = DemoGame::default();
-        demo_app.data.global = reader.read();
+        demo_app.data.global = reader.load();
         demo_app.data.assets = reader.load();
         demo_app.data.world = reader.load();
         demo_app.data.state = reader.load();
@@ -248,6 +274,8 @@ pub fn load(data: Box<[u8]>) -> DemoGame {
             DemoGame::default()
         }
     };
+
+    fastrand::seed(demo_app.data.global.seed);
 
     demo_app.on_reload();
 
