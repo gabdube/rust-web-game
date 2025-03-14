@@ -4,10 +4,6 @@
 use crate::shared::{aabb, Position};
 use crate::DemoGame;
 
-const UPDATE_VIEW: u8 = 0b001;
-const UPDATE_WORLD: u8 = 0b010;
-const UPDATE_ANIMATION: u8 = 0b100;
-
 /// Tells the engine which "module" to use to process a draw update
 /// This maps 1-1 to the `GraphicsModule` defined in the engine renderer
 #[repr(u32)]
@@ -120,11 +116,8 @@ pub struct GameOutput {
     /// Buffers of the generated draw update for the current frame. Shared with the renderer.
     pub commands: Vec<DrawUpdate>,
 
-    /// Temporary storage used with generating and optimizing sprites draw calls
+    /// Temporary storage used when generating and optimizing sprites draw calls
     pub sprites_builder: Vec<TempSprite>,
-
-    /// Output update flags
-    pub updates: u8,
 }
 
 impl GameOutput {
@@ -146,18 +139,6 @@ impl GameOutput {
         index.terrain_data_count = self.terrain_data.len();
     }
 
-    pub fn sync_view(&mut self) { self.updates |= UPDATE_VIEW; }
-    fn must_sync_view(&self) -> bool { self.updates & UPDATE_VIEW > 0 }
-    fn clear_sync_view(&mut self) { self.updates &= !UPDATE_VIEW; }
-
-    pub fn sync_world(&mut self) { self.updates |= UPDATE_WORLD; }
-    fn must_sync_world(&self) -> bool { self.updates & UPDATE_WORLD > 0 }
-    fn clear_sync_world(&mut self) { self.updates &= !UPDATE_WORLD; }
-
-    pub fn update_animations(&mut self) { self.updates |= UPDATE_ANIMATION; }
-    fn must_update_animation(&self) -> bool { self.updates & UPDATE_ANIMATION > 0 }
-    fn clear_update_animation(&mut self) { self.updates &= !UPDATE_ANIMATION; }
-
 }
 
 pub fn update(game: &mut DemoGame) {
@@ -170,27 +151,28 @@ pub fn update(game: &mut DemoGame) {
 }
 
 fn update_view(game: &mut DemoGame) {
-    let output = &mut game.output;
-    if !output.must_sync_view() {
+    let flags = &mut game.data.global.flags;
+    if !flags.get_sync_view() {
         return;
     }
 
-    output.commands.push(DrawUpdate {
+    flags.clear_sync_view();
+
+    game.output.commands.push(DrawUpdate {
         graphics: DrawUpdateType::UpdateViewOffset,
         params: DrawUpdateParams { update_view_offset: game.data.global.view_offset },
     });
-
-    output.clear_sync_view();
 }
 
 fn update_terrain(game: &mut DemoGame) {
     const CELL_TEXEL_SIZE: f32 = 64.0;
-
-    let output = &mut game.output;
-    if !output.must_sync_world() {
+    if !game.data.global.flags.get_sync_terrain() {
         return;
     }
 
+    game.data.global.flags.clear_sync_terrain();
+
+    let output = &mut game.output;
     let terrain = &mut game.data.world.terrain;
     let terrain_tilemap = &game.data.assets.terrain;
     let mut params = UpdateTerrainChunkParams { chunk_id: 0, chunk_data_offset: 0 };
@@ -223,8 +205,6 @@ fn update_terrain(game: &mut DemoGame) {
 
         *update = false;
     }
-
-    output.clear_sync_world();
 } 
 
 fn render_terrain(game: &mut DemoGame) {
@@ -259,6 +239,7 @@ fn render_terrain(game: &mut DemoGame) {
     * Generate batches of commands for the engine to render
 */
 fn render_sprites(game: &mut DemoGame) {
+    let flags = &mut game.data.global.flags;
     let world = &mut game.data.world;
     let output = &mut game.output;
 
@@ -270,8 +251,9 @@ fn render_sprites(game: &mut DemoGame) {
     output.sprites_builder.reserve(total_sprites);
 
     // Generate sprites
-    if output.must_update_animation() {
+    if flags.get_update_animations() {
         gen_sprites_with_animation(world, output);
+        flags.clear_update_animations();
     } else {
         gen_sprites(world, output);
     }
@@ -283,8 +265,6 @@ fn render_sprites(game: &mut DemoGame) {
 
     // Commands
     gen_commands(output);
-    
-    output.clear_update_animation();
 }
 
 fn gen_sprites(world: &crate::world::World, output: &mut GameOutput) {
@@ -450,7 +430,6 @@ impl Default for GameOutput {
             terrain_data: Vec::with_capacity(1024),
             commands: Vec::with_capacity(32),
             sprites_builder: Vec::with_capacity(128),
-            updates: 0,
         }
     }
 

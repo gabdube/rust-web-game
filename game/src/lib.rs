@@ -9,16 +9,20 @@ mod shared;
 mod inputs;
 mod assets;
 mod world;
-mod output;
 mod state;
-mod actions;
+mod data;
+mod output;
+mod actions_manager;
 
+use data::DemoGameData;
 use shared::*;
 
 use parking_lot::Mutex;
 use wasm_bindgen::prelude::*;
 
 static LAST_ERROR: Mutex<Option<error::Error>> = Mutex::new(None);
+
+const ANIMATION_INTERVAL: f64 = 1000.0 / 16.0; // 16fps
 
 /// Initial data to initialize the game state 
 #[wasm_bindgen]
@@ -57,36 +61,12 @@ impl DemoGameInit {
     }
 }
 
-#[derive(Default)]
-pub struct DemoGameTiming {
-    time: f64,
-    last_animation_tick: f64,
-    frame_delta: f32,
-}
-
-#[derive(Default, Copy, Clone)]
-pub struct DemoGameGlobalData {
-    seed: u64,
-    view_offset: Position<f32>,
-    view_size: Size<f32>,
-}
-
-/// The game data
-pub struct DemoGameData {
-    global: DemoGameGlobalData,
-    timing: DemoGameTiming,
-    inputs: inputs::InputState,
-    assets: assets::Assets,
-    world: world::World,
-    state: state::GameState,
-}
-
 /// The game data and the game state
 #[wasm_bindgen]
 pub struct DemoGame {
     data: DemoGameData,
     output: output::GameOutput,
-    actions: actions::ActionsManager,
+    actions: actions_manager::ActionsManager,
 }
 
 #[wasm_bindgen]
@@ -95,17 +75,9 @@ impl DemoGame {
     pub fn initialize(init: DemoGameInit) -> Option<Self> {
         ::std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 
-        let mut demo_app = DemoGame {
-            data: DemoGameData {
-                global: DemoGameGlobalData {
-                    seed: init.seed,
-                    view_size: init.initial_window_size,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-            ..DemoGame::default()
-        };
+        let mut demo_app = DemoGame::default();
+        demo_app.data.global.seed = init.seed;
+        demo_app.data.global.view_size = init.initial_window_size;
 
         fastrand::seed(init.seed);
 
@@ -115,10 +87,10 @@ impl DemoGame {
         }
 
         #[cfg(feature="editor")]
-        state::editor::init(&mut demo_app, crate::state::TestId::PawnAi);
+        state::editor::init(&mut demo_app.data, crate::state::TestId::PawnAi);
 
         #[cfg(not(feature="editor"))]
-        state::gameplay::init(&mut demo_app);
+        state::gameplay::init(&mut demo_app.data);
     
         dbg!("Game client initialized. Game client size: {}", size_of::<DemoGame>());
 
@@ -127,16 +99,16 @@ impl DemoGame {
 
     pub fn on_reload(&mut self) {
         #[cfg(feature="editor")]
-        state::editor::init(self, crate::state::TestId::PawnAi);
+        state::editor::init(&mut self.data, crate::state::TestId::PawnAi);
 
         #[cfg(not(feature="editor"))]
-        state::gameplay::init(self);
+        state::gameplay::init(&mut self.data);
     }
 
     pub fn update(&mut self, time: f64) -> bool {
         self.update_timing(time);
-        state::update(self);
-        actions::update(self);
+        state::update(&mut self.data);
+        actions_manager::update(self);
         output::update(self);
         return true
     }
@@ -178,33 +150,19 @@ impl DemoGame {
 impl DemoGame {
 
     fn update_timing(&mut self, new_time: f64) {
-        const ANIMATION_INTERVAL: f64 = 1000.0 / 16.0; // 16fps
-        let timing = &mut self.data.timing;
-        timing.frame_delta = (new_time - timing.time) as f32;
-        timing.time = new_time;
+        let global = &mut self.data.global;
+        global.frame_delta = (new_time - global.time) as f32;
+        global.time = new_time;
 
-        // This only sets the update animation flag in output
+        // This only sets a flag
         // Sprite animation are computed at sprite generation in `output.gen_sprites_with_animation` 
-        let delta = new_time - timing.last_animation_tick;
+        let delta = new_time - global.last_animation_tick;
         if delta > ANIMATION_INTERVAL {
-            self.output.update_animations();
-            timing.last_animation_tick = new_time;
+            global.flags.set_update_animations();
+            global.last_animation_tick = new_time;
         }
     }
 
-}
-
-impl Default for DemoGameData {
-    fn default() -> Self {
-        DemoGameData {
-            global: DemoGameGlobalData::default(),
-            inputs: inputs::InputState::default(),
-            assets: assets::Assets::default(),
-            world: world::World::default(),
-            timing: DemoGameTiming::default(),
-            state: state::GameState::Startup,
-        }
-    }
 }
 
 impl Default for DemoGame {
@@ -212,23 +170,7 @@ impl Default for DemoGame {
         DemoGame {
             data: DemoGameData::default(),
             output: output::GameOutput::default(),
-            actions: actions::ActionsManager::default(),
-        }
-    }
-}
-
-impl store::SaveAndLoad for DemoGameGlobalData {
-    fn save(&self, writer: &mut store::SaveFileWriter) {
-        writer.write_u64(self.seed);
-        writer.write(&self.view_offset);
-        writer.write(&self.view_size);
-    }
-
-    fn load(reader: &mut store::SaveFileReader) -> Self {
-        DemoGameGlobalData {
-            seed: reader.read_u64(),
-            view_offset: reader.read(),
-            view_size: reader.read(),
+            actions: actions_manager::ActionsManager::default(),
         }
     }
 }

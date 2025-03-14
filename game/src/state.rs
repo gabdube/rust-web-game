@@ -8,6 +8,7 @@ pub mod editor;
 #[cfg(feature="editor")]
 pub use editor::{EditorState, TestId};
 
+use crate::inputs::InputState;
 use crate::store::SaveAndLoad;
 
 pub enum GameState {
@@ -19,10 +20,10 @@ pub enum GameState {
     Editor(EditorState)
 }
 
-pub fn update(game: &mut crate::DemoGame) {
+pub fn update(game: &mut crate::DemoGameData) {
     use crate::state::GameState;
 
-    match game.data.state {
+    match game.state {
         GameState::MainMenu => {
 
         },
@@ -30,11 +31,11 @@ pub fn update(game: &mut crate::DemoGame) {
             
         },
         GameState::Editor(_) => {
-            if game.data.inputs.left_mouse_clicked() {
+            if game.inputs.left_mouse_clicked() {
                 crate::state::editor::on_left_mouse(game);
             }
 
-            if game.data.inputs.right_mouse_clicked() {
+            if game.inputs.right_mouse_clicked() {
                 crate::state::editor::on_right_mouse(game);
             }
         },
@@ -42,7 +43,15 @@ pub fn update(game: &mut crate::DemoGame) {
         }
     }
 
-    game.data.inputs.after_state_process();
+    clear_inputs_after_state_process(&mut game.inputs);
+}
+
+fn clear_inputs_after_state_process(inputs: &mut InputState) {
+    inputs.last_mouse_position = inputs.mouse_position;
+    
+    for state in inputs.mouse_buttons.iter_mut() {
+        state.flip();
+    }
 }
 
 impl SaveAndLoad for GameState {
