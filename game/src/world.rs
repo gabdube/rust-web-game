@@ -62,9 +62,21 @@ impl BaseAnimated {
 #[derive(Copy, Clone, Default, Debug)]
 pub struct BaseStatic {
     pub position: Position<f32>,
-    pub aabb: AABB,
+    pub sprite: AABB,
     pub selected: bool,
 }
+
+impl BaseStatic {
+    pub const fn aabb(&self) -> AABB {
+        let mut position = self.position;
+        let width = self.sprite.width();
+        let height = self.sprite.height();
+        position.x -= width * 0.5;
+        position.y -= height;
+        aabb(position, size(width, height))
+    }
+}
+
 
 /// The game world data. Includes actors, terrain, and decorations
 pub struct World {
@@ -137,7 +149,7 @@ impl World {
 
     pub fn create_resource(&mut self, position: Position<f32>, sprite: ResourceBase) -> usize {
         self.total_sprite_count += 1;
-        self.resources.push(BaseStatic { position, aabb: sprite.aabb, selected: false });
+        self.resources.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
         self.resources.len() - 1
     }
 
@@ -186,7 +198,7 @@ impl World {
 
         for (group, ty) in groups.into_iter().zip(types) {
             for (id, resource) in group.iter().enumerate() {
-                if resource.aabb.point_inside(position) {
+                if resource.aabb().point_inside(position) {
                     return Some(WorldObject { id: id as u32, ty })
                 }
             }

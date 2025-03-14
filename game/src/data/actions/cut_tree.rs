@@ -1,6 +1,5 @@
 use crate::assets::AnimationBase;
 use crate::data::actions::{Action, ActionType, ActionState};
-use crate::shared::Position;
 use crate::world::{WorldObject, WorldObjectType};
 use crate::DemoGameData;
 
@@ -113,11 +112,9 @@ fn done(game: &mut DemoGameData, action: &mut Action) {
     let mut position = center_pos;
     let mut angle = 0.0;
     for _ in 0..3 {
-        angle += f32::to_radians(fastrand::u16(60..120) as f32);
-
-        let distance = fastrand::u8(30..64) as f32;
-        position.x = center_pos.x + f32::cos(angle) * distance;
-        position.y = center_pos.y + f32::sin(angle) * distance;
+        angle += f32::to_radians(fastrand::u8(120..180) as f32);
+        position.x = f32::ceil(center_pos.x + f32::cos(angle) * 64.0);
+        position.y = f32::ceil(center_pos.y + f32::sin(angle) * 64.0);
         crate::data::actions::spawn_resource::spawn_wood(game, position);
     }
 

@@ -49,7 +49,9 @@ fn init_pawn_tests(data: &mut DemoGameData) {
     world.create_pawn(pos(100.0, 100.0), &assets.animations.pawn.idle);
     world.create_pawn(pos(100.0, 200.0), &assets.animations.pawn.idle);
     world.create_pawn(pos(100.0, 300.0), &assets.animations.pawn.idle);
-    world.create_tree(pos(300.0, 250.0), &assets.resources.tree_idle);
+    world.create_tree(pos(300.0, 220.0), &assets.resources.tree_idle);
+    world.create_tree(pos(380.0, 300.0), &assets.resources.tree_idle);
+    world.create_tree(pos(230.0, 330.0), &assets.resources.tree_idle);
 }
 
 pub fn on_left_mouse(game: &mut DemoGameData) {
@@ -85,7 +87,7 @@ pub fn on_right_mouse(game: &mut DemoGameData) {
 fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Option<WorldObject>) {
     let cursor_world_position = game.inputs.mouse_position + game.global.view_offset;
 
-    if target_object.is_none() {
+    if target_object.is_none() || game.inputs.left_shift.pressed() {
         actions::move_actor::new(game, pawn, cursor_world_position);
         return;
     }
@@ -96,7 +98,6 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
         _ => {},
     }
 }
-
 
 fn set_new_object_selection(data: &mut DemoGameData, new_selection: WorldObject) {
     let state = state(&mut data.state);

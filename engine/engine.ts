@@ -7,8 +7,9 @@ import { set_last_error } from "./error";
 
 import { Error, get_last_error } from "./error";
 
-const UPDATE_MOUSE_POSITION = 0b1;
-const UPDATE_MOUSE_BUTTONS = 0b10;
+const UPDATE_MOUSE_POSITION = 0b001;
+const UPDATE_MOUSE_BUTTONS  = 0b010;
+const UPDATE_KEYS           = 0b100;
 
 // Matches `MouseButton`
 const MOUSE_BUTTON_LEFT = 0;
@@ -21,6 +22,8 @@ class InputState {
     // true: button was pressed, false: button was released, null: button state wasn't changed
     left_mouse_button: boolean|null = null;    
     right_mouse_button: boolean|null = null;
+
+    keys: Map<string, boolean> = new Map();
 }
 
 class Engine {
@@ -128,8 +131,14 @@ function init_handlers(engine: Engine) {
 
     canvas.addEventListener("contextmenu", (event) => { event.preventDefault(); });
 
-    // window.addEventListener("keydown", (event) => { input_state.keys.set(event.code, true); });
-    // window.addEventListener("keyup", (event) => { input_state.keys.set(event.code, false); });
+    window.addEventListener("keydown", (event) => { 
+        input_state.keys.set(event.code, true);
+        input_state.updates |= UPDATE_KEYS;
+    });
+    window.addEventListener("keyup", (event) => {
+        input_state.keys.set(event.code, false);
+        input_state.updates |= UPDATE_KEYS;
+    });
 }
 
 async function init(): Promise<Engine | null> {
@@ -224,10 +233,9 @@ function handle_resize(engine: Engine) {
     }
 }
 
-function game_input_updates(engine: Engine): boolean {
+function game_input_updates(engine: Engine) {
     const inputs = engine.input;
     const game = engine.game.instance;
-    let ok = true;
 
     if ((inputs.updates & UPDATE_MOUSE_POSITION) > 0) {
         game.update_mouse_position(inputs.mouse_position[0], inputs.mouse_position[1]);
@@ -235,27 +243,29 @@ function game_input_updates(engine: Engine): boolean {
 
     if ((inputs.updates & UPDATE_MOUSE_BUTTONS) > 0) {
         if (inputs.left_mouse_button !== null) {
-            ok = ok && game.update_mouse_buttons(MOUSE_BUTTON_LEFT, inputs.left_mouse_button);
+            game.update_mouse_buttons(MOUSE_BUTTON_LEFT, inputs.left_mouse_button);
         }
 
         if (inputs.right_mouse_button !== null) {
-            ok = ok && game.update_mouse_buttons(MOUSE_BUTTON_RIGHT, inputs.right_mouse_button);
+            game.update_mouse_buttons(MOUSE_BUTTON_RIGHT, inputs.right_mouse_button);
         }
 
         inputs.left_mouse_button = null;
         inputs.right_mouse_button = null;
     }
 
-    inputs.updates = 0;
+    if ((inputs.updates & UPDATE_KEYS) > 0) {
+        for (let entry of inputs.keys.entries()) {
+            game.update_keys(entry[0], entry[1]);
+        }
+    }
 
-    return ok;
+    inputs.keys.clear();
+    inputs.updates = 0;
 }
 
 function game_updates(engine: Engine, time: DOMHighResTimeStamp) {
-    if (!game_input_updates(engine)) {
-        handle_game_err(engine);
-        return;
-    }
+    game_input_updates(engine)
     
     if (!engine.game.instance.update(time)) {
         handle_game_err(engine);

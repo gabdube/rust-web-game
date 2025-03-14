@@ -407,7 +407,7 @@ fn build_actor_sprite(unit: &crate::world::BaseAnimated) -> SpriteData {
 fn build_static_sprite(base: &crate::world::BaseStatic) -> SpriteData {
         let mut sprite = SpriteData::default();
         let position = base.position;
-        let aabb = base.aabb;
+        let aabb = base.sprite;
         sprite.position[0] = position.x - (aabb.width() * 0.5);
         sprite.position[1] = position.y - aabb.height();
         sprite.size[0] = aabb.width();

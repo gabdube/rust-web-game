@@ -1,6 +1,19 @@
 use crate::shared::{Position, pos};
 
-#[repr(u8)]
+#[derive(Copy, Clone, Debug)]
+pub enum Key {
+    ShiftLeft
+}
+
+impl Key {
+    pub fn from_name(name: &str) -> Option<Key> {
+        match name {
+            "ShiftLeft" => Some(Key::ShiftLeft),
+            _ => None
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ButtonState {
     Released = 0,
@@ -17,6 +30,10 @@ impl ButtonState {
             _ => {}
         }
     }
+
+    pub fn pressed(self) -> bool {
+        self == Self::JustPressed || self == Self::Pressed
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -29,6 +46,7 @@ pub struct InputState {
     pub last_mouse_position: Position<f32>,
     pub mouse_position: Position<f32>,
     pub mouse_buttons: [ButtonState; 2],
+    pub left_shift: ButtonState,
 }
 
 impl InputState {
@@ -68,6 +86,12 @@ impl InputState {
         self.mouse_buttons[index] = pressed;
     }
 
+    pub fn update_keys(&mut self, key: Key, pressed: ButtonState) {
+        match key {
+            Key::ShiftLeft => { self.left_shift = pressed; }
+        }
+    }
+
 }
 
 
@@ -81,6 +105,7 @@ impl Default for InputState {
             last_mouse_position: pos(0.0, 0.0),
             mouse_position: pos(0.0, 0.0),
             mouse_buttons: [ButtonState::Released; 2],
+            left_shift: ButtonState::Released,
         }
     }
 }

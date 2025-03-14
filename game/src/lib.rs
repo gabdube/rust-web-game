@@ -126,13 +126,10 @@ impl DemoGame {
         self.data.inputs.update_mouse_position(x, y);
     }
 
-    pub fn update_mouse_buttons(&mut self, button: u8, pressed: bool) -> bool {
+    pub fn update_mouse_buttons(&mut self, button: u8, pressed: bool) {
         let button = match inputs::MouseButton::try_from(button) {
             Ok(btn) => btn,
-            Err(error) => {
-                set_last_error(error);
-                return false;
-            }
+            Err(_) => { return; }
         };
 
         let state = match pressed {
@@ -141,8 +138,20 @@ impl DemoGame {
         };
 
         self.data.inputs.update_mouse_buttons(button, state);
+    }
 
-        return true;
+    pub fn update_keys(&mut self, key_name: &str, pressed: bool) {
+        let key = match inputs::Key::from_name(key_name) {
+            Some(key) => key,
+            None => { return; }
+        };
+
+        let state = match pressed {
+            true => inputs::ButtonState::JustPressed,
+            false => inputs::ButtonState::JustReleased,
+        };
+
+        self.data.inputs.update_keys(key, state);
     }
 
 }

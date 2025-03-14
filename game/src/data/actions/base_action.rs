@@ -56,18 +56,8 @@ impl Action {
     /// Check if the action can exist at the same time as another action
     pub fn is_incompatible(&self, other: Action) -> bool {
         match (self.ty, other.ty) {
-            (ActionType::Completed, ActionType::Completed) => false,
             (ActionType::MoveActor { actor: actor1, .. }, ActionType::MoveActor { actor: actor2, .. }) => { actor1.id == actor2.id },
-            _ => false,
-        }
-    }
-}
-
-impl PartialEq for ActionType {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (ActionType::Completed, ActionType::Completed) => true,
-            (ActionType::MoveActor { actor: actor1, .. }, ActionType::MoveActor { actor: actor2, .. }) => { actor1.id == actor2.id },
+            (ActionType::CutTree { pawn_id, .. }, ActionType::MoveActor { actor, .. }) => { pawn_id == actor.id },
             _ => false,
         }
     }
