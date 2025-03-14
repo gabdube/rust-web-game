@@ -6,7 +6,8 @@ use crate::world::WorldObject;
 pub enum ActionType {
     Completed,
     MoveActor { actor: WorldObject, target_position: Position<f32> },
-    CutTree { pawn_id: u32, tree_id: u32 }
+    CutTree { pawn_id: u32, tree_id: u32 },
+    SpawnResource { spawn_id: u32, resource_type: u8 }
 }
 
 #[derive(Copy, Clone)]
@@ -43,17 +44,6 @@ impl Action {
             state: ActionState::Finalized,
         }
     }
-
-    
-
-    // pub fn cut_tree(pawn: WorldObject, tree: WorldObject) -> Self {
-    //     let ty = match [pawn.ty, tree.ty] {
-    //         [WorldObjectType::Pawn, WorldObjectType::Tree] => ActionType::CutTree { pawn_id: pawn.id, tree_id: tree.id },
-    //         _ => ActionType::Completed
-    //     };
-
-    //     Action { ty, next: u32::MAX, state: ActionState::Initial }
-    // }
 
     pub fn is_completed(&self) -> bool {
         matches!(self.ty, ActionType::Completed)

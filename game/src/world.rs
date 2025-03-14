@@ -4,8 +4,8 @@ use terrain::Terrain;
 mod extra_data;
 pub use extra_data::*;
 
-use crate::assets::{AnimationBase, Texture};
-use crate::shared::{AABB, aabb, size};
+use crate::assets::{AnimationBase, ResourceBase, Texture};
+use crate::shared::{AABB, aabb, size, pos};
 use crate::store::SaveAndLoad;
 use crate::Position;
 
@@ -37,6 +37,7 @@ pub struct BaseAnimated {
     pub current_frame: u8,
     pub selected: bool,
     pub flipped: bool,
+    pub deleted: bool,
 }
 
 impl BaseAnimated {
@@ -46,6 +47,15 @@ impl BaseAnimated {
         position.x -= size.width * 0.5;
         position.y -= size.height;
         aabb(position, size)
+    }
+
+    /// Marks this animation as "deleted".
+    pub fn delete(&mut self) {
+        self.position = pos(0.0, 0.0);
+        self.animation = AnimationBase::default();
+        self.selected = false;
+        self.flipped = false;
+        self.deleted = true;
     }
 }
 
@@ -76,7 +86,6 @@ pub struct World {
     pub resources: Vec<BaseStatic>,
 
     pub resources_spawn: Vec<BaseAnimated>,
-    pub resources_spawn_data: Vec<ResourceSpawnData>,
     
     pub trees: Vec<BaseAnimated>,
     pub trees_data: Vec<TreeData>,
@@ -101,7 +110,6 @@ impl World {
         self.structures.clear();
         self.resources.clear();
         self.resources_spawn.clear();
-        self.resources_spawn_data.clear();
         self.trees.clear();
         self.trees_data.clear();
         self.terrain.reset();
@@ -120,6 +128,17 @@ impl World {
         self.total_sprite_count += 1;
         self.trees_data.push(TreeData::default());
         Self::create_inner_actor(&mut self.trees, position, animation)
+    }
+
+    pub fn create_resource_spawn(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+        self.total_sprite_count += 1;
+        Self::create_inner_actor(&mut self.resources_spawn, position, animation)
+    }
+
+    pub fn create_resource(&mut self, position: Position<f32>, sprite: ResourceBase) -> usize {
+        self.total_sprite_count += 1;
+        self.resources.push(BaseStatic { position, aabb: sprite.aabb, selected: false });
+        self.resources.len() - 1
     }
 
     pub fn animated_at(&self, position: Position<f32>) -> Option<WorldObject> {
@@ -263,7 +282,6 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.resources);
 
         writer.write_slice(&self.resources_spawn);
-        writer.save_slice(&self.resources_spawn_data);
 
         writer.write_slice(&self.trees);
         writer.save_slice(&self.trees_data);
@@ -290,7 +308,6 @@ impl SaveAndLoad for World {
         let resources = reader.read_slice().to_vec();
 
         let resources_spawn = reader.read_slice().to_vec();
-        let resources_spawn_data = reader.load_vec();
 
         let trees = reader.read_slice().to_vec();
         let trees_data = reader.load_vec();
@@ -322,7 +339,6 @@ impl SaveAndLoad for World {
             resources,
 
             resources_spawn,
-            resources_spawn_data,
 
             trees,
             trees_data,
@@ -354,7 +370,6 @@ impl Default for World {
             resources: Vec::with_capacity(16),
 
             resources_spawn: Vec::with_capacity(16),
-            resources_spawn_data: Vec::with_capacity(16),
 
             trees: Vec::with_capacity(16),
             trees_data: Vec::with_capacity(16),

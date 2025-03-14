@@ -1,3 +1,5 @@
+use std::hint::unreachable_unchecked;
+
 use crate::data::actions::{self, Action, ActionType};
 use crate::DemoGame;
 
@@ -90,6 +92,7 @@ fn cancel_actions(game: &mut DemoGame) {
         match action.ty {
             ActionType::MoveActor { .. } => { actions::move_actor::cancel(data, action); },
             ActionType::CutTree { .. } => { actions::cut_tree::cancel(data, action); },
+            ActionType::SpawnResource { .. } => { actions::spawn_resource::cancel(data, action); },
             ActionType::Completed => {},
         }
     }
@@ -114,15 +117,16 @@ fn process_active_actions(game: &mut DemoGame) {
         match action.ty {
             ActionType::MoveActor { .. } => { actions::move_actor::process(data, action); },
             ActionType::CutTree { .. } => { actions::cut_tree::process(data, action); },
-            ActionType::Completed => {},
+            ActionType::SpawnResource { .. } => { actions::spawn_resource::process(data, action); },
+            ActionType::Completed => unsafe { unreachable_unchecked() },
         }
 
         if action.is_finalized() {
-            let next_index = action.next as usize;
             if action.next == u32::MAX {
                 *action = Action::completed();
                 manager.completed_actions += 1;
             } else {
+                let next_index = action.next as usize;
                 let new_action = manager.queued[next_index];
                 filter_incompatible_actions(manager, new_action);
                 manager.active[action_index] = new_action;

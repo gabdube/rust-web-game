@@ -35,21 +35,3 @@ impl SaveAndLoad for TreeData {
         }
     }
 }
-
-#[derive(Copy, Clone, Default)]
-pub struct ResourceSpawnData {
-    pub spawn_time_finished: f64,
-}
-
-impl SaveAndLoad for ResourceSpawnData {
-    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        writer.write_f64(self.spawn_time_finished);
-    }
-
-    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let spawn_time_finished = reader.read_f64();
-        ResourceSpawnData {
-            spawn_time_finished,
-        }
-    }
-}

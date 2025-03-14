@@ -17,8 +17,8 @@ pub struct ResourcesBundle {
     pub meat_shadowless: ResourceBase,
     pub wood: ResourceBase,
     pub wood_shadowless: ResourceBase,
-    pub tree_stump: ResourceBase,
 
+    pub tree_stump: ResourceBase,
     pub tree_idle: AnimationBase,
     pub tree_cut: AnimationBase,
 

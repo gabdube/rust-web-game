@@ -1,5 +1,6 @@
 use crate::assets::AnimationBase;
 use crate::data::actions::{Action, ActionType, ActionState};
+use crate::shared::Position;
 use crate::world::{WorldObject, WorldObjectType};
 use crate::DemoGameData;
 
@@ -36,6 +37,10 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, tree: WorldObject) {
 }
 
 pub fn cancel(game: &mut DemoGameData, action: &mut Action) {
+    if !validate(game, action) {
+        return;
+    }
+
     let [pawn_index, tree_index] = params(action);
     game.world.pawns[pawn_index].animation = game.assets.animations.pawn.idle;
     game.world.trees[tree_index].animation = game.assets.resources.tree_idle;
@@ -103,23 +108,28 @@ fn done(game: &mut DemoGameData, action: &mut Action) {
     tree.animation = AnimationBase::from_aabb(game.assets.resources.tree_stump.aabb);
     tree_data.being_harvested = false;
 
-//     // Spawns three wood resource around the tree
-//     let center_pos = tree.position;
-//     for _ in 0..3 {
-//         let x = fastrand::i8(-10..10);
-//         let y = fastrand::i8(-10..10);
-//         let pos = pos(center_pos.x + x as f32, center_pos.y + y as f32);
-//     }
+    // Spawns three wood resource around the tree
+    let center_pos = tree.position;
+    let mut position = center_pos;
+    let mut angle = 0.0;
+    for _ in 0..3 {
+        angle += f32::to_radians(fastrand::u16(60..120) as f32);
 
+        let distance = fastrand::u8(30..64) as f32;
+        position.x = center_pos.x + f32::cos(angle) * distance;
+        position.y = center_pos.y + f32::sin(angle) * distance;
+        crate::data::actions::spawn_resource::spawn_wood(game, position);
+    }
 
     action.state = ActionState::Finalized;
 }
 
 fn validate(game: &mut DemoGameData, action: &mut Action) -> bool {
     let [pawn_index, tree_index] = params(action);
-    game.world.pawns.len() >= pawn_index && game.world.trees.len() >= tree_index
+    game.world.pawns.len() > pawn_index && game.world.trees.len() > tree_index
 }
 
+#[inline]
 fn params(action: &mut Action) -> [usize; 2] {
     match action.ty {
         ActionType::CutTree { pawn_id, tree_id } => [pawn_id as usize, tree_id as usize],

@@ -8,6 +8,10 @@ pub fn new(game: &mut DemoGameData, actor: WorldObject, target_position: Positio
 }
 
 pub fn cancel(game: &mut DemoGameData, action: &mut Action) {
+    if !validate(game, action) {
+        return;
+    }
+
     done(game, action);
 }
 
@@ -97,6 +101,7 @@ fn validate(game: &mut DemoGameData, action: &mut Action) -> bool {
     }
 }
 
+#[inline]
 fn params(action: &mut Action) -> (WorldObject, Position<f32>) {
     match action.ty {
         ActionType::MoveActor { actor, target_position } => (actor, target_position),
