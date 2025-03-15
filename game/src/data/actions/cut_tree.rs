@@ -3,6 +3,11 @@ use crate::data::actions::{Action, ActionType, ActionState};
 use crate::world::{WorldObject, WorldObjectType};
 use crate::DemoGameData;
 
+const MOVE_TO_TREE: u8 = 0;
+const BEGIN_CUT_TREE: u8 = 1;
+const CUT_TREE: u8 = 2;
+const SPAWN_WOOD: u8 = 3;
+
 pub fn new(game: &mut DemoGameData, pawn: WorldObject, tree: WorldObject) {
     match (pawn.ty, tree.ty) {
         (WorldObjectType::Pawn, WorldObjectType::Tree) => {},
@@ -20,19 +25,7 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, tree: WorldObject) {
         return;
     }
 
-    let mut target_position = game.world.trees[tree_index].position;
-    let pawn_x = game.world.pawns[pawn_index as usize].position.x;
-
-    target_position.y += 10.0;
-    if target_position.x > pawn_x {
-        target_position.x -= 60.0;
-    } else {
-        target_position.x += 60.0;
-    }
-
-    let move_action = Action::from_type(ActionType::MoveActor { actor: pawn, target_position });
-    let cut_tree_action = Action::from_type(ActionType::CutTree { pawn_id: pawn.id, tree_id: tree.id });
-    game.actions.push2(move_action, cut_tree_action);
+    game.actions.push(Action::from_type(ActionType::CutTree { pawn_id: pawn.id, tree_id: tree.id }));
 }
 
 pub fn cancel(game: &mut DemoGameData, action: &mut Action) {
@@ -48,22 +41,67 @@ pub fn cancel(game: &mut DemoGameData, action: &mut Action) {
 
 pub fn process(game: &mut DemoGameData, action: &mut Action) {
     if !validate(game, action) {
-        action.state = ActionState::Finalized;
+        action.state = ActionState::Done;
         return;
     }
 
     match action.state {
         ActionState::Initial => init(game, action),
-        ActionState::Running => run(game, action),
-        ActionState::Finalizing => done(game, action),
-        ActionState::Finalized => {}
+        ActionState::Running(MOVE_TO_TREE) => move_to_tree(game, action),
+        ActionState::Running(BEGIN_CUT_TREE) => begin_cut_tree(game, action),
+        ActionState::Running(CUT_TREE) => cut_tree(game, action),
+        ActionState::Running(SPAWN_WOOD) => spawn_wood(game, action),
+        _ => {}
     }
 }
 
 fn init(game: &mut DemoGameData, action: &mut Action) {
-    let [pawn_index, tree_index] = params(action);
-    let world = &mut game.world;
+    let [pawn_index, _] = params(action);
 
+    game.world.pawns[pawn_index].animation = game.assets.animations.pawn.walk;
+
+    action.state = ActionState::Running(MOVE_TO_TREE);
+    
+    move_to_tree(game, action);
+}
+
+fn move_to_tree(game: &mut DemoGameData, action: &mut Action) {
+    let [pawn_index, tree_index] = params(action);
+
+    let world = &mut game.world;
+    let pawn = &mut world.pawns[pawn_index];
+    let tree = &mut world.trees[tree_index];
+    let tree_data = &mut world.trees_data[tree_index];
+
+    if tree_data.being_harvested || tree_data.life == 0 {
+        pawn.animation = game.assets.animations.pawn.idle;
+        action.state = ActionState::Done;
+        return;
+    }
+
+    let mut target_position = tree.position;
+
+    if pawn.position.x > tree.position.x {
+        target_position.x += 60.0;
+    } else {
+        target_position.x -= 60.0;
+    }
+    
+    target_position.y += 10.0;
+
+    let updated_position = super::actions_shared::move_to(pawn.position, target_position, game.global.frame_delta);
+    if updated_position == target_position {
+        action.state = ActionState::Running(BEGIN_CUT_TREE);
+    }
+
+    pawn.position = updated_position;
+    pawn.flipped = pawn.position.x > target_position.x;
+}
+
+fn begin_cut_tree(game: &mut DemoGameData, action: &mut Action) {
+    let [pawn_index, tree_index] = params(action);
+
+    let world = &mut game.world;
     let pawn = &mut world.pawns[pawn_index];
     let tree = &mut world.trees[tree_index];
     let tree_data = &mut world.trees_data[tree_index];
@@ -73,16 +111,16 @@ fn init(game: &mut DemoGameData, action: &mut Action) {
 
     tree.animation = game.assets.resources.tree_cut;
     tree.current_frame = 0;
+
     tree_data.being_harvested = true;
     tree_data.last_drop_timestamp = game.global.time;
 
-    action.state = ActionState::Running;
+    action.state = ActionState::Running(CUT_TREE);
 }
 
-fn run(game: &mut DemoGameData, action: &mut Action) {
+fn cut_tree(game: &mut DemoGameData, action: &mut Action) {
     let [_, tree_index] = params(action);
     let world = &mut game.world;
-
     let tree_data = &mut world.trees_data[tree_index];
 
     if tree_data.life > 0 && game.global.time - tree_data.last_drop_timestamp > 300.0 {
@@ -91,11 +129,11 @@ fn run(game: &mut DemoGameData, action: &mut Action) {
     }
 
     if tree_data.life == 0 {
-        action.state = ActionState::Finalizing;
+        action.state = ActionState::Running(SPAWN_WOOD);
     }
 }
 
-fn done(game: &mut DemoGameData, action: &mut Action) {
+fn spawn_wood(game: &mut DemoGameData, action: &mut Action) {
     let [pawn_index, tree_index] = params(action);
     let world = &mut game.world;
 
@@ -107,7 +145,7 @@ fn done(game: &mut DemoGameData, action: &mut Action) {
     tree.animation = AnimationBase::from_aabb(game.assets.resources.tree_stump.aabb);
     tree_data.being_harvested = false;
 
-    // Spawns three wood resource around the tree
+    // Spawns three wood resources around the tree
     let center_pos = tree.position;
     let mut position = center_pos;
     let mut angle = 0.0;
@@ -118,7 +156,7 @@ fn done(game: &mut DemoGameData, action: &mut Action) {
         crate::data::actions::spawn_resource::spawn_wood(game, position);
     }
 
-    action.state = ActionState::Finalized;
+    action.state = ActionState::Done;
 }
 
 fn validate(game: &mut DemoGameData, action: &mut Action) -> bool {

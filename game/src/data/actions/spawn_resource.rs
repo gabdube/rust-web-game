@@ -3,6 +3,7 @@ use crate::shared::Position;
 use crate::world::{ResourceData, ResourceType};
 use crate::DemoGameData;
 
+const END_SPAWN: u8 = 0;
 
 pub fn spawn_wood(game: &mut DemoGameData, position: Position<f32>) {
     let wood_spawn = game.assets.resources.wood_spawn;
@@ -21,24 +22,21 @@ pub fn cancel(game: &mut DemoGameData, action: &mut Action) {
 
 pub fn process(game: &mut DemoGameData, action: &mut Action) {
     if !validate(game, action) {
-        action.state = ActionState::Finalized;
+        action.state = ActionState::Done;
         return;
     }
 
     match action.state {
         ActionState::Initial => run(game, action),
-        ActionState::Running => run(game, action),
-        ActionState::Finalizing => done(game, action),
-        ActionState::Finalized => {}
+        ActionState::Running(END_SPAWN) => done(game, action),
+        _ => {}
     }
 }
 
 fn run(game: &mut DemoGameData, action: &mut Action) {
     let spawn = game.world.resources_spawn[spawn_index(action)];
     if spawn.current_frame == spawn.animation.last_frame {
-        action.state = ActionState::Finalizing
-    } else {
-        action.state = ActionState::Running
+        action.state = ActionState::Running(END_SPAWN);
     }
 }
 
@@ -63,7 +61,7 @@ fn done(game: &mut DemoGameData, action: &mut Action) {
         _ => {}
     }
 
-    action.state = ActionState::Finalized;
+    action.state = ActionState::Done;
 }
 
 fn validate(game: &mut DemoGameData, action: &mut Action) -> bool {

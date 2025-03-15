@@ -2,6 +2,10 @@ use crate::data::actions::{Action, ActionType, ActionState};
 use crate::world::{ResourceType, WorldObject};
 use crate::DemoGameData;
 
+const MOVE_TO_RESOURCE: u8 = 0;
+const GRAB_RESOURCE: u8 = 1;
+const MOVE_GRABBED_RESOURCE: u8 = 2;
+
 pub fn new(game: &mut DemoGameData, pawn: WorldObject, resource: WorldObject) {
     let pawn_index = pawn.id as usize;
     let resource_index = resource.id as usize;
@@ -14,11 +18,8 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, resource: WorldObject) {
         return;
     }
 
-    let target_position = game.world.resources[resource_index].position;
-
-    let move_action = Action::from_type(ActionType::MoveActor { actor: pawn, target_position });
     let grab_action = Action::from_type(ActionType::GrabResource { pawn_id: pawn.id, resource_id: resource.id });
-    game.actions.push2(move_action, grab_action);
+    game.actions.push(grab_action);
 }
 
 pub fn cancel(game: &mut DemoGameData, action: &mut Action) {
@@ -26,61 +27,98 @@ pub fn cancel(game: &mut DemoGameData, action: &mut Action) {
         return;
     }
 
-    let [pawn_index, resource_index] = params(action);
-    let mut pawn_position = game.world.pawns[pawn_index].position;
-    pawn_position.x += 10.0;
+    if action.running_value() != MOVE_GRABBED_RESOURCE {
+        return;
+    }
 
-    game.world.resources[resource_index].position = pawn_position;
+    let [pawn_index, resource_index] = params(action);
+    let pawn = &mut game.world.pawns[pawn_index];
+    let pawn_data = &mut game.world.pawns_data[pawn_index];
+    let resource = &mut game.world.resources[resource_index];
+    let resource_data = &mut game.world.resources_data[resource_index];
+    
+    pawn_data.grabbed_resource = u32::MAX;
+
+    resource_data.grabbed = false;
+
+    resource.position = pawn.position;
+    resource.position.y += 5.0;
 }
 
 pub fn process(game: &mut DemoGameData, action: &mut Action) {
     if !validate(game, action) {
-        action.state = ActionState::Finalized;
+        action.state = ActionState::Done;
         return;
     }
 
-    // Grab resource is an action that must be cancelled in order to be stopped
     match action.state {
         ActionState::Initial => init(game, action),
-        ActionState::Running => run(game, action),
-        ActionState::Finalizing => {},
-        ActionState::Finalized => {}
+        ActionState::Running(MOVE_TO_RESOURCE) => move_to_resource(game, action),
+        ActionState::Running(GRAB_RESOURCE) => grab_resource(game, action),
+        ActionState::Running(MOVE_GRABBED_RESOURCE) => move_grabbed_resource(game, action),
+        _ => {}
     }
-
-    run(game, action)
 }
 
 fn init(game: &mut DemoGameData, action: &mut Action) {
-    let [_, resource_index] = params(action);
-    let resource_data = &mut game.world.resources_data[resource_index];
+    let [pawn_index, _] = params(action);
+
+    game.world.pawns[pawn_index].animation = game.assets.animations.pawn.walk;
+
+    action.state = ActionState::Running(MOVE_TO_RESOURCE);
+
+    move_to_resource(game, action);
+}
+
+fn move_to_resource(game: &mut DemoGameData, action: &mut Action) {
+    let [pawn_index, resource_index] = params(action);
+
+    let pawn = &mut game.world.pawns[pawn_index];
+    let resource_data = game.world.resources_data[resource_index];
     if resource_data.grabbed {
-        action.state = ActionState::Finalized;
+        pawn.animation = game.assets.animations.pawn.idle;
+        action.state = ActionState::Done;
         return;
     }
 
+    let target_position = game.world.resources[resource_index].position;
+    let updated_position = super::actions_shared::move_to(pawn.position, target_position, game.global.frame_delta);
+    if updated_position == target_position {
+        action.state = ActionState::Running(GRAB_RESOURCE);
+    }
+
+    pawn.position = updated_position;
+    pawn.flipped = pawn.position.x > target_position.x;
+}
+
+fn grab_resource(game: &mut DemoGameData, action: &mut Action) {
+    let [pawn_index, resource_index] = params(action);
+
+    let pawn = &mut game.world.pawns[pawn_index];
+    let pawn_data = &mut game.world.pawns_data[pawn_index];
     let resource = &mut game.world.resources[resource_index];
+    let resource_data = &mut game.world.resources_data[resource_index];
+
+    pawn.animation = game.assets.animations.pawn.idle_hold;
+    pawn_data.grabbed_resource = resource_index as u32;
+
+    resource_data.grabbed = true;
     resource.sprite = match resource_data.resource_type {
         ResourceType::Gold => game.assets.resources.gold_shadowless.aabb,
         ResourceType::Meat => game.assets.resources.meat_shadowless.aabb,
         ResourceType::Wood => game.assets.resources.wood_shadowless.aabb,
     };
 
-    resource_data.grabbed = true;
-
-    action.state = ActionState::Running;
-
-    run(game, action);
+    action.state = ActionState::Running(MOVE_GRABBED_RESOURCE);
 }
 
-fn run(game: &mut DemoGameData, action: &mut Action) {
+fn move_grabbed_resource(game: &mut DemoGameData, action: &mut Action) {
     let [pawn_index, resource_index] = params(action);
+    let pawn = &game.world.pawns[pawn_index];
+    let resource = &mut game.world.resources[resource_index];
 
-    let mut pawn_position = game.world.pawns[pawn_index].position;
-    pawn_position.y -= 60.0;
-
-    game.world.resources[resource_index].position = pawn_position;
-
-    action.state = ActionState::Running;
+    resource.position = pawn.position;
+    resource.position.y -= 60.0;
 }
 
 fn validate(game: &mut DemoGameData, action: &mut Action) -> bool {

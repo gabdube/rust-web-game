@@ -1,10 +1,10 @@
 use crate::shared::Position;
-use crate::world::{WorldObject, ResourceType};
+use crate::world::{ResourceType, WorldObject, WorldObjectType};
 
 /// Different action types. See [Action]
 #[derive(Copy, Clone)]
 pub enum ActionType {
-    Completed,
+    Nop,
     MoveActor { actor: WorldObject, target_position: Position<f32> },
     CutTree { pawn_id: u32, tree_id: u32 },
     SpawnResource { spawn_id: u32, resource_type: ResourceType },
@@ -14,9 +14,8 @@ pub enum ActionType {
 #[derive(Copy, Clone)]
 pub enum ActionState {
     Initial,
-    Running,
-    Finalizing,
-    Finalized,
+    Done,
+    Running(u8),
 }
 
 /// An action is a function that gets spread across a certain amount of time
@@ -24,7 +23,6 @@ pub enum ActionState {
 #[derive(Copy, Clone)]
 pub struct Action {
     pub ty: ActionType,
-    pub next: u32,
     pub state: ActionState,
 }
 
@@ -33,36 +31,42 @@ impl Action {
     pub const fn from_type(ty: ActionType) -> Self {
         Action { 
             ty,
-            next: u32::MAX,
             state: ActionState::Initial
         }
     }
 
-    pub fn completed() -> Self {
+    pub fn nop() -> Self {
         Action {
-            ty: ActionType::Completed,
-            next: u32::MAX,
-            state: ActionState::Finalized,
+            ty: ActionType::Nop,
+            state: ActionState::Done,
         }
     }
 
-    pub fn is_completed(&self) -> bool {
-        matches!(self.ty, ActionType::Completed)
-    }
-
-    pub fn is_finalized(&self) -> bool {
-        matches!(self.state, ActionState::Finalized)
+    pub fn is_done(&self) -> bool {
+        matches!(self.state, ActionState::Done)
     }
 
     /// Check if the action can exist at the same time as another action
+    /// In this function, `self` is the old action and `other is the new one`
     pub fn is_incompatible(&self, other: Action) -> bool {
         match (self.ty, other.ty) {
             (ActionType::MoveActor { actor: actor1, .. }, ActionType::MoveActor { actor: actor2, .. }) => { actor1.id == actor2.id },
+            (ActionType::MoveActor { actor, .. }, ActionType::CutTree { pawn_id, .. }) => { pawn_id == actor.id },
+
             (ActionType::CutTree { pawn_id, .. }, ActionType::MoveActor { actor, .. }) => { pawn_id == actor.id },
-            (ActionType::GrabResource { pawn_id: pid1, resource_id: rid1 }, ActionType::GrabResource { pawn_id: pid2, resource_id: rid2 }) => {
-                pid1 == pid2 || rid1 == rid2
-            },
+            (ActionType::CutTree { pawn_id: pid1, .. }, ActionType::GrabResource { pawn_id: pid2, .. }) => { pid1 == pid2 },
+
+            (ActionType::GrabResource { pawn_id: pid1, .. }, ActionType::MoveActor { actor: actor1, .. }) => { actor1.id == pid1 && actor1.ty == WorldObjectType::Pawn } ,
+            (ActionType::GrabResource { pawn_id: pid1, .. }, ActionType::CutTree { pawn_id: pid2, .. }) => { pid1 == pid2},
             _ => false,
+        }
+    }
+
+    /// Return the value of `ActionState::Running(value)` or 255 if the state of the action is not running
+    pub fn running_value(&self) -> u8 {
+        match self.state {
+            ActionState::Running(value) => value,
+            _ => 255
         }
     }
 }

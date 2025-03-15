@@ -1,3 +1,5 @@
+mod actions_shared;
+
 mod base_action;
 pub use base_action::*;
 

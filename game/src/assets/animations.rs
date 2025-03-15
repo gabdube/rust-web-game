@@ -40,7 +40,7 @@ pub struct PawnAnimation {
     pub hammer: AnimationBase,
     pub axe: AnimationBase,
     pub idle_hold: AnimationBase,
-    pub idle_walk: AnimationBase,
+    pub walk_hold: AnimationBase,
 }
 
 impl PawnAnimation {
@@ -51,7 +51,7 @@ impl PawnAnimation {
             "pawn_hammer" => Some(&mut self.hammer),
             "pawn_axe" => Some(&mut self.axe),
             "pawn_idle_hold" => Some(&mut self.idle_hold),
-            "pawn_walk_hold" => Some(&mut self.idle_walk),
+            "pawn_walk_hold" => Some(&mut self.walk_hold),
             _ => None,
         }?;
 

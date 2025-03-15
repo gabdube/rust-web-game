@@ -103,6 +103,8 @@ pub struct World {
 
     pub terrain: Terrain,
     pub pawns: Vec<BaseAnimated>,
+    pub pawns_data: Vec<PawnData>,
+
     pub warriors: Vec<BaseAnimated>,
     pub archers: Vec<BaseAnimated>,
     pub torch_goblins: Vec<BaseAnimated>,
@@ -133,6 +135,8 @@ impl World {
 
     pub fn reset(&mut self) {
         self.pawns.clear();
+        self.pawns_data.clear();
+
         self.warriors.clear();
         self.archers.clear();
         self.torch_goblins.clear();
@@ -159,6 +163,7 @@ impl World {
 
     pub fn create_pawn(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
+        self.pawns_data.push(PawnData::default());
         Self::create_inner_actor(&mut self.pawns, position, animation)
     }
 
@@ -311,6 +316,8 @@ impl SaveAndLoad for World {
 
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_slice(&self.pawns);
+        writer.write_slice(&self.pawns_data);
+
         writer.write_slice(&self.warriors);
         writer.write_slice(&self.archers);
         writer.write_slice(&self.torch_goblins);
@@ -338,6 +345,8 @@ impl SaveAndLoad for World {
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let pawns = reader.read_slice().to_vec();
+        let pawns_data = reader.read_slice().to_vec();
+
         let warriors = reader.read_slice().to_vec();
         let archers = reader.read_slice().to_vec();
         let torch_goblins = reader.read_slice().to_vec();
@@ -370,6 +379,7 @@ impl SaveAndLoad for World {
             terrain,
 
             pawns,
+            pawns_data,
             warriors,
             archers,
             torch_goblins,
@@ -402,6 +412,7 @@ impl Default for World {
             terrain: Terrain::default(),
     
             pawns: Vec::with_capacity(16),
+            pawns_data: Vec::with_capacity(16),
             warriors: Vec::with_capacity(16),
             archers: Vec::with_capacity(16),
             torch_goblins: Vec::with_capacity(16),

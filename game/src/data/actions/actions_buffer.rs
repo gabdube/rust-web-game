@@ -9,12 +9,6 @@ impl ActionsBuffer {
     pub fn push(&mut self, action: Action) {
         self.new.push(action);
     }
-
-    pub fn push2(&mut self, mut action: Action, queued: Action) {
-        action.next = (self.new.len() + 1) as u32;
-        self.new.push(action);
-        self.new.push(queued);
-    }
 }
 
 impl Default for ActionsBuffer {
