@@ -10,7 +10,7 @@ impl ActionsBuffer {
         self.new.push(action);
     }
 
-    pub fn push_queue(&mut self, mut action: Action, queued: Action) {
+    pub fn push2(&mut self, mut action: Action, queued: Action) {
         action.next = (self.new.len() + 1) as u32;
         self.new.push(action);
         self.new.push(queued);

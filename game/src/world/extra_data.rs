@@ -1,4 +1,5 @@
 use crate::store::SaveAndLoad;
+use super::ResourceType;
 
 #[derive(Copy, Clone)]
 pub struct TreeData {
@@ -34,4 +35,13 @@ impl SaveAndLoad for TreeData {
             being_harvested,
         }
     }
+}
+
+
+/// Align the resource to 4 bytes to allow quick store/load
+#[repr(align(4))]
+#[derive(Copy, Clone)]
+pub struct ResourceData {
+    pub resource_type: ResourceType,
+    pub grabbed: bool,
 }

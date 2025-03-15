@@ -9,6 +9,13 @@ use crate::shared::{AABB, aabb, size, pos};
 use crate::store::SaveAndLoad;
 use crate::Position;
 
+#[derive(Debug, Copy, Clone)]
+pub enum ResourceType {
+    Wood,
+    Meat,
+    Gold
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum WorldObjectType {
     Pawn = 0,
@@ -64,6 +71,7 @@ pub struct BaseStatic {
     pub position: Position<f32>,
     pub sprite: AABB,
     pub selected: bool,
+    pub deleted: bool,
 }
 
 impl BaseStatic {
@@ -74,6 +82,14 @@ impl BaseStatic {
         position.x -= width * 0.5;
         position.y -= height;
         aabb(position, size(width, height))
+    }
+
+    /// Marks this animation as "deleted".
+    pub fn delete(&mut self) {
+        self.position = pos(0.0, 0.0);
+        self.sprite = AABB::default();
+        self.selected = false;
+        self.deleted = true;
     }
 }
 
@@ -95,7 +111,9 @@ pub struct World {
 
     pub decorations: Vec<BaseStatic>,
     pub structures: Vec<BaseStatic>,
+
     pub resources: Vec<BaseStatic>,
+    pub resources_data: Vec<ResourceData>,
 
     pub resources_spawn: Vec<BaseAnimated>,
     
@@ -107,6 +125,8 @@ pub struct World {
 
 impl World {
 
+    /// The total number of sprites in the world
+    /// Used to preallocate the sprite buffer in output
     pub fn total_sprites(&mut self) -> usize {
         self.total_sprite_count as usize
     }
@@ -118,12 +138,18 @@ impl World {
         self.torch_goblins.clear();
         self.tnt_goblins.clear();
         self.sheeps.clear();
+
         self.decorations.clear();
         self.structures.clear();
+
         self.resources.clear();
+        self.resources_data.clear();
         self.resources_spawn.clear();
+
         self.trees.clear();
         self.trees_data.clear();
+
+        self.selected.clear();
         self.terrain.reset();
     }
 
@@ -147,9 +173,10 @@ impl World {
         Self::create_inner_actor(&mut self.resources_spawn, position, animation)
     }
 
-    pub fn create_resource(&mut self, position: Position<f32>, sprite: ResourceBase) -> usize {
+    pub fn create_resource(&mut self, position: Position<f32>, sprite: ResourceBase, resource_data: ResourceData) -> usize {
         self.total_sprite_count += 1;
-        self.resources.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
+        self.resources.push(BaseStatic { position, sprite: sprite.aabb, selected: false, deleted: false });
+        self.resources_data.push(resource_data);
         self.resources.len() - 1
     }
 
@@ -164,7 +191,7 @@ impl World {
             WorldObjectType::ResourceSpawn,
             WorldObjectType::Tree,
         ];
-        let groups = [
+        let groups: [&[BaseAnimated]; 8] = [
             &self.pawns,
             &self.warriors,
             &self.archers,
@@ -289,10 +316,12 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.torch_goblins);
         writer.write_slice(&self.tnt_goblins);
         writer.write_slice(&self.sheeps);
+
         writer.write_slice(&self.decorations);
         writer.write_slice(&self.structures);
+        
         writer.write_slice(&self.resources);
-
+        writer.write_slice(&self.resources_data);
         writer.write_slice(&self.resources_spawn);
 
         writer.write_slice(&self.trees);
@@ -317,8 +346,9 @@ impl SaveAndLoad for World {
 
         let decorations = reader.read_slice().to_vec();
         let structures = reader.read_slice().to_vec();
+        
         let resources = reader.read_slice().to_vec();
-
+        let resources_data = reader.read_slice().to_vec();
         let resources_spawn = reader.read_slice().to_vec();
 
         let trees = reader.read_slice().to_vec();
@@ -348,8 +378,9 @@ impl SaveAndLoad for World {
 
             decorations,
             structures,
-            resources,
 
+            resources,
+            resources_data,
             resources_spawn,
 
             trees,
@@ -379,8 +410,9 @@ impl Default for World {
 
             decorations: Vec::with_capacity(16),
             structures: Vec::with_capacity(16),
-            resources: Vec::with_capacity(16),
-
+            
+            resources: Vec::with_capacity(32),
+            resources_data: Vec::with_capacity(32),
             resources_spawn: Vec::with_capacity(16),
 
             trees: Vec::with_capacity(16),

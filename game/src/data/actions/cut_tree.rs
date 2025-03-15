@@ -32,7 +32,7 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, tree: WorldObject) {
 
     let move_action = Action::from_type(ActionType::MoveActor { actor: pawn, target_position });
     let cut_tree_action = Action::from_type(ActionType::CutTree { pawn_id: pawn.id, tree_id: tree.id });
-    game.actions.push_queue(move_action, cut_tree_action);
+    game.actions.push2(move_action, cut_tree_action);
 }
 
 pub fn cancel(game: &mut DemoGameData, action: &mut Action) {

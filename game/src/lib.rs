@@ -98,11 +98,11 @@ impl DemoGame {
     }
 
     pub fn on_reload(&mut self) {
-        #[cfg(feature="editor")]
-        state::editor::init(&mut self.data, crate::state::TestId::PawnAi);
+        // #[cfg(feature="editor")]
+        // state::editor::init(&mut self.data, crate::state::TestId::PawnAi);
 
-        #[cfg(not(feature="editor"))]
-        state::gameplay::init(&mut self.data);
+        // #[cfg(not(feature="editor"))]
+        // state::gameplay::init(&mut self.data);
     }
 
     pub fn update(&mut self, time: f64) -> bool {

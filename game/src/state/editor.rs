@@ -95,6 +95,7 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
     let target_object = target_object.unwrap();
     match target_object.ty {
         WorldObjectType::Tree => actions::cut_tree::new(game, pawn, target_object),
+        WorldObjectType::Resource => actions::grab_resource::new(game, pawn, target_object),
         _ => {},
     }
 }

@@ -1,13 +1,13 @@
 use crate::data::actions::{Action, ActionType, ActionState};
 use crate::shared::Position;
+use crate::world::{ResourceData, ResourceType};
 use crate::DemoGameData;
 
-const RESOURCE_TYPE_WOOD: u8 = 1;
 
 pub fn spawn_wood(game: &mut DemoGameData, position: Position<f32>) {
     let wood_spawn = game.assets.resources.wood_spawn;
     let spawn_id = game.world.create_resource_spawn(position, &wood_spawn);
-    let spawn_action = Action::from_type(ActionType::SpawnResource { spawn_id: spawn_id as u32, resource_type: RESOURCE_TYPE_WOOD });
+    let spawn_action = Action::from_type(ActionType::SpawnResource { spawn_id: spawn_id as u32, resource_type: ResourceType::Wood });
     game.actions.push(spawn_action);
 }
 
@@ -48,12 +48,17 @@ fn done(game: &mut DemoGameData, action: &mut Action) {
         _ => unsafe { ::std::hint::unreachable_unchecked()}
     };
 
+    let data = ResourceData {
+        resource_type,
+        grabbed: false,
+    };
+
     let spawn_position = game.world.resources_spawn[spawn_index].position;
     game.world.resources_spawn[spawn_index].delete();
 
     match resource_type {
-        RESOURCE_TYPE_WOOD => {
-            game.world.create_resource(spawn_position, game.assets.resources.wood);
+        ResourceType::Wood  => {
+            game.world.create_resource(spawn_position, game.assets.resources.wood, data);
         },
         _ => {}
     }

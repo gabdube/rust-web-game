@@ -21,7 +21,7 @@ use crate::{DemoGame, DemoGameInit};
 
 #[derive(Copy, Clone)]
 pub struct Texture {
-    // The unique ID of the texture. It is also the index of the texture array in the engine data
+    // The unique ID of the texture. It is also the index of the texture in the engine texture array
     pub id: u32,
 }
 

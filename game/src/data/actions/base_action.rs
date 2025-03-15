@@ -1,5 +1,5 @@
 use crate::shared::Position;
-use crate::world::WorldObject;
+use crate::world::{WorldObject, ResourceType};
 
 /// Different action types. See [Action]
 #[derive(Copy, Clone)]
@@ -7,7 +7,8 @@ pub enum ActionType {
     Completed,
     MoveActor { actor: WorldObject, target_position: Position<f32> },
     CutTree { pawn_id: u32, tree_id: u32 },
-    SpawnResource { spawn_id: u32, resource_type: u8 }
+    SpawnResource { spawn_id: u32, resource_type: ResourceType },
+    GrabResource { pawn_id: u32, resource_id: u32 },
 }
 
 #[derive(Copy, Clone)]
@@ -58,6 +59,9 @@ impl Action {
         match (self.ty, other.ty) {
             (ActionType::MoveActor { actor: actor1, .. }, ActionType::MoveActor { actor: actor2, .. }) => { actor1.id == actor2.id },
             (ActionType::CutTree { pawn_id, .. }, ActionType::MoveActor { actor, .. }) => { pawn_id == actor.id },
+            (ActionType::GrabResource { pawn_id: pid1, resource_id: rid1 }, ActionType::GrabResource { pawn_id: pid2, resource_id: rid2 }) => {
+                pid1 == pid2 || rid1 == rid2
+            },
             _ => false,
         }
     }

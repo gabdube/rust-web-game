@@ -2,6 +2,7 @@
 /// Data with `repr(C)` will be directly read from memory by the engine
 
 use crate::shared::{aabb, Position};
+use crate::world::BaseAnimated;
 use crate::DemoGame;
 
 /// Tells the engine which "module" to use to process a draw update
@@ -268,7 +269,7 @@ fn render_sprites(game: &mut DemoGame) {
 }
 
 fn gen_sprites(world: &crate::world::World, output: &mut GameOutput) {
-    let sprite_groups = [
+    let sprite_groups: [(u32, &[BaseAnimated]); 8] = [
         (world.units_texture.id, &world.pawns),
         (world.units_texture.id, &world.warriors),
         (world.units_texture.id, &world.archers),
@@ -293,7 +294,7 @@ fn gen_sprites(world: &crate::world::World, output: &mut GameOutput) {
 }
 
 fn gen_sprites_with_animation(world: &mut crate::world::World, output: &mut GameOutput) {
-    let sprite_groups = [
+    let sprite_groups: [(u32, &mut [BaseAnimated]); 8] = [
         (world.units_texture.id, &mut world.pawns),
         (world.units_texture.id, &mut world.warriors),
         (world.units_texture.id, &mut world.archers),
