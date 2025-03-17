@@ -12,6 +12,13 @@ pub fn spawn_wood(game: &mut DemoGameData, position: Position<f32>) {
     game.actions.push(spawn_action);
 }
 
+pub fn spawn_gold(game: &mut DemoGameData, position: Position<f32>) {
+    let gold_spawn = game.assets.resources.gold_spawn;
+    let spawn_id = game.world.create_resource_spawn(position, &gold_spawn);
+    let spawn_action = Action::from_type(ActionType::SpawnResource { spawn_id: spawn_id as u32, resource_type: ResourceType::Gold });
+    game.actions.push(spawn_action);
+}
+
 pub fn cancel(game: &mut DemoGameData, action: &mut Action) {
     if !validate(game, action) {
         return;
@@ -58,7 +65,12 @@ fn done(game: &mut DemoGameData, action: &mut Action) {
         ResourceType::Wood  => {
             game.world.create_resource(spawn_position, game.assets.resources.wood, data);
         },
-        _ => {}
+        ResourceType::Gold  => {
+            game.world.create_resource(spawn_position, game.assets.resources.gold, data);
+        },
+        ResourceType::Meat  => {
+            game.world.create_resource(spawn_position, game.assets.resources.meat, data);
+        },
     }
 
     action.state = ActionState::Done;

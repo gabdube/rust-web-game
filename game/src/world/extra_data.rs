@@ -49,6 +49,7 @@ pub struct ResourceData {
 #[derive(Copy, Clone)]
 pub struct PawnData {
     pub grabbed_resource: u32,
+    pub assigned_mine: u32,
 }
 
 impl PawnData {
@@ -63,7 +64,77 @@ impl PawnData {
 impl Default for PawnData {
     fn default() -> Self {
         PawnData {
-            grabbed_resource: u32::MAX
+            grabbed_resource: u32::MAX,
+            assigned_mine: u32::MAX,
+        }
+    }
+}
+
+
+#[derive(Copy, Clone)]
+pub struct StructureGoldMineData {
+    pub last_drop_timestamp: f64,
+    pub miners_ids: [u32; 3],
+    pub miners_count: u8,
+    pub remaining_gold: u8,
+}
+
+impl StructureGoldMineData {
+    pub fn can_be_mined(&self) -> bool {
+        self.miners_count < 3 && self.remaining_gold > 0
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum StructureData {
+    GoldMine(StructureGoldMineData)
+}
+
+impl StructureData {
+    pub fn gold_mine_mut(&mut self) -> &mut StructureGoldMineData {
+        match self {
+            StructureData::GoldMine(data) => data,
+            //_ => panic!()
+        }
+    }
+}
+
+impl Default for StructureGoldMineData {
+    fn default() -> Self {
+        StructureGoldMineData {
+            last_drop_timestamp: 0.0,
+            miners_ids: [u32::MAX; 3],
+            miners_count: 0,
+            remaining_gold: 5,
+        }
+    }
+}
+
+impl SaveAndLoad for StructureData {
+    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
+        match self {
+            Self::GoldMine(value) => {
+                writer.write_u32(1);
+                writer.write_f64(value.last_drop_timestamp);
+                writer.write(&value.miners_ids);
+                writer.write_u32(value.miners_count as u32);
+                writer.write_u32(value.remaining_gold as u32);
+            }
+        }
+    }
+
+    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
+        let data_id = reader.read_u32();
+        match data_id {
+            1 => {
+                Self::GoldMine(StructureGoldMineData {
+                    last_drop_timestamp: reader.read_f64(),
+                    miners_ids: reader.read(),
+                    miners_count: reader.read_u32() as u8,
+                    remaining_gold: reader.read_u32() as u8,
+                })
+            },
+            _ => panic!("Malformed data")
         }
     }
 }

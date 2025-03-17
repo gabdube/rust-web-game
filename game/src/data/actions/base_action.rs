@@ -1,5 +1,5 @@
 use crate::shared::Position;
-use crate::world::{ResourceType, WorldObject, WorldObjectType};
+use crate::world::{ResourceType, WorldObject};
 
 /// Different action types. See [Action]
 #[derive(Copy, Clone)]
@@ -9,6 +9,7 @@ pub enum ActionType {
     CutTree { pawn_id: u32, tree_id: u32 },
     SpawnResource { spawn_id: u32, resource_type: ResourceType },
     GrabResource { pawn_id: u32, resource_id: u32 },
+    StartMining { pawn_id: u32, structure_id: u32 },
 }
 
 #[derive(Copy, Clone)]
@@ -52,12 +53,20 @@ impl Action {
         match (self.ty, other.ty) {
             (ActionType::MoveActor { actor: actor1, .. }, ActionType::MoveActor { actor: actor2, .. }) => { actor1.id == actor2.id },
             (ActionType::MoveActor { actor, .. }, ActionType::CutTree { pawn_id, .. }) => { pawn_id == actor.id },
+            (ActionType::MoveActor { actor, .. }, ActionType::StartMining { pawn_id, .. }) => { pawn_id == actor.id },
 
             (ActionType::CutTree { pawn_id, .. }, ActionType::MoveActor { actor, .. }) => { pawn_id == actor.id },
             (ActionType::CutTree { pawn_id: pid1, .. }, ActionType::GrabResource { pawn_id: pid2, .. }) => { pid1 == pid2 },
+            (ActionType::CutTree { pawn_id: pid1, .. }, ActionType::StartMining { pawn_id: pid2, .. }) => { pid1 == pid2 },
 
-            (ActionType::GrabResource { pawn_id: pid1, .. }, ActionType::MoveActor { actor: actor1, .. }) => { actor1.id == pid1 && actor1.ty == WorldObjectType::Pawn } ,
-            (ActionType::GrabResource { pawn_id: pid1, .. }, ActionType::CutTree { pawn_id: pid2, .. }) => { pid1 == pid2},
+            (ActionType::GrabResource { pawn_id: pid1, .. }, ActionType::CutTree { pawn_id: pid2, .. }) => { pid1 == pid2 },
+            (ActionType::GrabResource { pawn_id: pid1, .. }, ActionType::GrabResource { pawn_id: pid2, .. }) => { pid1 == pid2 },
+            (ActionType::GrabResource { pawn_id: pid1, .. }, ActionType::StartMining { pawn_id: pid2, .. }) => { pid1 == pid2 },
+
+            (ActionType::StartMining { pawn_id: pid1, .. }, ActionType::MoveActor { actor: actor2, .. }) => { pid1 == actor2.id },
+            (ActionType::StartMining { pawn_id: pid1, .. }, ActionType::CutTree { pawn_id: pid2, .. }) => { pid1 == pid2 },
+            (ActionType::StartMining { pawn_id: pid1, .. }, ActionType::GrabResource { pawn_id: pid2, .. }) => { pid1 == pid2 },
+
             _ => false,
         }
     }

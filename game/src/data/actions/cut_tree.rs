@@ -12,7 +12,7 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, tree: WorldObject) {
     match (pawn.ty, tree.ty) {
         (WorldObjectType::Pawn, WorldObjectType::Tree) => {},
         _ => { return; }
-    };
+    }
 
     let pawn_index = pawn.id as usize;
     let tree_index = tree.id as usize;

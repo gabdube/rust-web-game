@@ -10,3 +10,4 @@ pub mod move_actor;
 pub mod cut_tree;
 pub mod spawn_resource;
 pub mod grab_resource;
+pub mod start_mining;

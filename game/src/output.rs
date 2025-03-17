@@ -323,7 +323,7 @@ fn gen_sprites_with_animation(world: &mut crate::world::World, output: &mut Game
 
 fn gen_static_sprites(world: &crate::world::World, output: &mut GameOutput) {
     let texture_id = world.static_resources_texture.id;
-    let sprites_groups = [&world.decorations, &world.structures, &world.resources];
+    let sprites_groups = [&world.decorations, &world.structures];
     let builder = &mut output.sprites_builder;
     for group in sprites_groups {
         for unit in group {
@@ -334,6 +334,21 @@ fn gen_static_sprites(world: &crate::world::World, output: &mut GameOutput) {
                 sprite
             });
         }
+    }
+
+    // Grabbed resource have a different y position if they are grabbed
+    for (resource, resource_data) in world.resources.iter().zip(world.resources_data.iter()) {
+        let sprite = build_static_sprite(resource);
+        let y = match resource_data.grabbed {
+            true => resource.position.y + 60.0,
+            false => resource.position.y,
+        };
+
+        builder.push(TempSprite {
+            texture_id,
+            y,
+            sprite
+        });
     }
 }
 

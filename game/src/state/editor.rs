@@ -1,7 +1,7 @@
 //! Special debugging state to test features
 use crate::data::actions;
 use crate::state::GameState;
-use crate::world::{WorldObject, WorldObjectType};
+use crate::world::{StructureData, WorldObject, WorldObjectType};
 use crate::{DemoGameData, pos};
 
 #[repr(u32)]
@@ -52,6 +52,7 @@ fn init_pawn_tests(data: &mut DemoGameData) {
     world.create_tree(pos(300.0, 220.0), &assets.resources.tree_idle);
     world.create_tree(pos(380.0, 300.0), &assets.resources.tree_idle);
     world.create_tree(pos(230.0, 330.0), &assets.resources.tree_idle);
+    world.create_gold_mine(pos(200.0, 500.0), assets.structures.gold_mine_inactive);
 }
 
 pub fn on_left_mouse(game: &mut DemoGameData) {
@@ -96,6 +97,11 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
     match target_object.ty {
         WorldObjectType::Tree => actions::cut_tree::new(game, pawn, target_object),
         WorldObjectType::Resource => actions::grab_resource::new(game, pawn, target_object),
+        WorldObjectType::Structure => {
+            match game.world.structures_data[target_object.id as usize] {
+                StructureData::GoldMine(_) => actions::start_mining::new(game, pawn, target_object),
+            } 
+        },
         _ => {},
     }
 }

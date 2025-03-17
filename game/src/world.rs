@@ -4,7 +4,7 @@ use terrain::Terrain;
 mod extra_data;
 pub use extra_data::*;
 
-use crate::assets::{AnimationBase, ResourceBase, Texture};
+use crate::assets::{AnimationBase, ResourceBase, StructureBase, Texture};
 use crate::shared::{AABB, aabb, size, pos};
 use crate::store::SaveAndLoad;
 use crate::Position;
@@ -112,7 +112,9 @@ pub struct World {
     pub sheeps: Vec<BaseAnimated>,
 
     pub decorations: Vec<BaseStatic>,
+
     pub structures: Vec<BaseStatic>,
+    pub structures_data: Vec<StructureData>,
 
     pub resources: Vec<BaseStatic>,
     pub resources_data: Vec<ResourceData>,
@@ -144,7 +146,9 @@ impl World {
         self.sheeps.clear();
 
         self.decorations.clear();
+        
         self.structures.clear();
+        self.structures_data.clear();
 
         self.resources.clear();
         self.resources_data.clear();
@@ -171,6 +175,12 @@ impl World {
         self.total_sprite_count += 1;
         self.trees_data.push(TreeData::default());
         Self::create_inner_actor(&mut self.trees, position, animation)
+    }
+
+    pub fn create_gold_mine(&mut self, position: Position<f32>, sprite: StructureBase) {
+        self.total_sprite_count += 1;
+        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false, deleted: false });
+        self.structures_data.push(StructureData::GoldMine(Default::default()));
     }
 
     pub fn create_resource_spawn(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
@@ -325,7 +335,9 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.sheeps);
 
         writer.write_slice(&self.decorations);
+
         writer.write_slice(&self.structures);
+        writer.save_slice(&self.structures_data);
         
         writer.write_slice(&self.resources);
         writer.write_slice(&self.resources_data);
@@ -354,7 +366,9 @@ impl SaveAndLoad for World {
         let sheeps = reader.read_slice().to_vec();
 
         let decorations = reader.read_slice().to_vec();
+
         let structures = reader.read_slice().to_vec();
+        let structures_data = reader.load_vec();
         
         let resources = reader.read_slice().to_vec();
         let resources_data = reader.read_slice().to_vec();
@@ -387,7 +401,9 @@ impl SaveAndLoad for World {
             sheeps,
 
             decorations,
+
             structures,
+            structures_data,
 
             resources,
             resources_data,
@@ -420,7 +436,9 @@ impl Default for World {
             sheeps: Vec::with_capacity(16),
 
             decorations: Vec::with_capacity(16),
+    
             structures: Vec::with_capacity(16),
+            structures_data: Vec::with_capacity(16),
             
             resources: Vec::with_capacity(32),
             resources_data: Vec::with_capacity(32),

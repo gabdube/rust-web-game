@@ -56,6 +56,7 @@ fn cancel_actions(game: &mut DemoGame) {
             ActionType::CutTree { .. } => { actions::cut_tree::cancel(data, action); },
             ActionType::SpawnResource { .. } => { actions::spawn_resource::cancel(data, action); },
             ActionType::GrabResource { .. } => { actions::grab_resource::cancel(data, action); },
+            ActionType::StartMining { .. } => { actions::start_mining::cancel(data, action); },
             ActionType::Nop => {},
         }
     }
@@ -82,6 +83,7 @@ fn process_active_actions(game: &mut DemoGame) {
             ActionType::CutTree { .. } => { actions::cut_tree::process(data, action); },
             ActionType::SpawnResource { .. } => { actions::spawn_resource::process(data, action); },
             ActionType::GrabResource { .. } => { actions::grab_resource::process(data, action); },
+            ActionType::StartMining { .. } => { actions::start_mining::process(data, action); },
             ActionType::Nop => { }
         }
 
