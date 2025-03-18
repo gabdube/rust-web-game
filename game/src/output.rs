@@ -357,13 +357,9 @@ fn order_sprites(output: &mut GameOutput) {
 
     // Sprites with a lower Y value gets rendered first
     output.sprites_builder.sort_unstable_by(|v1, v2| {
-        let diff = v1.y - v2.y;
-        if diff < -1.0 {
-            Ordering::Less
-        } else if diff > 1.0 {
-            Ordering::Greater
-        } else {
-            v1.texture_id.cmp(&v2.texture_id)
+        match v1.y.total_cmp(&v2.y) {
+            v @ (Ordering::Greater | Ordering::Less) => v,
+            _ =>  v1.texture_id.cmp(&v2.texture_id)
         }
     });
 }

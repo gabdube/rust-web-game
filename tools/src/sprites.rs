@@ -18,6 +18,9 @@ pub struct AnimationInfo {
 pub enum SpriteInfo {
     /// The sprite spans the whole image
     Simple,
+    /// The sprite spans the whole image and the blank space should not be trimmed automatically
+    /// PADDING is ignored
+    SimpleNoTrimming,
     /// The sprite in a subsection of the image delimited by `Rect`
     SimpleSub(Rect),
     /// The sprite is an animation
@@ -61,6 +64,12 @@ impl SpriteData {
             SpriteInfo::Simple => {
                 let src_rect = rect(0, 0, image_info.width, image_info.height);
                 optimize_simple_sprite(image_info.line_size, &src_rect, &bytes, &mut sprite.size, &mut sprite.pixels);
+                sprite.frame_size = sprite.size;
+            },
+            SpriteInfo::SimpleNoTrimming => {
+                let src_rect = rect(0, 0, image_info.width, image_info.height);
+                sprite.pixels = bytes;
+                sprite.size = src_rect.size();
                 sprite.frame_size = sprite.size;
             },
             SpriteInfo::SimpleSub(src_rect) => {

@@ -49,14 +49,13 @@ pub struct ResourceData {
 #[derive(Copy, Clone)]
 pub struct PawnData {
     pub grabbed_resource: u32,
-    pub assigned_mine: u32,
 }
 
 impl PawnData {
-    pub fn grabbed_resource(&self) -> Option<u32> {
+    pub fn grabbed_resource(&self) -> Option<usize> {
         match self.grabbed_resource == u32::MAX {
             true => None,
-            false => Some(self.grabbed_resource)
+            false => Some(self.grabbed_resource as usize)
         }
     }
 }
@@ -65,7 +64,6 @@ impl Default for PawnData {
     fn default() -> Self {
         PawnData {
             grabbed_resource: u32::MAX,
-            assigned_mine: u32::MAX,
         }
     }
 }

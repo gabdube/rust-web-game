@@ -1,5 +1,5 @@
 //! Special debugging state to test features
-use crate::data::actions;
+use crate::behaviour;
 use crate::state::GameState;
 use crate::world::{StructureData, WorldObject, WorldObjectType};
 use crate::{DemoGameData, pos};
@@ -46,12 +46,20 @@ pub fn init(game: &mut DemoGameData, test: TestId) {
 fn init_pawn_tests(data: &mut DemoGameData) {
     let world = &mut data.world;
     let assets = &data.assets;
+
     world.create_pawn(pos(100.0, 100.0), &assets.animations.pawn.idle);
     world.create_pawn(pos(100.0, 200.0), &assets.animations.pawn.idle);
     world.create_pawn(pos(100.0, 300.0), &assets.animations.pawn.idle);
+    
     world.create_tree(pos(300.0, 220.0), &assets.resources.tree_idle);
     world.create_tree(pos(380.0, 300.0), &assets.resources.tree_idle);
     world.create_tree(pos(230.0, 330.0), &assets.resources.tree_idle);
+    
+    world.create_sheep(pos(550.0, 170.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(590.0, 210.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(520.0, 240.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(490.0, 190.0), &assets.animations.sheep.idle);
+    
     world.create_gold_mine(pos(200.0, 500.0), assets.structures.gold_mine_inactive);
 }
 
@@ -89,17 +97,17 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
     let cursor_world_position = game.inputs.mouse_position + game.global.view_offset;
 
     if target_object.is_none() || game.inputs.left_shift.pressed() {
-        actions::move_actor::new(game, pawn, cursor_world_position);
+        behaviour::pawn::pawn_move::new(game, pawn, cursor_world_position);
         return;
     }
 
     let target_object = target_object.unwrap();
     match target_object.ty {
-        WorldObjectType::Tree => actions::cut_tree::new(game, pawn, target_object),
-        WorldObjectType::Resource => actions::grab_resource::new(game, pawn, target_object),
+        WorldObjectType::Tree => behaviour::pawn::harvest_wood::new(game, pawn, target_object),
+        WorldObjectType::Resource =>  behaviour::pawn::grab_resource::new(game, pawn, target_object),
         WorldObjectType::Structure => {
             match game.world.structures_data[target_object.id as usize] {
-                StructureData::GoldMine(_) => actions::start_mining::new(game, pawn, target_object),
+                StructureData::GoldMine(_) => behaviour::pawn::harvest_gold::new(game, pawn, target_object),
             } 
         },
         _ => {},

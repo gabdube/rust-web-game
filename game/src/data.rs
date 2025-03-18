@@ -1,4 +1,4 @@
-pub mod actions;
+//! Storage for the game data
 
 use crate::shared::{Position, Size};
 use crate::{assets, inputs, state, store, world};
@@ -47,8 +47,6 @@ pub struct DemoGameData {
     pub assets: assets::Assets,
     /// Game data
     pub world: world::World,
-    /// Temporary buffer to hold new actions
-    pub actions: actions::ActionsBuffer,
     /// Data unique to certain application state
     pub state: state::GameState,
 }
@@ -70,7 +68,6 @@ impl Default for DemoGameData {
             inputs: inputs::InputState::default(),
             assets: assets::Assets::default(),
             world: world::World::default(),
-            actions: actions::ActionsBuffer::default(),
             state: state::GameState::Startup,
         }
     }
@@ -104,7 +101,6 @@ impl store::SaveAndLoad for DemoGameData {
     fn save(&self, writer: &mut store::SaveFileWriter) {
         writer.save(&self.assets);
         writer.save(&self.world);
-        writer.save(&self.actions);
         writer.save(&self.state);
         writer.save(&self.global);
     }
@@ -112,14 +108,12 @@ impl store::SaveAndLoad for DemoGameData {
     fn load(reader: &mut store::SaveFileReader) -> Self {
         let assets = reader.load();
         let world = reader.load();
-        let actions = reader.load();
         let state = reader.load();
         let global = reader.load();
 
         DemoGameData {
             assets,
             world,
-            actions,
             state,
             global,
             inputs: Default::default(),

@@ -22,17 +22,6 @@ impl AnimationBase {
     }
 }
 
-#[derive(Default, Copy, Clone, PartialEq)]
-pub enum PawnAnimationType {
-    #[default]
-    Idle,
-    Walk,
-    Hammer,
-    Axe,
-    IdleHold,
-    IdleWalk
-}
-
 #[derive(Default, Copy, Clone)]
 pub struct PawnAnimation {
     pub idle: AnimationBase,

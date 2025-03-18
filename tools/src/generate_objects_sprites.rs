@@ -60,9 +60,9 @@ static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     ("arrow_stuck", "Factions/Knights/Troops/Archer/Arrow/Arrow.png", SpriteInfo::sub(0, 64, 64, 128)),
 
     // Resources
-    ("gold_mine", "Resources/Gold Mine/GoldMine_Active.png", SpriteInfo::auto()),
-    ("gold_mine_destroyed", "Resources/Gold Mine/GoldMine_Destroyed.png", SpriteInfo::auto()),
-    ("gold_mine_inactive", "Resources/Gold Mine/GoldMine_Inactive.png", SpriteInfo::auto()),
+    ("gold_mine", "Resources/Gold Mine/GoldMine_Active.png", SpriteInfo::SimpleNoTrimming),
+    ("gold_mine_destroyed", "Resources/Gold Mine/GoldMine_Destroyed.png", SpriteInfo::SimpleNoTrimming),
+    ("gold_mine_inactive", "Resources/Gold Mine/GoldMine_Inactive.png", SpriteInfo::SimpleNoTrimming),
     ("gold_noshadow", "Resources/Resources/G_Idle_(NoShadow).png", SpriteInfo::auto()),
     ("gold", "Resources/Resources/G_Idle.png", SpriteInfo::auto()),
     ("meat_noshadow", "Resources/Resources/M_Idle_(NoShadow).png", SpriteInfo::auto()),

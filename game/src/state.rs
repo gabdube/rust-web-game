@@ -10,6 +10,7 @@ pub use editor::{EditorState, TestId};
 
 use crate::inputs::InputState;
 use crate::store::SaveAndLoad;
+use crate::DemoGame;
 
 pub enum GameState {
     Startup,
@@ -20,10 +21,11 @@ pub enum GameState {
     Editor(EditorState)
 }
 
-pub fn update(game: &mut crate::DemoGameData) {
+pub fn update(game: &mut DemoGame) {
     use crate::state::GameState;
 
-    match game.state {
+    let data = &mut game.data;
+    match data.state {
         GameState::MainMenu => {
 
         },
@@ -31,19 +33,19 @@ pub fn update(game: &mut crate::DemoGameData) {
             
         },
         GameState::Editor(_) => {
-            if game.inputs.left_mouse_clicked() {
-                crate::state::editor::on_left_mouse(game);
+            if data.inputs.left_mouse_clicked() {
+                crate::state::editor::on_left_mouse(data);
             }
 
-            if game.inputs.right_mouse_clicked() {
-                crate::state::editor::on_right_mouse(game);
+            if data.inputs.right_mouse_clicked() {
+                crate::state::editor::on_right_mouse(data);
             }
         },
         GameState::Startup => {
         }
     }
 
-    clear_inputs_after_state_process(&mut game.inputs);
+    clear_inputs_after_state_process(&mut data.inputs);
 }
 
 fn clear_inputs_after_state_process(inputs: &mut InputState) {

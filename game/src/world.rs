@@ -5,6 +5,7 @@ mod extra_data;
 pub use extra_data::*;
 
 use crate::assets::{AnimationBase, ResourceBase, StructureBase, Texture};
+use crate::behaviour;
 use crate::shared::{AABB, aabb, size, pos};
 use crate::store::SaveAndLoad;
 use crate::Position;
@@ -12,7 +13,7 @@ use crate::Position;
 #[derive(Debug, Copy, Clone)]
 pub enum ResourceType {
     Wood,
-    Meat,
+    Food,
     Gold
 }
 
@@ -71,7 +72,7 @@ pub struct BaseStatic {
     pub position: Position<f32>,
     pub sprite: AABB,
     pub selected: bool,
-    pub deleted: bool,
+    // pub deleted: bool,
 }
 
 impl BaseStatic {
@@ -84,13 +85,12 @@ impl BaseStatic {
         aabb(position, size(width, height))
     }
 
-    /// Marks this animation as "deleted".
-    pub fn delete(&mut self) {
-        self.position = pos(0.0, 0.0);
-        self.sprite = AABB::default();
-        self.selected = false;
-        self.deleted = true;
-    }
+    // pub fn delete(&mut self) {
+    //     self.position = pos(0.0, 0.0);
+    //     self.sprite = AABB::default();
+    //     self.selected = false;
+    //     self.deleted = true;
+    // }
 }
 
 
@@ -102,8 +102,10 @@ pub struct World {
     pub units_texture: Texture,
 
     pub terrain: Terrain,
+
     pub pawns: Vec<BaseAnimated>,
     pub pawns_data: Vec<PawnData>,
+    pub pawns_behaviour: Vec<behaviour::pawn::PawnBehaviour>,
 
     pub warriors: Vec<BaseAnimated>,
     pub archers: Vec<BaseAnimated>,
@@ -120,6 +122,7 @@ pub struct World {
     pub resources_data: Vec<ResourceData>,
 
     pub resources_spawn: Vec<BaseAnimated>,
+    pub resources_spawn_behaviour: Vec<behaviour::spawn_resources::SpawnResourceBehaviour>,
     
     pub trees: Vec<BaseAnimated>,
     pub trees_data: Vec<TreeData>,
@@ -168,7 +171,13 @@ impl World {
     pub fn create_pawn(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         self.pawns_data.push(PawnData::default());
+        self.pawns_behaviour.push(behaviour::pawn::PawnBehaviour::idle());
         Self::create_inner_actor(&mut self.pawns, position, animation)
+    }
+
+    pub fn create_sheep(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+        self.total_sprite_count += 1;
+        Self::create_inner_actor(&mut self.sheeps, position, animation)
     }
 
     pub fn create_tree(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
@@ -183,8 +192,9 @@ impl World {
         self.structures_data.push(StructureData::GoldMine(Default::default()));
     }
 
-    pub fn create_resource_spawn(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_resource_spawn(&mut self, position: Position<f32>, animation: &AnimationBase, resource_type: ResourceType) -> usize {
         self.total_sprite_count += 1;
+        self.resources_spawn_behaviour.push(behaviour::spawn_resources::SpawnResourceBehaviour::spawn(resource_type));
         Self::create_inner_actor(&mut self.resources_spawn, position, animation)
     }
 
@@ -327,6 +337,7 @@ impl SaveAndLoad for World {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_slice(&self.pawns);
         writer.write_slice(&self.pawns_data);
+        writer.write_slice(&self.pawns_behaviour);
 
         writer.write_slice(&self.warriors);
         writer.write_slice(&self.archers);
@@ -342,6 +353,7 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.resources);
         writer.write_slice(&self.resources_data);
         writer.write_slice(&self.resources_spawn);
+        writer.write_slice(&self.resources_spawn_behaviour);
 
         writer.write_slice(&self.trees);
         writer.save_slice(&self.trees_data);
@@ -358,6 +370,7 @@ impl SaveAndLoad for World {
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let pawns = reader.read_slice().to_vec();
         let pawns_data = reader.read_slice().to_vec();
+        let pawns_behaviour = reader.read_slice().to_vec();
 
         let warriors = reader.read_slice().to_vec();
         let archers = reader.read_slice().to_vec();
@@ -373,6 +386,7 @@ impl SaveAndLoad for World {
         let resources = reader.read_slice().to_vec();
         let resources_data = reader.read_slice().to_vec();
         let resources_spawn = reader.read_slice().to_vec();
+        let resources_spawn_behaviour = reader.read_slice().to_vec();
 
         let trees = reader.read_slice().to_vec();
         let trees_data = reader.load_vec();
@@ -394,6 +408,8 @@ impl SaveAndLoad for World {
 
             pawns,
             pawns_data,
+            pawns_behaviour,
+
             warriors,
             archers,
             torch_goblins,
@@ -408,6 +424,7 @@ impl SaveAndLoad for World {
             resources,
             resources_data,
             resources_spawn,
+            resources_spawn_behaviour,
 
             trees,
             trees_data,
@@ -429,6 +446,8 @@ impl Default for World {
     
             pawns: Vec::with_capacity(16),
             pawns_data: Vec::with_capacity(16),
+            pawns_behaviour: Vec::with_capacity(16),
+
             warriors: Vec::with_capacity(16),
             archers: Vec::with_capacity(16),
             torch_goblins: Vec::with_capacity(16),
@@ -443,6 +462,7 @@ impl Default for World {
             resources: Vec::with_capacity(32),
             resources_data: Vec::with_capacity(32),
             resources_spawn: Vec::with_capacity(16),
+            resources_spawn_behaviour: Vec::with_capacity(16),
 
             trees: Vec::with_capacity(16),
             trees_data: Vec::with_capacity(16),

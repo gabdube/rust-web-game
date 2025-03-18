@@ -12,7 +12,7 @@ mod world;
 mod state;
 mod data;
 mod output;
-mod actions_manager;
+mod behaviour;
 
 use data::DemoGameData;
 use shared::*;
@@ -66,7 +66,6 @@ impl DemoGameInit {
 pub struct DemoGame {
     data: DemoGameData,
     output: output::GameOutput,
-    actions: actions_manager::ActionsManager,
 }
 
 #[wasm_bindgen]
@@ -107,8 +106,8 @@ impl DemoGame {
 
     pub fn update(&mut self, time: f64) -> bool {
         self.update_timing(time);
-        state::update(&mut self.data);
-        actions_manager::update(self);
+        state::update(self);
+        behaviour::update(self);
         output::update(self);
         return true
     }
@@ -179,7 +178,6 @@ impl Default for DemoGame {
         DemoGame {
             data: DemoGameData::default(),
             output: output::GameOutput::default(),
-            actions: actions_manager::ActionsManager::default(),
         }
     }
 }
@@ -190,7 +188,6 @@ impl store::SaveAndLoad for DemoGame {
         writer.save(&self.data.assets);
         writer.save(&self.data.world);
         writer.save(&self.data.state);
-        writer.save(&self.actions);
     }
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
@@ -199,7 +196,6 @@ impl store::SaveAndLoad for DemoGame {
         demo_app.data.assets = reader.load();
         demo_app.data.world = reader.load();
         demo_app.data.state = reader.load();
-        demo_app.actions = reader.load();
 
         demo_app
     }
