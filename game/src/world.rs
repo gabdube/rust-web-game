@@ -188,7 +188,7 @@ impl World {
 
     pub fn create_gold_mine(&mut self, position: Position<f32>, sprite: StructureBase) {
         self.total_sprite_count += 1;
-        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false, deleted: false });
+        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
         self.structures_data.push(StructureData::GoldMine(Default::default()));
     }
 
@@ -200,7 +200,7 @@ impl World {
 
     pub fn create_resource(&mut self, position: Position<f32>, sprite: ResourceBase, resource_data: ResourceData) -> usize {
         self.total_sprite_count += 1;
-        self.resources.push(BaseStatic { position, sprite: sprite.aabb, selected: false, deleted: false });
+        self.resources.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
         self.resources_data.push(resource_data);
         self.resources.len() - 1
     }
