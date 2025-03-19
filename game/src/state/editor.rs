@@ -104,7 +104,8 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
     let target_object = target_object.unwrap();
     match target_object.ty {
         WorldObjectType::Tree => behaviour::pawn::harvest_wood::new(game, pawn, target_object),
-        WorldObjectType::Resource =>  behaviour::pawn::grab_resource::new(game, pawn, target_object),
+        WorldObjectType::Resource => behaviour::pawn::grab_resource::new(game, pawn, target_object),
+        WorldObjectType::Sheep => behaviour::pawn::hunt_sheep::new(game, pawn, target_object),
         WorldObjectType::Structure => {
             match game.world.structures_data[target_object.id as usize] {
                 StructureData::GoldMine(_) => behaviour::pawn::harvest_gold::new(game, pawn, target_object),

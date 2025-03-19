@@ -95,7 +95,7 @@ fn move_to_tree(game: &mut DemoGameData, pawn_index: usize) {
     }
 
     let mut target_position = tree.position;
-    if pawn.position.x > tree.position.x {
+    if pawn.position.x > target_position.x {
         target_position.x += 60.0;
     } else {
         target_position.x -= 60.0;
@@ -137,13 +137,16 @@ fn begin_cut_tree(game: &mut DemoGameData, pawn_index: usize) {
 
 fn cut_tree(game: &mut DemoGameData, pawn_index: usize) {
     let world = &mut game.world;
+    let pawn = &mut world.pawns[pawn_index];
     let behaviour = &mut world.pawns_behaviour[pawn_index];
 
     let tree_index = params(behaviour.ty);
     let tree_data = &mut world.trees_data[tree_index];
 
-    if tree_data.life > 0 && game.global.time - tree_data.last_drop_timestamp > 300.0 {
-        tree_data.life -= 1;
+    let total_animation_time = crate::ANIMATION_INTERVAL * 6.0;
+
+    if pawn.current_frame == 5 && game.global.time - tree_data.last_drop_timestamp > total_animation_time {
+        tree_data.life -= u8::min(tree_data.life, 1);
         tree_data.last_drop_timestamp = game.global.time;
     }
 
@@ -154,15 +157,12 @@ fn cut_tree(game: &mut DemoGameData, pawn_index: usize) {
 
 fn spawn_wood(game: &mut DemoGameData, pawn_index: usize) {
     let world = &mut game.world;
-
-    let pawn = &mut world.pawns[pawn_index];
     let behaviour = &mut world.pawns_behaviour[pawn_index];
 
     let tree_index = params(behaviour.ty);
     let tree = &mut world.trees[tree_index];
     let tree_data = &mut world.trees_data[tree_index];
 
-    pawn.animation = game.assets.animations.pawn.idle;
     tree.animation = AnimationBase::from_aabb(game.assets.resources.tree_stump.aabb);
     tree_data.being_harvested = false;
 

@@ -111,7 +111,9 @@ pub struct World {
     pub archers: Vec<BaseAnimated>,
     pub torch_goblins: Vec<BaseAnimated>,
     pub tnt_goblins: Vec<BaseAnimated>,
+
     pub sheeps: Vec<BaseAnimated>,
+    pub sheeps_data: Vec<SheepData>,
 
     pub decorations: Vec<BaseStatic>,
 
@@ -177,6 +179,7 @@ impl World {
 
     pub fn create_sheep(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
+        self.sheeps_data.push(SheepData::default());
         Self::create_inner_actor(&mut self.sheeps, position, animation)
     }
 
@@ -343,7 +346,9 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.archers);
         writer.write_slice(&self.torch_goblins);
         writer.write_slice(&self.tnt_goblins);
+
         writer.write_slice(&self.sheeps);
+        writer.save_slice(&self.sheeps_data);
 
         writer.write_slice(&self.decorations);
 
@@ -376,7 +381,9 @@ impl SaveAndLoad for World {
         let archers = reader.read_slice().to_vec();
         let torch_goblins = reader.read_slice().to_vec();
         let tnt_goblins = reader.read_slice().to_vec();
+
         let sheeps = reader.read_slice().to_vec();
+        let sheeps_data = reader.load_vec();
 
         let decorations = reader.read_slice().to_vec();
 
@@ -414,7 +421,9 @@ impl SaveAndLoad for World {
             archers,
             torch_goblins,
             tnt_goblins,
+
             sheeps,
+            sheeps_data,
 
             decorations,
 
@@ -452,7 +461,9 @@ impl Default for World {
             archers: Vec::with_capacity(16),
             torch_goblins: Vec::with_capacity(16),
             tnt_goblins: Vec::with_capacity(16),
+
             sheeps: Vec::with_capacity(16),
+            sheeps_data: Vec::with_capacity(16),
 
             decorations: Vec::with_capacity(16),
     

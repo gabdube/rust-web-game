@@ -68,6 +68,35 @@ impl Default for PawnData {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct SheepData {
+    pub last_hit_timestamp: f64,
+    pub life: u8,
+}
+
+impl Default for SheepData {
+    fn default() -> Self {
+        SheepData { last_hit_timestamp: 0.0, life: 10 }
+    }
+}
+
+impl SaveAndLoad for SheepData {
+    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
+        writer.write_f64(self.last_hit_timestamp);
+        writer.write_u32(self.life as u32);
+    }
+
+    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
+        let last_hit_timestamp = reader.read_f64();
+        let life = reader.read_u32() as u8;
+        SheepData {
+            last_hit_timestamp,
+            life,
+        }
+    }
+}
+
+
 
 #[derive(Copy, Clone)]
 pub struct StructureGoldMineData {

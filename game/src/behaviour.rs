@@ -35,6 +35,7 @@ fn run_pawn_behaviour(game: &mut DemoGame) {
             PawnBehaviourType::HarvestWood { .. } => pawn::harvest_wood::process(data, index),
             PawnBehaviourType::HarvestGold { .. } => pawn::harvest_gold::process(data, index),
             PawnBehaviourType::GrabResource { .. } => pawn::grab_resource::process(data, index),
+            PawnBehaviourType::HuntSheep { .. } => pawn::hunt_sheep::process(data, index),
         }
         index += 1;
     }

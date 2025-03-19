@@ -7,6 +7,16 @@ pub struct Position<T: Copy> {
     pub y: T,
 }
 
+impl Position<f32> {
+
+    pub fn distance(&self, other: Position<f32>) -> f32 {
+        let x2 = other.x - self.x;
+        let y2 = other.y - self.y;
+        f32::sqrt(x2*x2 + y2*y2)
+    }
+
+}
+
 impl SaveAndLoad for Position<f32> {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_f32(self.x);
@@ -52,7 +62,6 @@ impl ops::SubAssign for Position<f32> {
         self.y -= rhs.y;
     }
 }
-
 
 impl<T: Debug+Copy> Debug for Position<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

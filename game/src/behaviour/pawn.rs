@@ -2,6 +2,7 @@ pub mod pawn_move;
 pub mod harvest_wood;
 pub mod harvest_gold;
 pub mod grab_resource;
+pub mod hunt_sheep;
 
 use crate::behaviour::BehaviourState;
 use crate::shared::Position;
@@ -16,6 +17,7 @@ pub enum PawnBehaviourType {
     HarvestWood { tree_id: u32 },
     HarvestGold { structure_id: u32 },
     GrabResource { resource_id: u32 },
+    HuntSheep { sheep_id: u32 }
 }
 
 #[derive(Copy, Clone)]
