@@ -66,7 +66,7 @@ fn moving(game: &mut DemoGameData, pawn_index: usize) {
     }
 
     pawn.position = updated_position;
-    pawn.flipped = current_position.x > target_position.x;
+    pawn.flipped = updated_position.x > target_position.x;
 }
 
 fn stopping(game: &mut DemoGameData, pawn_index: usize) {
@@ -79,7 +79,7 @@ fn stopping(game: &mut DemoGameData, pawn_index: usize) {
         None => game.assets.animations.pawn.idle
     };
 
-    behaviour.state = BehaviourState::Done;
+    *behaviour = PawnBehaviour::idle();
 }
 
 #[inline(always)]

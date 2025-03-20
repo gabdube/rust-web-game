@@ -155,6 +155,8 @@ fn enter_mine(game: &mut DemoGameData, pawn_index: usize) {
 }
 
 fn mining(game: &mut DemoGameData, pawn_index: usize) {
+    use crate::behaviour::behaviour_shared::elapsed;
+
     let world = &mut game.world;
     let behaviour = &mut world.pawns_behaviour[pawn_index];
     
@@ -170,7 +172,7 @@ fn mining(game: &mut DemoGameData, pawn_index: usize) {
     let timer = 5000.0 - (300.0 * mine_data.miners_count as f64);
     let mut spawn_gold = false;
 
-    if game.global.time - mine_data.last_drop_timestamp > timer {
+    if elapsed(game.global.time, mine_data.last_drop_timestamp, timer) {
         if mine_data.remaining_gold > 0 {
             mine_data.remaining_gold -= 1;
             spawn_gold = true;
@@ -202,7 +204,7 @@ fn disable_mine(game: &mut DemoGameData, pawn_index: usize) {
 
     // If mine was already disabled
     if mine_data.remaining_gold == 0 && mine_data.miners_count == 0 {
-        behaviour.state = BehaviourState::Done;
+        *behaviour = PawnBehaviour::idle();
         return;
     }
 

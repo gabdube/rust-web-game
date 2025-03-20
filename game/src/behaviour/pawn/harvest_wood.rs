@@ -136,6 +136,8 @@ fn begin_cut_tree(game: &mut DemoGameData, pawn_index: usize) {
 }
 
 fn cut_tree(game: &mut DemoGameData, pawn_index: usize) {
+    use crate::behaviour::behaviour_shared::elapsed;
+
     let world = &mut game.world;
     let pawn = &mut world.pawns[pawn_index];
     let behaviour = &mut world.pawns_behaviour[pawn_index];
@@ -144,8 +146,8 @@ fn cut_tree(game: &mut DemoGameData, pawn_index: usize) {
     let tree_data = &mut world.trees_data[tree_index];
 
     let total_animation_time = crate::ANIMATION_INTERVAL * 6.0;
-
-    if pawn.current_frame == 5 && game.global.time - tree_data.last_drop_timestamp > total_animation_time {
+    
+    if pawn.current_frame == 5 && elapsed(game.global.time, tree_data.last_drop_timestamp, total_animation_time) {
         tree_data.life -= u8::min(tree_data.life, 1);
         tree_data.last_drop_timestamp = game.global.time;
     }

@@ -114,8 +114,7 @@ pub struct World {
 
     pub sheeps: Vec<BaseAnimated>,
     pub sheeps_data: Vec<SheepData>,
-
-    pub decorations: Vec<BaseStatic>,
+    pub sheep_behaviour: Vec<behaviour::sheep::SheepBehaviour>,
 
     pub structures: Vec<BaseStatic>,
     pub structures_data: Vec<StructureData>,
@@ -128,6 +127,8 @@ pub struct World {
     
     pub trees: Vec<BaseAnimated>,
     pub trees_data: Vec<TreeData>,
+
+    pub decorations: Vec<BaseStatic>,
 
     pub selected: Vec<WorldObject>
 }
@@ -180,6 +181,7 @@ impl World {
     pub fn create_sheep(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
         self.sheeps_data.push(SheepData::default());
+        self.sheep_behaviour.push(behaviour::sheep::SheepBehaviour::idle());
         Self::create_inner_actor(&mut self.sheeps, position, animation)
     }
 
@@ -300,6 +302,24 @@ impl World {
         objects.get_mut(obj.id as usize)
     }
 
+    #[allow(dead_code)]
+    pub fn position_of(&self, obj: WorldObject) -> Position<f32> {
+        let index = obj.id as usize;
+        match obj.ty {
+            WorldObjectType::Pawn => self.pawns[index].position,
+            WorldObjectType::Warrior => self.warriors[index].position,
+            WorldObjectType::Archer => self.archers[index].position,
+            WorldObjectType::TorchGoblin => self.torch_goblins[index].position,
+            WorldObjectType::DynamiteGoblin => self.tnt_goblins[index].position,
+            WorldObjectType::Sheep => self.sheeps[index].position,
+            WorldObjectType::Structure => self.structures[index].position,
+            WorldObjectType::Decoration => self.decorations[index].position,
+            WorldObjectType::Resource => self.resources[index].position,
+            WorldObjectType::Tree => self.trees[index].position,
+            _ => Position::default()
+        }
+    }
+
     pub fn set_object_selected(&mut self, obj: WorldObject, selected: bool) {
         let mut add = false;
         let mut remove = false;
@@ -349,6 +369,7 @@ impl SaveAndLoad for World {
 
         writer.write_slice(&self.sheeps);
         writer.save_slice(&self.sheeps_data);
+        writer.save_slice(&self.sheep_behaviour);
 
         writer.write_slice(&self.decorations);
 
@@ -384,6 +405,7 @@ impl SaveAndLoad for World {
 
         let sheeps = reader.read_slice().to_vec();
         let sheeps_data = reader.load_vec();
+        let sheep_behaviour = reader.load_vec();
 
         let decorations = reader.read_slice().to_vec();
 
@@ -424,8 +446,7 @@ impl SaveAndLoad for World {
 
             sheeps,
             sheeps_data,
-
-            decorations,
+            sheep_behaviour,
 
             structures,
             structures_data,
@@ -437,6 +458,8 @@ impl SaveAndLoad for World {
 
             trees,
             trees_data,
+
+            decorations,
 
             selected,
         }
@@ -464,8 +487,7 @@ impl Default for World {
 
             sheeps: Vec::with_capacity(16),
             sheeps_data: Vec::with_capacity(16),
-
-            decorations: Vec::with_capacity(16),
+            sheep_behaviour: Vec::with_capacity(16),
     
             structures: Vec::with_capacity(16),
             structures_data: Vec::with_capacity(16),
@@ -477,6 +499,8 @@ impl Default for World {
 
             trees: Vec::with_capacity(16),
             trees_data: Vec::with_capacity(16),
+
+            decorations: Vec::with_capacity(16),
 
             selected: Vec::with_capacity(8),
         }

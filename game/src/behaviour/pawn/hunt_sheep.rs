@@ -1,4 +1,4 @@
-use crate::behaviour::BehaviourState;
+use crate::behaviour::{BehaviourState, sheep::SheepBehaviour};
 use crate::world::{WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{PawnBehaviour, PawnBehaviourType};
@@ -76,6 +76,7 @@ fn move_to_sheep(game: &mut DemoGameData, pawn_index: usize) {
     let updated_position = move_to(pawn.position, target_position, game.global.frame_delta);
     if updated_position == target_position {
         pawn.animation = game.assets.animations.pawn.axe;
+        pawn.current_frame = 0;
         behaviour.state = BehaviourState::Running(ATTACK_SHEEP);
     }
 
@@ -84,6 +85,8 @@ fn move_to_sheep(game: &mut DemoGameData, pawn_index: usize) {
 }
 
 fn attack_sheep(game: &mut DemoGameData, pawn_index: usize) {
+    use crate::behaviour::behaviour_shared::elapsed;
+
     let world = &mut game.world;
     let pawn = &mut world.pawns[pawn_index];
     let behaviour = &mut world.pawns_behaviour[pawn_index];
@@ -105,12 +108,17 @@ fn attack_sheep(game: &mut DemoGameData, pawn_index: usize) {
 
     let total_animation_time = crate::ANIMATION_INTERVAL * 6.0;
 
-    if pawn.current_frame == 5 && game.global.time - sheep_data.last_hit_timestamp > total_animation_time {
-        sheep_data.life -= u8::min(sheep_data.life, 4);
+    if pawn.current_frame == 5 && elapsed(game.global.time, sheep_data.last_hit_timestamp, total_animation_time) {
+        sheep_data.life -= u8::min(sheep_data.life, 3);
         sheep_data.last_hit_timestamp = game.global.time;
 
         if sheep_data.life == 0 {
             behaviour.state = BehaviourState::Running(SPAWN_MEAT);
+        } else {
+            world.sheep_behaviour[sheep_index] = SheepBehaviour::escape(WorldObject {
+                id: pawn_index as u32,
+                ty: WorldObjectType::Pawn
+            });
         }
     }
 }
@@ -121,15 +129,13 @@ fn spawn_meat(game: &mut DemoGameData, pawn_index: usize) {
 
     let sheep_index = params(behaviour.ty);
     let sheep = &mut world.sheeps[sheep_index];
-    let sheep_data = &mut world.sheeps_data[sheep_index];
-    let spawn_pos = sheep.position;
-
-    sheep_data.life = 0;
-    sheep.delete();
-
+    let sheep_behaviour = &mut world.sheep_behaviour[sheep_index];
+ 
+    *sheep_behaviour = SheepBehaviour::dead();
     *behaviour = PawnBehaviour::idle();
 
     // Spawns three food resources around the sheep
+    let spawn_pos = sheep.position;
     let mut position = spawn_pos;
     let mut angle = 0.0;
     for _ in 0..3 {

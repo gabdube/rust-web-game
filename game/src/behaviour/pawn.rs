@@ -66,6 +66,9 @@ pub fn idle(game: &mut DemoGameData, pawn_index: usize) {
 fn drop_resource(game: &mut DemoGameData, pawn_index: usize) {
     let pawn_position = game.world.pawns[pawn_index].position;
     let pawn_data = &mut game.world.pawns_data[pawn_index];
+    if pawn_data.grabbed_resource().is_none() {
+        return;
+    }
 
     let resource_index = pawn_data.grabbed_resource as usize;
     let resource_data = &mut game.world.resources_data[resource_index];
