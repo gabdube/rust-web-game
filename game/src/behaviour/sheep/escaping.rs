@@ -1,5 +1,4 @@
 use crate::behaviour::BehaviourState;
-use crate::world::WorldObject;
 use crate::DemoGameData;
 use super::{SheepBehaviour, SheepBehaviourType};
 

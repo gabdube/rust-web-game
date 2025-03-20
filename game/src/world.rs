@@ -10,12 +10,6 @@ use crate::shared::{AABB, aabb, size, pos};
 use crate::store::SaveAndLoad;
 use crate::Position;
 
-#[derive(Debug, Copy, Clone)]
-pub enum ResourceType {
-    Wood,
-    Food,
-    Gold
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum WorldObjectType {
@@ -108,6 +102,7 @@ pub struct World {
     pub pawns_behaviour: Vec<behaviour::pawn::PawnBehaviour>,
 
     pub warriors: Vec<BaseAnimated>,
+
     pub archers: Vec<BaseAnimated>,
     pub torch_goblins: Vec<BaseAnimated>,
     pub tnt_goblins: Vec<BaseAnimated>,
@@ -144,12 +139,16 @@ impl World {
     pub fn reset(&mut self) {
         self.pawns.clear();
         self.pawns_data.clear();
+        self.pawns_behaviour.clear();
 
         self.warriors.clear();
         self.archers.clear();
         self.torch_goblins.clear();
         self.tnt_goblins.clear();
+
         self.sheeps.clear();
+        self.sheeps_data.clear();
+        self.sheep_behaviour.clear();
 
         self.decorations.clear();
         
@@ -158,7 +157,9 @@ impl World {
 
         self.resources.clear();
         self.resources_data.clear();
+
         self.resources_spawn.clear();
+        self.resources_spawn_behaviour.clear();
 
         self.trees.clear();
         self.trees_data.clear();
@@ -176,6 +177,16 @@ impl World {
         self.pawns_data.push(PawnData::default());
         self.pawns_behaviour.push(behaviour::pawn::PawnBehaviour::idle());
         Self::create_inner_actor(&mut self.pawns, position, animation)
+    }
+
+    pub fn create_warrior(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+        self.total_sprite_count += 1;
+        Self::create_inner_actor(&mut self.warriors, position, animation)
+    }
+
+    pub fn create_archer(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+        self.total_sprite_count += 1;
+        Self::create_inner_actor(&mut self.archers, position, animation)
     }
 
     pub fn create_sheep(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {

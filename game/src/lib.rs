@@ -86,7 +86,7 @@ impl DemoGame {
         }
 
         #[cfg(feature="editor")]
-        state::editor::init(&mut demo_app.data, crate::state::TestId::PawnAi);
+        state::editor::init(&mut demo_app.data, crate::state::TestId::WarriorAi);
 
         #[cfg(not(feature="editor"))]
         state::gameplay::init(&mut demo_app.data);
@@ -97,8 +97,8 @@ impl DemoGame {
     }
 
     pub fn on_reload(&mut self) {
-        // #[cfg(feature="editor")]
-        // state::editor::init(&mut self.data, crate::state::TestId::PawnAi);
+        #[cfg(feature="editor")]
+        state::editor::init(&mut self.data, crate::state::TestId::WarriorAi);
 
         // #[cfg(not(feature="editor"))]
         // state::gameplay::init(&mut self.data);

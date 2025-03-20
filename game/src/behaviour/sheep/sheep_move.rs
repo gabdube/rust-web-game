@@ -34,7 +34,7 @@ fn init(game: &mut DemoGameData, sheep_index: usize) {
 }
 
 fn move_sheep(game: &mut DemoGameData, sheep_index: usize) {
-    use crate::behaviour::behaviour_shared::move_to;
+    use crate::behaviour::behaviour_shared::move_to_with_speed;
 
     let world = &mut game.world;
     let sheep = &mut world.sheeps[sheep_index];
@@ -48,7 +48,7 @@ fn move_sheep(game: &mut DemoGameData, sheep_index: usize) {
 
     let current_position = sheep.position;
     let target_position = params(behaviour.ty);
-    let updated_position = move_to(current_position, target_position, game.global.frame_delta);
+    let updated_position = move_to_with_speed(current_position, target_position, game.global.frame_delta, 0.1);
     if updated_position == target_position {
         *behaviour = SheepBehaviour::idle(); 
     }

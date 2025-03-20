@@ -8,13 +8,17 @@ use crate::{DemoGameData, pos};
 #[derive(Copy, Clone)]
 pub enum TestId {
     None,
-    PawnAi
+    PawnAi,
+    WarriorAi,
+    ArcherAi,
 }
 
 impl TestId {
     pub fn from_u32(value: u32) -> Self {
         match value {
             1 => TestId::PawnAi,
+            2 => TestId::WarriorAi,
+            3 => TestId::ArcherAi,
             _ => TestId::None,
         }
     }
@@ -35,9 +39,9 @@ pub fn init(game: &mut DemoGameData, test: TestId) {
 
     match test {
         TestId::None => {},
-        TestId::PawnAi => {
-            init_pawn_tests(game);
-        }
+        TestId::PawnAi => init_pawn_tests(game),
+        TestId::WarriorAi => init_warrior_ai(game),
+        TestId::ArcherAi => init_archer_ai(game),
     }
 
     game.state = GameState::Editor(inner_state);
@@ -55,13 +59,43 @@ fn init_pawn_tests(data: &mut DemoGameData) {
     world.create_tree(pos(380.0, 300.0), &assets.resources.tree_idle);
     world.create_tree(pos(230.0, 330.0), &assets.resources.tree_idle);
     
+    world.create_gold_mine(pos(200.0, 500.0), assets.structures.gold_mine_inactive);
+
+    create_sheeps(data);
+}
+
+fn init_warrior_ai(data: &mut DemoGameData) {
+    let world = &mut data.world;
+    let assets = &data.assets;
+
+    world.create_warrior(pos(100.0, 100.0), &assets.animations.warrior.idle);
+    world.create_warrior(pos(200.0, 100.0), &assets.animations.warrior.idle);
+    world.create_warrior(pos(300.0, 100.0), &assets.animations.warrior.idle);
+
+    create_sheeps(data);
+}
+
+fn init_archer_ai(data: &mut DemoGameData) {
+    let world = &mut data.world;
+    let assets = &data.assets;
+
+    world.create_archer(pos(100.0, 100.0), &assets.animations.archer.idle);
+    world.create_archer(pos(200.0, 100.0), &assets.animations.archer.idle);
+    world.create_archer(pos(300.0, 100.0), &assets.animations.archer.idle);
+
+    create_sheeps(data);
+}
+
+fn create_sheeps(data: &mut DemoGameData) {
+    let world = &mut data.world;
+    let assets = &data.assets;
+
     world.create_sheep(pos(550.0, 170.0), &assets.animations.sheep.idle);
     world.create_sheep(pos(590.0, 210.0), &assets.animations.sheep.idle);
     world.create_sheep(pos(520.0, 240.0), &assets.animations.sheep.idle);
     world.create_sheep(pos(490.0, 190.0), &assets.animations.sheep.idle);
-    
-    world.create_gold_mine(pos(200.0, 500.0), assets.structures.gold_mine_inactive);
 }
+
 
 pub fn on_left_mouse(game: &mut DemoGameData) {
     let inputs = &game.inputs;
@@ -89,6 +123,8 @@ pub fn on_right_mouse(game: &mut DemoGameData) {
 
     match selected_object.ty {
         WorldObjectType::Pawn => pawn_actions(game, selected_object, target_object),
+        WorldObjectType::Warrior => warrior_actions(game, selected_object, target_object),
+        WorldObjectType::Archer => archer_actions(game, selected_object, target_object),
         _ => {},
     }
 }
@@ -113,6 +149,12 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
         },
         _ => {},
     }
+}
+
+fn warrior_actions(game: &mut DemoGameData, warrior: WorldObject, target_object: Option<WorldObject>) {
+}
+
+fn archer_actions(game: &mut DemoGameData, archer: WorldObject, target_object: Option<WorldObject>) {
 }
 
 fn set_new_object_selection(data: &mut DemoGameData, new_selection: WorldObject) {

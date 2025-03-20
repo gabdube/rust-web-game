@@ -1,6 +1,7 @@
+//! REgroups all the world structure data into a single file
+
 use crate::shared::Position;
 use crate::store::SaveAndLoad;
-use super::ResourceType;
 
 #[derive(Copy, Clone)]
 pub struct TreeData {
@@ -38,6 +39,12 @@ impl SaveAndLoad for TreeData {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ResourceType {
+    Wood,
+    Food,
+    Gold
+}
 
 /// Align the resource to 4 bytes to allow quick store/load
 #[repr(align(4))]
