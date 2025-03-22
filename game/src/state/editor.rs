@@ -37,6 +37,8 @@ pub fn init(game: &mut DemoGameData, test: TestId) {
 
     game.init_terrain(16, 16);
 
+    init_gui(game);
+
     match test {
         TestId::None => {},
         TestId::PawnAi => init_pawn_tests(game),
@@ -45,6 +47,19 @@ pub fn init(game: &mut DemoGameData, test: TestId) {
     }
 
     game.state = GameState::Editor(inner_state);
+}
+
+fn init_gui(game: &mut DemoGameData) {
+    use crate::gui::*;
+
+    // game.gui.build(|gui| {
+    //     gui.layout(GuiLayout {  });
+    //     gui.container(|gui| {
+    //         let font = gui.font(&game.assets.fonts.roboto, 60.0, GuiColor::white());
+    //         let text = gui.static_text("TEST", font);
+    //         gui.label(GuiLabel::from_static_text(gui, text));
+    //     });
+    // });
 }
 
 fn init_pawn_tests(data: &mut DemoGameData) {
@@ -95,7 +110,6 @@ fn create_sheeps(data: &mut DemoGameData) {
     world.create_sheep(pos(520.0, 240.0), &assets.animations.sheep.idle);
     world.create_sheep(pos(490.0, 190.0), &assets.animations.sheep.idle);
 }
-
 
 pub fn on_left_mouse(game: &mut DemoGameData) {
     let inputs = &game.inputs;

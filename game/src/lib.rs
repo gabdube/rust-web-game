@@ -8,6 +8,7 @@ mod store;
 mod shared;
 mod inputs;
 mod assets;
+mod gui;
 mod world;
 mod state;
 mod data;
@@ -155,7 +156,7 @@ impl DemoGame {
 
 }
 
-impl DemoGame {
+impl DemoGame { 
 
     fn update_timing(&mut self, new_time: f64) {
         let global = &mut self.data.global;

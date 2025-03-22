@@ -1,9 +1,10 @@
 ## Project Structure
 
-* engine: Typescript graphics engine
-* server: Simple rust web server for development
-* game: Rust game client. Compiles to wasm
-* build: Build folder for `game`
+* engine - Typescript graphics engine
+* server - Simple rust web server for development
+* game - Rust game client. Compiles to wasm
+* build - Build folder for `game`
+* tools - Build utilities to preprocess assets
 
 ## Building instruction
 

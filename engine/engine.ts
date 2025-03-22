@@ -47,7 +47,7 @@ class Engine {
 
 
 // Import the wasm game client modulle
-// Note: Game client instance is created in `start_client`
+// Note: Game client instance is created in `start_game_client`
 // @ts-ignore
 async function init_client(game: EngineGameInstance): Promise<boolean> {
     const GAME_SRC_PATH = "/game/game.js";

@@ -4,6 +4,7 @@ mod packing;
 
 mod generate_objects_sprites;
 mod generate_characters_sprites;
+mod generate_fonts;
 
 fn command_name() -> Option<String> {
     let position = ::std::env::args().position(|arg| arg.as_str() == "-c");
@@ -26,6 +27,9 @@ fn main() {
         },
         "generate_objects_sprites" => {
             generate_objects_sprites::generate_sprites();
+        },
+        "generate_fonts" => {
+            generate_fonts::generate_fonts();
         },
         _ => {
             eprintln!("Unknown command name {:?}", cmd);

@@ -3,9 +3,12 @@
 /build/engine.js
 /build/assets/*.json
 /build/assets/tiny_sword/
+/build/assets/fonts/*.json
 .DS_Store
 *.png
 *.kra
+*.ttf
+*.bin
 node_modules
 package-lock.json
 todo.md
