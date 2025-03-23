@@ -46,7 +46,7 @@ class Engine {
 //
 
 
-// Import the wasm game client modulle
+// Import the wasm game client module
 // Note: Game client instance is created in `start_game_client`
 // @ts-ignore
 async function init_client(game: EngineGameInstance): Promise<boolean> {
@@ -63,12 +63,12 @@ async function init_client(game: EngineGameInstance): Promise<boolean> {
     return true;
 }
 
-/// Fetch all the game assets. Starting from "bundle" which act as an index for all the different assets types in the projects
+/// Fetch all the game assets. Starting from "bundle", the index for all the different assets in the project
 async function init_assets(engine: Engine): Promise<boolean> {
     return engine.assets.load();
 }
 
-/// Load the initial resources (like shaders) in the renderer
+/// Load the initial resources in the renderer
 function init_renderer_default_resources(engine: Engine): boolean {
     return engine.renderer.init_default_resources(engine.assets);
 }
@@ -89,6 +89,10 @@ function start_game_client(engine: Engine): boolean {
 
     for (let [name, json] of engine.assets.csv.entries()) {
         init.upload_text_asset(name, json);
+    }
+
+    for (let [name, font] of engine.assets.fonts.entries()) {
+        init.upload_font_asset(name, new Uint8Array(font.atlas_data));
     }
 
     engine.game.instance = game.DemoGame.initialize(init);

@@ -1,3 +1,4 @@
+use crate::assets::FontId;
 use super::*;
 
 pub struct GuiBuilder<'a> {
@@ -14,11 +15,13 @@ impl<'a> GuiBuilder<'a> {
         callback(self);
     }
 
-    pub fn font(&mut self, font: &(), size: f32, color: GuiColor) -> FontId {
-        FontId(0)
+    pub fn font(&mut self, font_id: FontId, size: f32) -> GuiFontId {
+        self.gui.fonts.push(GuiFont { font_id, size });
+        GuiFontId((self.gui.fonts.len() - 1) as u32)
     }
 
-    pub fn static_text(&mut self, text: &str, font: FontId) -> StaticText {
+    pub fn static_text(&mut self, text: &str, font: FontId, color: GuiColor) -> StaticText {
+
         StaticText(0)
     }
 

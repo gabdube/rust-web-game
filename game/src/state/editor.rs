@@ -50,16 +50,18 @@ pub fn init(game: &mut DemoGameData, test: TestId) {
 }
 
 fn init_gui(game: &mut DemoGameData) {
+    use crate::assets::FontId;
     use crate::gui::*;
+    
 
-    // game.gui.build(|gui| {
-    //     gui.layout(GuiLayout {  });
-    //     gui.container(|gui| {
-    //         let font = gui.font(&game.assets.fonts.roboto, 60.0, GuiColor::white());
-    //         let text = gui.static_text("TEST", font);
-    //         gui.label(GuiLabel::from_static_text(gui, text));
-    //     });
-    // });
+    game.gui.build(|gui| {
+        gui.layout(GuiLayout {  });
+        gui.container(|gui| {
+            let font = gui.font(FontId::Roboto, 60.0);
+            //let text = gui.static_text("TEST", font, GuiColor::white());
+            //gui.label(GuiLabel::from_static_text(gui, text));
+        });
+    });
 }
 
 fn init_pawn_tests(data: &mut DemoGameData) {

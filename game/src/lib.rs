@@ -29,6 +29,7 @@ const ANIMATION_INTERVAL: f64 = 1000.0 / 16.0; // 16fps
 #[wasm_bindgen]
 pub struct DemoGameInit {
     pub(crate) text_assets: fnv::FnvHashMap<String, String>,
+    pub(crate) font_assets: fnv::FnvHashMap<String, Box<[u8]>>,
     pub(crate) assets_bundle: String,
     pub(crate) seed: u64,
     pub(crate) initial_window_size: Size<f32>,
@@ -39,6 +40,7 @@ impl DemoGameInit {
     pub fn new() -> Self {
         DemoGameInit {
             text_assets: fnv::FnvHashMap::default(),
+            font_assets: fnv::FnvHashMap::default(),
             assets_bundle: String::new(),
             seed: 0,
             initial_window_size: Size::default(),
@@ -55,6 +57,10 @@ impl DemoGameInit {
 
     pub fn upload_text_asset(&mut self, name: String, value: String) {
         self.text_assets.insert(name, value);
+    }
+
+    pub fn upload_font_asset(&mut self, name: String, data: Vec<u8>) {
+        self.font_assets.insert(name, data.into_boxed_slice());
     }
 
     pub fn set_seed(&mut self, seed: u64) {

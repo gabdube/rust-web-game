@@ -1,3 +1,6 @@
+mod fonts;
+pub use fonts::*;
+
 mod animations;
 pub use animations::AnimationBase;
 use animations::AnimationsBundle;
@@ -25,9 +28,21 @@ pub struct Texture {
     pub id: u32,
 }
 
+#[derive(Copy, Clone)]
+pub enum FontId {
+    Roboto
+}
+
+#[derive(Default)]
+pub struct Fonts {
+    // Assets are shared with the gui system
+    pub roboto: FontAtlasData,
+}
+
 #[derive(Default)]
 pub struct Assets {
     pub textures: FnvHashMap<String, Texture>,
+    pub fonts: Fonts,
     pub terrain: TerrainTilemap,
     pub decorations: DecorationBundle,
     pub structures: StructuresBundle,
@@ -76,6 +91,27 @@ impl Assets {
 
         Ok(())
     }
+
+    fn load_font(&mut self, init: &crate::DemoGameInit, args: &[&str]) -> Result<(), Error> {
+        let font_name = args.get(1)
+            .map(|value| value.to_string() )
+            .ok_or_else(|| assets_err!("Missing font name") )?;
+
+        let font_atlas_data = init.font_assets.get(&font_name)
+            .ok_or_else(|| assets_err!("Failed to match font name to font data") )?;
+
+        let texture_id = self.textures.len() as u32;
+        let font = FontAtlasData::from_bytes(texture_id, font_atlas_data)?;
+
+        match font_name.as_str() {
+            "roboto" => { self.fonts.roboto = font; },
+            name => { warn!("Unknown font: {:?}", name); }
+        };
+
+        self.textures.insert(font_name, Texture { id: texture_id });
+
+        Ok(())
+    }
 }
 
 pub fn init_assets(game: &mut DemoGame, init: &DemoGameInit) -> Result<(), Error> {
@@ -96,6 +132,9 @@ fn import_assets_index(game: &mut DemoGame, init: &DemoGameInit) -> Result<(), E
             },
             "CSV" => {
                 assets.load_csv(init, args)
+            },
+            "FONT" => {
+                assets.load_font(init, args)
             },
             "SHADER" => Ok(()),
             _ => { Err(assets_err!("Unknown asset type {:?}", args[0])) }
@@ -150,4 +189,17 @@ impl crate::store::SaveAndLoad for Assets {
         assets.animations = reader.read();
         assets
     }
+}
+
+impl crate::store::SaveAndLoad for Fonts {
+    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
+        writer.save(&self.roboto);
+    }
+
+    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
+        Fonts { 
+            roboto: reader.load(),
+        }
+    }
+
 }

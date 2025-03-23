@@ -6,5 +6,7 @@ CSV;terrain_sprites;assets/terrain.csv;
 CSV;static_sprites;assets/static_resources.csv;
 CSV;units_sprites;assets/units.csv;
 
+FONT;roboto;assets/fonts/roboto.png;assets/fonts/roboto.bin;
+
 SHADER;sprites;assets/shaders/sprites.vert.glsl;assets/shaders/sprites.frag.glsl;
 SHADER;terrain;assets/shaders/terrain.vert.glsl;assets/shaders/terrain.frag.glsl;

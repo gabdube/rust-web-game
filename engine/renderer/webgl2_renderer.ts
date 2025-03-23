@@ -228,7 +228,7 @@ export class WebGL2Backend {
     private create_renderer_texture(texture_id: number): RendererTexture {
         const ctx = this.ctx;
         const bitmap = this.assets.textures_by_id[texture_id].bitmap;
-    
+
         const texture = new RendererTexture();
         texture.handle = ctx.createTexture();
         ctx.bindTexture(ctx.TEXTURE_2D, texture.handle);

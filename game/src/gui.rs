@@ -1,5 +1,5 @@
 mod gui_base;
-use gui_base::*;
+pub use gui_base::*;
 
 mod layout;
 pub use layout::GuiLayout;
@@ -14,7 +14,7 @@ mod gui_builder;
 pub use gui_builder::GuiBuilder;
 
 pub struct Gui {
- 
+    pub fonts: Vec<GuiFont>
 }
 
 impl Gui {
@@ -30,7 +30,7 @@ impl Default for Gui {
 
     fn default() -> Self {
         Gui {
-
+            fonts: Vec::with_capacity(8),
         }
     }
 
@@ -38,10 +38,12 @@ impl Default for Gui {
 
 impl crate::store::SaveAndLoad for Gui {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
+        writer.write_slice(&self.fonts);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         Gui {
+            fonts: reader.read_slice().to_vec(),
         }
     }
 }
