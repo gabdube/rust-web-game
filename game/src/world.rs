@@ -105,6 +105,8 @@ pub struct World {
     pub warriors_behaviour: Vec<behaviour::warrior::WarriorBehaviour>,
 
     pub archers: Vec<BaseAnimated>,
+    pub archers_behaviour: Vec<behaviour::archer::ArcherBehaviour>,
+
     pub torch_goblins: Vec<BaseAnimated>,
     pub tnt_goblins: Vec<BaseAnimated>,
 
@@ -146,6 +148,8 @@ impl World {
         self.warriors_behaviour.clear();
 
         self.archers.clear();
+        self.archers_behaviour.clear();
+
         self.torch_goblins.clear();
         self.tnt_goblins.clear();
 
@@ -190,6 +194,7 @@ impl World {
 
     pub fn create_archer(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
+        self.archers_behaviour.push(behaviour::archer::ArcherBehaviour::idle());
         Self::create_inner_actor(&mut self.archers, position, animation)
     }
 
@@ -381,6 +386,8 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.warriors_behaviour);
 
         writer.write_slice(&self.archers);
+        writer.write_slice(&self.archers_behaviour);
+
         writer.write_slice(&self.torch_goblins);
         writer.write_slice(&self.tnt_goblins);
 
@@ -419,6 +426,8 @@ impl SaveAndLoad for World {
         let warriors_behaviour = reader.read_slice().to_vec();
 
         let archers = reader.read_slice().to_vec();
+        let archers_behaviour = reader.read_slice().to_vec();
+
         let torch_goblins = reader.read_slice().to_vec();
         let tnt_goblins = reader.read_slice().to_vec();
 
@@ -462,6 +471,8 @@ impl SaveAndLoad for World {
             warriors_behaviour,
 
             archers,
+            archers_behaviour,
+
             torch_goblins,
             tnt_goblins,
 
@@ -505,6 +516,8 @@ impl Default for World {
             warriors_behaviour: Vec::with_capacity(16),
 
             archers: Vec::with_capacity(16),
+            archers_behaviour: Vec::with_capacity(16),
+
             torch_goblins: Vec::with_capacity(16),
             tnt_goblins: Vec::with_capacity(16),
 

@@ -29,9 +29,9 @@ pub fn process(game: &mut DemoGameData, warrior_index: usize) {
 }
 
 fn init(game: &mut DemoGameData, warrior_index: usize) {
-    let pawn = &mut game.world.warriors[warrior_index];
+    let warrior = &mut game.world.warriors[warrior_index];
     let behaviour = &mut game.world.warriors_behaviour[warrior_index];
-    pawn.animation = game.assets.animations.warrior.walk;
+    warrior.animation = game.assets.animations.warrior.walk;
     behaviour.state = BehaviourState::Running(MOVING);
 }
 

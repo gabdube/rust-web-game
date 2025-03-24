@@ -2,6 +2,7 @@
 pub mod behaviour_shared;
 pub mod pawn;
 pub mod warrior;
+pub mod archer;
 pub mod sheep;
 pub mod spawn_resources;
 
@@ -16,6 +17,7 @@ pub enum BehaviourState {
 pub fn update(game: &mut DemoGame) {
     run_pawn_behaviour(game);
     run_warrior_behaviour(game);
+    run_archers_behaviour(game);
     run_sheep_behaviour(game);
 
     if game.data.world.resources_spawn.len() > 0 {
@@ -55,6 +57,22 @@ fn run_warrior_behaviour(game: &mut DemoGame) {
         match behaviour_type {
             WarriorBehaviourType::Idle { .. } => warrior::idle(data, index),
             WarriorBehaviourType::MoveTo { .. } => warrior::warrior_move::process(data, index),
+        }
+        index += 1;
+    }
+}
+
+fn run_archers_behaviour(game: &mut DemoGame) {
+    use archer::ArcherBehaviourType;
+
+    let data = &mut game.data;
+    let mut index = 0;
+
+    while index < data.world.archers.len() {
+        let behaviour_type = data.world.archers_behaviour[index].ty;
+        match behaviour_type {
+            ArcherBehaviourType::Idle { .. } => archer::idle(data, index),
+            ArcherBehaviourType::MoveTo { .. } => archer::archer_move::process(data, index),
         }
         index += 1;
     }
