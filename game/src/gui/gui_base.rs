@@ -1,4 +1,5 @@
-#[repr(C)]
+use crate::shared::AABB;
+
 #[derive(Debug, Copy, Clone)]
 pub struct GuiColor {
     pub r: u8,
@@ -13,4 +14,11 @@ impl GuiColor {
         GuiColor { r: 255, g: 255, b: 255, a: 255 }
     }
 
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct GuiOutputSprite {
+    pub positions: AABB,
+    pub texcoord: AABB,
 }

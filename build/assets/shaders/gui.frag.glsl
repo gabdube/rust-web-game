@@ -23,5 +23,5 @@ void main() {
     float w = fwidth(dist) / 1.5;
     float opacity = smoothstep(0.5 - w, 0.5 + w, dist);
 
-    outColor = vec4(1.0, 1.0, 1.0, opacity);
+    outColor = vec4(opacity);
 }

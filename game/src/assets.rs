@@ -183,6 +183,7 @@ impl crate::store::SaveAndLoad for Assets {
         writer.write(&self.structures);
         writer.write(&self.resources);
         writer.write(&self.animations);
+        writer.save(&self.fonts);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
@@ -193,6 +194,7 @@ impl crate::store::SaveAndLoad for Assets {
         assets.structures = reader.read();
         assets.resources = reader.read();
         assets.animations = reader.read();
+        assets.fonts = reader.load();
         assets
     }
 }

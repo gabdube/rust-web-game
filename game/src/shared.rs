@@ -127,6 +127,10 @@ pub struct AABB {
 
 impl AABB {
 
+    pub const fn splat(&self) -> [f32; 4] {
+        [self.left, self.top, self.right, self.bottom]
+    }
+
     pub const fn width(&self) -> f32 {
         self.right - self.left
     }

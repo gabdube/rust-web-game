@@ -101,11 +101,6 @@ class RendererBuffers {
     gui_vao: WebGLVertexArrayObject;
 }
 
-class GuiRenderData {
-    vao: WebGLVertexArrayObject;
-    index_count: number;
-}
-
 class RendererCanvas {
     element: HTMLCanvasElement;
     width: number;
@@ -128,6 +123,7 @@ export class WebGL2Backend {
     assets: EngineAssets;
     textures: RendererTexture[];
     terrain_texture: RendererTexture;
+    font_texture: RendererTexture;
 
     shaders: RendererShaders;
     buffers: RendererBuffers;
@@ -228,7 +224,7 @@ export class WebGL2Backend {
         ctx.useProgram(this.shaders.draw_terrain);
         ctx.uniform2f(this.shaders.draw_terrain_view_size, this.canvas.width, this.canvas.height);
 
-        ctx.useProgram(this.shaders.draw_terrain);
+        ctx.useProgram(this.shaders.draw_gui);
         ctx.uniform2f(this.shaders.draw_gui_view_size, this.canvas.width, this.canvas.height);
 
         return true;
@@ -421,10 +417,10 @@ export class WebGL2Backend {
             this.setup_gui_vertex(capacity);
             this.setup_gui_vao();
         }
-        
+
         const gui_indices_data = updates.get_gui_indices_data();
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.gui_indices);
-        ctx.bufferSubData(ctx.ARRAY_BUFFER, 0, gui_indices_data);
+        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, buffers.gui_indices);
+        ctx.bufferSubData(ctx.ELEMENT_ARRAY_BUFFER, 0, gui_indices_data);
 
         const gui_vertex_data = updates.get_gui_vertex_data();
         ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.gui_vertex);
@@ -542,6 +538,10 @@ export class WebGL2Backend {
         }
 
         ctx.useProgram(this.shaders.draw_gui);
+
+        ctx.activeTexture(ctx.TEXTURE0);
+        ctx.bindTexture(ctx.TEXTURE_2D, this.font_texture.handle);
+
         ctx.bindVertexArray(buffers.gui_vao);
         ctx.drawElements(ctx.TRIANGLES, buffers.gui_indices_len, ctx.UNSIGNED_SHORT, 0);
     }
@@ -762,7 +762,14 @@ export class WebGL2Backend {
             return false;
         }
 
+        const font_texture_id = this.assets.fonts.get("roboto")?.texture_id;
+        if (!font_texture_id) {
+            set_last_error("Failed to load font texture")
+            return false;
+        }
+
         this.terrain_texture = this.create_renderer_texture(texture_id);
+        this.font_texture = this.create_renderer_texture(font_texture_id);
 
         return true;
     }

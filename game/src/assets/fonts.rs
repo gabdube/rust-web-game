@@ -24,7 +24,7 @@ pub struct AtlasGlyph {
     pub plane_bound: [f32; 4],
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct ComputedGlyph {
     pub position: AABB,
     pub texcoord: AABB,

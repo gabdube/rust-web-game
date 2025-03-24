@@ -181,6 +181,9 @@ pub fn update(game: &mut DemoGame) {
     game.output.write_index();
 }
 
+/**
+    Update the engine view offset
+*/
 fn update_view(game: &mut DemoGame) {
     let flags = &mut game.data.global.flags;
     if !flags.get_sync_view() {
@@ -195,6 +198,9 @@ fn update_view(game: &mut DemoGame) {
     });
 }
 
+/**
+    Synchronise the terrain chunk data with the engine
+*/
 fn update_terrain(game: &mut DemoGame) {
     const CELL_TEXEL_SIZE: f32 = 64.0;
     if !game.data.global.flags.get_sync_terrain() {
@@ -238,6 +244,9 @@ fn update_terrain(game: &mut DemoGame) {
     }
 } 
 
+/**
+    Generate rendering command to draw the terrain from the data synchronized with `update_terrain`
+*/
 fn render_terrain(game: &mut DemoGame) {
     let output = &mut game.output;
     let view = aabb(game.data.global.view_offset, game.data.global.view_size);
@@ -473,9 +482,34 @@ fn render_gui(game: &mut DemoGame) {
         return;
     }
 
+    output.gui_indices.clear();
+    output.gui_vertex.clear();
+
+    let mut v = 0;
+    for sprite in gui.output_sprites.iter() {
+        output.gui_indices.extend_from_slice(&[v+0, v+3, v+2, v+1, v+0, v+3]);
+ 
+        let [left, top, right, bottom] = sprite.positions.splat();
+        let [tleft, ttop, tright, tbottom] = sprite.texcoord.splat();
+
+        output.gui_vertex.extend_from_slice(&[
+            GuiVertex { position: [left, top], texcoord: [tleft, ttop] },
+            GuiVertex { position: [right, top], texcoord: [tright, ttop] },
+            GuiVertex { position: [left, bottom], texcoord: [tleft, tbottom] },
+            GuiVertex { position: [right, bottom], texcoord: [tright, tbottom] },
+        ]);
+
+        v += 4;
+    }
+
     output.commands.push(DrawUpdate {
         graphics: DrawUpdateType::UpdateGui,
-        params: DrawUpdateParams { update_gui: UpdateGuiParams { indices_count: 0, vertex_count: 0 } },
+        params: DrawUpdateParams { 
+            update_gui: UpdateGuiParams {
+                indices_count: output.gui_indices.len() as u32,
+                vertex_count: output.gui_vertex.len() as u32,
+            } 
+        },
     });
 
     gui.needs_sync = false;
@@ -487,12 +521,12 @@ impl Default for GameOutput {
         let output_index: Box<OutputIndex> = Box::default();
         GameOutput {
             output_index: Box::leak(output_index),
-            sprite_data_buffer: Vec::with_capacity(32),
+            sprite_data_buffer: Vec::with_capacity(64),
             terrain_data: Vec::with_capacity(1024),
             gui_indices: Vec::with_capacity(1500),
             gui_vertex: Vec::with_capacity(1000),
             commands: Vec::with_capacity(32),
-            sprites_builder: Vec::with_capacity(128),
+            sprites_builder: Vec::with_capacity(64),
         }
     }
 
