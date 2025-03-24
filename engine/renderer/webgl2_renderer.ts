@@ -1,5 +1,5 @@
 import { EngineGameInstance, EngineGameInstanceUpdates, EngineGameDrawUpdate, DrawUpdateType,
-    SPRITE_DATA_SIZE, TERRAIN_CHUNK_STRIDE, TERRAIN_CHUNK_SIZE_BYTES } from "../game_interface";
+    SPRITE_DATA_SIZE, TERRAIN_CHUNK_STRIDE, TERRAIN_CHUNK_SIZE_BYTES, GUI_VERTEX_SIZE } from "../game_interface";
 import { EngineAssets } from "../assets";
 import { set_last_error } from "../error";
 import { Size } from "../helpers";
@@ -65,6 +65,11 @@ class RendererShaders {
     draw_terrain_view_size: WebGLUniformLocation;
     draw_terrain_chunk_position: WebGLUniformLocation;
     draw_terrain: WebGLProgram;
+
+    draw_gui_position_attrloc: number;
+    draw_gui_uv_attrloc: number;
+    draw_gui_view_size: WebGLUniformLocation;
+    draw_gui: WebGLProgram;
 }
 
 class TerrainChunkData {
@@ -86,6 +91,19 @@ class RendererBuffers {
     terrain_indices: WebGLBuffer;
     terrain_vertex: WebGLBuffer;
     terrain_chunk_data: Map<number, TerrainChunkData> = new Map();
+
+    gui_indices: WebGLBuffer;
+    gui_vertex: WebGLBuffer;
+    gui_indices_capacity: number = 0;
+    gui_vertex_capacity: number = 0;
+    gui_indices_len: number = 0;
+    gui_vertex_len: number = 0;
+    gui_vao: WebGLVertexArrayObject;
+}
+
+class GuiRenderData {
+    vao: WebGLVertexArrayObject;
+    index_count: number;
 }
 
 class RendererCanvas {
@@ -114,8 +132,11 @@ export class WebGL2Backend {
     shaders: RendererShaders;
     buffers: RendererBuffers;
 
-    draw_count: number;
-    draw: DrawCommand[];
+    terrain_chunk_draw_count: number;
+    terrain_chunk_draw: DrawCommand[];
+
+    sprite_draw_count: number;
+    sprite_draw: DrawCommand[];
 
     view_x: number;
     view_y: number;
@@ -138,8 +159,12 @@ export class WebGL2Backend {
         this.shaders = new RendererShaders();
         this.buffers = new RendererBuffers();
 
-        this.draw_count = 0;
-        this.draw = [];
+        this.sprite_draw_count = 0;
+        this.sprite_draw = [];
+
+        this.terrain_chunk_draw_count = 0;
+        this.terrain_chunk_draw = [];
+
         this.textures = [];
 
         this.view_x = 0.0;
@@ -203,27 +228,15 @@ export class WebGL2Backend {
         ctx.useProgram(this.shaders.draw_terrain);
         ctx.uniform2f(this.shaders.draw_terrain_view_size, this.canvas.width, this.canvas.height);
 
+        ctx.useProgram(this.shaders.draw_terrain);
+        ctx.uniform2f(this.shaders.draw_gui_view_size, this.canvas.width, this.canvas.height);
+
         return true;
     }
 
     //
     // Updates
     //
-
-    // The draw array is never reset, instead we try to reuse as much memory as possible to reduce pressure on the GC. This may be a little overkill...
-    private next_draw_command(): DrawCommand {
-        let draw: DrawCommand;
-        if (this.draw.length > this.draw_count) {
-            draw = this.draw[this.draw_count];
-        } else {
-            draw = new DrawCommand();
-            this.draw[this.draw_count] = draw;
-        }
-
-        this.draw_count += 1;
-
-        return draw
-    }
 
     private create_renderer_texture(texture_id: number): RendererTexture {
         const ctx = this.ctx;
@@ -310,9 +323,18 @@ export class WebGL2Backend {
 
         this.buffers.sprites_attributes_len += draw_update.instance_count;
         this.buffers.sprite_vao_len += 1;
+        
+        const count = this.sprite_draw_count;
+        this.sprite_draw_count += 1;
+
+        let draw: DrawCommand = this.sprite_draw[count];
+        if (!draw) {
+            draw = new DrawCommand();
+            this.sprite_draw[count] = draw;
+        }
 
         DrawCommand.draw_sprites(
-            this.next_draw_command(),
+            draw,
             vao,
             draw_update.instance_count,
             texture.handle
@@ -365,13 +387,48 @@ export class WebGL2Backend {
         if (!chunk_data) {
             return;
         }
-        
+
+        const count = this.terrain_chunk_draw_count;
+        this.terrain_chunk_draw_count += 1;
+
+        let draw: DrawCommand = this.terrain_chunk_draw[count];
+        if (!draw) {
+            draw = new DrawCommand();
+            this.terrain_chunk_draw[count] = draw;
+        }
+
         DrawCommand.draw_terrain_chunk(
-            this.next_draw_command(),
+            draw,
             draw_update.chunk_x,
             draw_update.chunk_y,
             chunk_data.vao
         );
+    }
+
+    private update_gui(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) {
+        const ctx = this.ctx;
+        const buffers = this.buffers;
+
+        buffers.gui_indices_len = draw_update.gui_indices_count;
+        buffers.gui_vertex_len = draw_update.gui_vertex_count;
+
+        if (buffers.gui_indices_len == 0){
+            return;
+        }
+
+        if (buffers.gui_vertex_len > buffers.gui_vertex_capacity) {
+            const capacity = buffers.gui_vertex_len + 500;
+            this.setup_gui_vertex(capacity);
+            this.setup_gui_vao();
+        }
+        
+        const gui_indices_data = updates.get_gui_indices_data();
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.gui_indices);
+        ctx.bufferSubData(ctx.ARRAY_BUFFER, 0, gui_indices_data);
+
+        const gui_vertex_data = updates.get_gui_vertex_data();
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.gui_vertex);
+        ctx.bufferSubData(ctx.ARRAY_BUFFER, 0, gui_vertex_data);
     }
 
     private update_view_offset(draw_update: EngineGameDrawUpdate) {
@@ -390,7 +447,8 @@ export class WebGL2Backend {
     }
 
     private clear_drawing() {
-        this.draw_count = 0;
+        this.sprite_draw_count = 0;
+        this.terrain_chunk_draw_count = 0;
         this.buffers.sprites_attributes_len = 0;
         this.buffers.sprite_vao_len = 0;
     }
@@ -416,12 +474,16 @@ export class WebGL2Backend {
                     this.update_sprites(game_updates, draw_update);
                     break;
                 }
+                case DrawUpdateType.UpdateGui: {
+                    this.update_gui(game_updates, draw_update);
+                    break;
+                }
                 case DrawUpdateType.UpdateViewOffset: {
                     this.update_view_offset(draw_update);
                     break;
                 }
                 default: {
-                    console.log("Warning: A drawing update with an unknown type was received");
+                    console.log(`Warning: A drawing update with an unknown type ${draw_update.module} was received`);
                 }
             }
         }
@@ -431,40 +493,57 @@ export class WebGL2Backend {
     // Render
     //
 
-    render_sprites(draw: DrawCommand) {
+    render_sprites() {
         const SPRITE_INDEX_COUNT: number = 6;
         const ctx = this.ctx;
 
-        const vao = draw.resource0 as WebGLVertexArrayObject;
-        const instance_count = draw.resource1 as number;
-        const texture = draw.resource2 as WebGLTexture;
-
         ctx.useProgram(this.shaders.draw_sprites);
 
-        ctx.activeTexture(ctx.TEXTURE0);
-        ctx.bindTexture(ctx.TEXTURE_2D, texture);
+        for (let i = 0; i < this.sprite_draw_count; i += 1) {
+            const draw = this.sprite_draw[i];
+            const vao = draw.resource0 as WebGLVertexArrayObject;
+            const instance_count = draw.resource1 as number;
+            const texture = draw.resource2 as WebGLTexture;
 
-        ctx.bindVertexArray(vao);
-
-        ctx.drawElementsInstanced(ctx.TRIANGLES, SPRITE_INDEX_COUNT, ctx.UNSIGNED_SHORT, 0, instance_count);
+            ctx.activeTexture(ctx.TEXTURE0);
+            ctx.bindTexture(ctx.TEXTURE_2D, texture);
+    
+            ctx.bindVertexArray(vao);
+    
+            ctx.drawElementsInstanced(ctx.TRIANGLES, SPRITE_INDEX_COUNT, ctx.UNSIGNED_SHORT, 0, instance_count);
+        }
     }
 
-    render_terrain_chunk(draw: DrawCommand) {
+    render_terrain_chunks() {
         const ctx = this.ctx;
 
-        const batch_x = draw.resource0 as number;
-        const batch_y = draw.resource1 as number;
-        const vao = draw.resource2 as WebGLVertexArrayObject;
-
         ctx.useProgram(this.shaders.draw_terrain);
-
         ctx.activeTexture(ctx.TEXTURE0);
         ctx.bindTexture(ctx.TEXTURE_2D, this.terrain_texture.handle);
 
-        ctx.uniform2f(this.shaders.draw_terrain_chunk_position, batch_x, batch_y);
+        for (let i = 0; i < this.terrain_chunk_draw_count; i += 1) {
+            const draw = this.terrain_chunk_draw[i];
+            const batch_x = draw.resource0 as number;
+            const batch_y = draw.resource1 as number;
+            const vao = draw.resource2 as WebGLVertexArrayObject;
 
-        ctx.bindVertexArray(vao);
-        ctx.drawElements(ctx.TRIANGLES, TERRAIN_CHUNK_INDEX_COUNT, ctx.UNSIGNED_SHORT, 0);
+            ctx.uniform2f(this.shaders.draw_terrain_chunk_position, batch_x, batch_y);
+    
+            ctx.bindVertexArray(vao);
+            ctx.drawElements(ctx.TRIANGLES, TERRAIN_CHUNK_INDEX_COUNT, ctx.UNSIGNED_SHORT, 0);
+        }
+    }
+
+    render_gui() {
+        const ctx = this.ctx;
+        const buffers = this.buffers;
+        if (buffers.gui_indices_len == 0) {
+            return;
+        }
+
+        ctx.useProgram(this.shaders.draw_gui);
+        ctx.bindVertexArray(buffers.gui_vao);
+        ctx.drawElements(ctx.TRIANGLES, buffers.gui_indices_len, ctx.UNSIGNED_SHORT, 0);
     }
 
     render() {
@@ -475,23 +554,9 @@ export class WebGL2Backend {
         ctx.clearBufferfv(ctx.COLOR, 0, [0.0, 0.0, 0.0, 1.0]);
         // ctx.clearBufferfi(ctx.DEPTH_STENCIL, 0, 0.0, 0);
 
-        // Rendering
-        for (let i = 0; i < this.draw_count; i += 1) {
-            const draw = this.draw[i];
-            switch (draw.ty) {
-                case DrawCommandType.DrawTerrainChunk: {
-                    this.render_terrain_chunk(draw);
-                    break;
-                }
-                case DrawCommandType.DrawSprites: {
-                    this.render_sprites(draw);
-                    break;
-                }
-                default: {
-                    console.log("Warning: A drawing command with an unknown type was received");
-                }
-            }
-        }
+        this.render_terrain_chunks();
+        this.render_sprites();
+        this.render_gui();
 
         ctx.bindFramebuffer(ctx.READ_FRAMEBUFFER, this.framebuffer);
         ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, null);
@@ -653,11 +718,38 @@ export class WebGL2Backend {
         shaders.draw_terrain_chunk_position = ctx.getUniformLocation(terrain_program, "chunk_position") as any;
         shaders.draw_terrain = terrain_program;
 
+        // Gui
+        const gui_shader_source = assets.shaders.get("gui");
+        if (!gui_shader_source) {
+            set_last_error("Failed to find gui shader source in assets");
+            return false;
+        }
+
+        const gui_vert = create_shader(ctx, ctx.VERTEX_SHADER, gui_shader_source.vertex);
+        const gui_frag = create_shader(ctx, ctx.FRAGMENT_SHADER, gui_shader_source.fragment);
+        if (!gui_vert || !gui_frag) {
+            set_last_error("Failed to create gui shaders");
+            return false;
+        }
+
+        const gui_program = create_program(ctx, gui_vert, gui_frag);
+        if (!gui_program) {
+            set_last_error("Failed to compile gui shaders");
+            return false;
+        }
+
+        shaders.draw_gui_position_attrloc = ctx.getAttribLocation(gui_program, "in_position");
+        shaders.draw_gui_uv_attrloc = ctx.getAttribLocation(gui_program, "in_uv");
+        shaders.draw_gui_view_size = ctx.getUniformLocation(gui_program, "view_size") as any;
+        shaders.draw_gui = gui_program;
+
         // Cleanup
         ctx.deleteShader(sprites_vert);
         ctx.deleteShader(sprites_frag);
         ctx.deleteShader(terrain_vert);
         ctx.deleteShader(terrain_frag);
+        ctx.deleteShader(gui_vert);
+        ctx.deleteShader(gui_frag);
 
         return true;
     }
@@ -769,10 +861,57 @@ export class WebGL2Backend {
         ctx.bufferData(ctx.ARRAY_BUFFER, vertex_data, ctx.STATIC_DRAW);
     }
 
+    private setup_gui_vertex(capacity?: number) {
+        const ctx = this.ctx;
+        const buffers = this.buffers;
+
+        const GUI_VERTEX_CAPACITY = capacity ? capacity : 1000;
+        const INDEX_SIZE = 2;
+
+        // Indices
+        buffers.gui_indices = ctx.createBuffer();
+        buffers.gui_indices_capacity = Math.ceil(GUI_VERTEX_CAPACITY  * 1.5);
+        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, this.buffers.gui_indices);
+        ctx.bufferData(ctx.ELEMENT_ARRAY_BUFFER, buffers.gui_indices_capacity * INDEX_SIZE, ctx.STATIC_DRAW);
+
+        // Vertex
+        buffers.gui_vertex = ctx.createBuffer();
+        buffers.gui_vertex_capacity = GUI_VERTEX_CAPACITY;
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.gui_vertex);
+        ctx.bufferData(ctx.ARRAY_BUFFER, buffers.gui_vertex_capacity * GUI_VERTEX_SIZE, ctx.STATIC_DRAW);
+    }
+    
+    private setup_gui_vao() {
+        const ctx = this.ctx;
+        const buffers = this.buffers;
+
+        const position = this.shaders.draw_gui_position_attrloc;
+        const uv = this.shaders.draw_gui_uv_attrloc;
+
+        if (!buffers.gui_vao) {
+            buffers.gui_vao = ctx.createVertexArray();
+        }
+        
+        ctx.bindVertexArray(buffers.gui_vao);
+
+        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, this.buffers.gui_indices);
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.gui_vertex);
+
+        ctx.enableVertexAttribArray(position);
+        ctx.vertexAttribPointer(position, 2, ctx.FLOAT, false, 16, 0);
+
+        ctx.enableVertexAttribArray(uv);
+        ctx.vertexAttribPointer(uv, 2, ctx.FLOAT, false, 16, 8);
+
+        ctx.bindVertexArray(null);
+    }
+
     private setup_buffers() {
         this.setup_sprites_vertex();
         this.setup_sprites_attributes();
         this.setup_terrain_chunk_vertex();
+        this.setup_gui_vertex();
+        this.setup_gui_vao();
     }
 
     private setup_uniforms() {
@@ -784,6 +923,9 @@ export class WebGL2Backend {
         ctx.useProgram(this.shaders.draw_terrain);
         ctx.uniform2f(this.shaders.draw_terrain_view_position, 0.0, 0.0);
         ctx.uniform2f(this.shaders.draw_terrain_view_size, this.canvas.width, this.canvas.height);
+
+        ctx.useProgram(this.shaders.draw_gui);
+        ctx.uniform2f(this.shaders.draw_gui_view_size, this.canvas.width, this.canvas.height);
     }
 }
 

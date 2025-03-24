@@ -31,13 +31,13 @@ pub struct ComputedGlyph {
 }
 
 #[derive(Default)]
-pub struct FontAtlasData {
+pub struct FontAsset {
     pub info: AtlasInfo,
     pub glyphs: Vec<AtlasGlyph>,
     pub texture_id: u32,
 }
 
-impl FontAtlasData {
+impl FontAsset {
 
     pub fn from_bytes(texture_id: u32, bytes: &[u8]) ->  Result<Self, Error> {
         let (x, _, y) = unsafe { bytes.align_to::<u32>() };
@@ -54,7 +54,7 @@ impl FontAtlasData {
             glyphs[glyph.unicode as usize] = glyph;
         }
 
-        let data = FontAtlasData {
+        let data = FontAsset {
             info,
             glyphs,
             texture_id,
@@ -63,10 +63,38 @@ impl FontAtlasData {
         Ok(data)
     }
 
+    /// Compute the bounds of character `c` at scale `scale` into `glyph`. Return the advance of the glyph
+    pub fn compute_glyph(&self, c: &str, scale: f32, glyph: &mut ComputedGlyph) -> f32 {
+        // Multi characters glyph not supported
+        let chr = match c.len() == 1 {
+            true => c.chars().next().unwrap_or('?'),
+            false => '?'
+        };
+
+        let atlas_height = self.info.height;
+        let atlas_glyph = self.glyphs.get(chr as usize).copied().unwrap_or_default();
+
+        let line_height = self.info.line_height * 0.75;
+        let top = line_height - atlas_glyph.plane_bound[1];
+        let bottom = line_height - atlas_glyph.plane_bound[3];
+
+        glyph.position.left = scale * atlas_glyph.plane_bound[0];
+        glyph.position.top = scale * top;
+        glyph.position.right = scale * atlas_glyph.plane_bound[2];
+        glyph.position.bottom = scale * bottom;
+
+        glyph.texcoord.left = atlas_glyph.atlas_bound[0];
+        glyph.texcoord.top = atlas_height - atlas_glyph.atlas_bound[1];
+        glyph.texcoord.right = atlas_glyph.atlas_bound[2];
+        glyph.texcoord.bottom = atlas_height - atlas_glyph.atlas_bound[3];
+
+        atlas_glyph.advance * scale
+    }
+
 }
 
 
-impl crate::store::SaveAndLoad for FontAtlasData {
+impl crate::store::SaveAndLoad for FontAsset {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write(&self.info);
         writer.write_slice(&self.glyphs);
@@ -74,7 +102,7 @@ impl crate::store::SaveAndLoad for FontAtlasData {
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        FontAtlasData { 
+        FontAsset { 
             info: reader.read(),
             glyphs: reader.read_slice().to_vec(),
             texture_id: reader.read_u32(),

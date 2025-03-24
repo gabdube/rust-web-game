@@ -93,7 +93,10 @@ impl DemoGame {
         }
 
         #[cfg(feature="editor")]
-        state::editor::init(&mut demo_app.data, crate::state::TestId::WarriorAi);
+        if let Err(e) = state::editor::init(&mut demo_app.data, crate::state::TestId::WarriorAi) {
+            set_last_error(e);
+            return None;
+        }
 
         #[cfg(not(feature="editor"))]
         state::gameplay::init(&mut demo_app.data);
@@ -103,12 +106,17 @@ impl DemoGame {
         Some(demo_app)
     }
 
-    pub fn on_reload(&mut self) {
+    pub fn on_reload(&mut self) -> bool {
         #[cfg(feature="editor")]
-        state::editor::init(&mut self.data, crate::state::TestId::WarriorAi);
+        if let Err(e) = state::editor::init(&mut self.data, crate::state::TestId::WarriorAi) {
+            set_last_error(e);
+            return false;
+        }
 
         // #[cfg(not(feature="editor"))]
         // state::gameplay::init(&mut self.data);
+
+        return true;
     }
 
     pub fn update(&mut self, time: f64) -> bool {

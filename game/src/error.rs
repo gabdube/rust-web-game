@@ -3,6 +3,7 @@ pub enum ErrorType {
     Undefined,
     SaveLoad,
     Assets,
+    Gui,
 }
 
 impl ::std::fmt::Display for ErrorType {
@@ -11,6 +12,7 @@ impl ::std::fmt::Display for ErrorType {
             ErrorType::Undefined => "Undefined",
             ErrorType::SaveLoad => "Save/Load",
             ErrorType::Assets => "Assets",
+            ErrorType::Gui => "Gui",
         })
     }
 }
@@ -78,3 +80,4 @@ macro_rules! error {
 macro_rules! undefined_err { ($($arg:tt)*) => { error!($crate::error::ErrorType::Undefined, $($arg)*) }; }
 macro_rules! save_err { ($($arg:tt)*) => { error!($crate::error::ErrorType::SaveLoad, $($arg)*) }; }
 macro_rules! assets_err { ($($arg:tt)*) => { error!($crate::error::ErrorType::Assets, $($arg)*) }; }
+macro_rules! gui_err { ($($arg:tt)*) => { error!($crate::error::ErrorType::Gui, $($arg)*) }; }

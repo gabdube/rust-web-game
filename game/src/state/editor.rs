@@ -1,5 +1,6 @@
 //! Special debugging state to test features
 use crate::behaviour;
+use crate::error::Error;
 use crate::state::GameState;
 use crate::world::{StructureData, WorldObject, WorldObjectType};
 use crate::{DemoGameData, pos};
@@ -29,7 +30,7 @@ pub struct EditorState {
     selected_object: Option<WorldObject>,
 }
 
-pub fn init(game: &mut DemoGameData, test: TestId) {
+pub fn init(game: &mut DemoGameData, test: TestId) -> Result<(), Error> {
     let inner_state = EditorState {
         current_test: test,
         selected_object: None,
@@ -37,7 +38,7 @@ pub fn init(game: &mut DemoGameData, test: TestId) {
 
     game.init_terrain(16, 16);
 
-    init_gui(game);
+    init_gui(game)?;
 
     match test {
         TestId::None => {},
@@ -47,21 +48,24 @@ pub fn init(game: &mut DemoGameData, test: TestId) {
     }
 
     game.state = GameState::Editor(inner_state);
+
+    Ok(())
 }
 
-fn init_gui(game: &mut DemoGameData) {
+fn init_gui(game: &mut DemoGameData) -> Result<(), Error> {
     use crate::assets::FontId;
     use crate::gui::*;
-    
 
-    game.gui.build(|gui| {
+    game.gui.build(&game.assets, |gui| {
         gui.layout(GuiLayout {  });
         gui.container(|gui| {
             let font = gui.font(FontId::Roboto, 60.0);
-            //let text = gui.static_text("TEST", font, GuiColor::white());
-            //gui.label(GuiLabel::from_static_text(gui, text));
+            let text = gui.static_text("TEST", font, GuiColor::white());
+            gui.label(GuiLabel::from_static_text(text));
         });
-    });
+    })?;
+
+    Ok(())
 }
 
 fn init_pawn_tests(data: &mut DemoGameData) {

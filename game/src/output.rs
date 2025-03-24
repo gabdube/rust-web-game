@@ -16,6 +16,7 @@ pub enum DrawUpdateType {
     UpdateTerrainChunk = 2,
     DrawTerrainChunk = 3,
     UpdateViewOffset = 4,
+    UpdateGui = 5,
 }
 
 #[repr(C)]
@@ -43,11 +44,19 @@ pub struct DrawTerrainChunkParams {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct UpdateGuiParams {
+    pub indices_count: u32,
+    pub vertex_count: u32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub union DrawUpdateParams {
     pub draw_sprites: DrawSpriteParams,
     pub update_terrain_chunk: UpdateTerrainChunkParams,
     pub draw_terrain_chunk: DrawTerrainChunkParams,
     pub update_view_offset: Position<f32>,
+    pub update_gui: UpdateGuiParams,
 }
 
 /// A generic draw update that will be read by the renderere
@@ -62,7 +71,7 @@ pub struct DrawUpdate {
 /// Memory layout must match `in_instance_position`, `in_instance_texcoord`, `in_instance_data` in `sprites.vert.glsl`
 /// If this struct size change, it must also be updatedin `game_interface.ts`
 #[repr(C)]
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default)]
 pub struct SpriteData {
     pub position: [f32; 2],
     pub size: [f32; 2],
@@ -73,7 +82,7 @@ pub struct SpriteData {
 
 /// Texture coordinates for the 4 vertex of a sprite the terrain data buffer
 #[repr(C)]
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default)]
 pub struct TerrainChunkTexcoord {
     pub v0: [f32; 2],
     pub v1: [f32; 2],
@@ -81,6 +90,12 @@ pub struct TerrainChunkTexcoord {
     pub v3: [f32; 2],
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Default)]
+pub struct GuiVertex {
+    pub position: [f32; 2],
+    pub texcoord: [f32; 2],
+}
 
 /// Temporary storage for sprites when regrouping by texture_id and y position
 pub struct TempSprite {
@@ -100,6 +115,10 @@ pub struct OutputIndex {
     pub sprites_data_count: usize,
     pub terrain_data_ptr: *const TerrainChunkTexcoord,
     pub terrain_data_count: usize,
+    pub gui_indices_ptr: *const u16,
+    pub gui_indices_count: usize,
+    pub gui_vertex_ptr: *const GuiVertex,
+    pub gui_vertex_count: usize,
     pub validation: usize
 }
 
@@ -113,6 +132,12 @@ pub struct GameOutput {
 
     /// Buffers of generated terrain sprites. Shared with the renderer.
     pub terrain_data: Vec<TerrainChunkTexcoord>,
+
+    /// Buffer holding the indices of the gui mesh
+    pub gui_indices: Vec<u16>,
+
+    /// Buffer holding the vertex of the gui mesh
+    pub gui_vertex: Vec<GuiVertex>,
 
     /// Buffers of the generated draw update for the current frame. Shared with the renderer.
     pub commands: Vec<DrawUpdate>,
@@ -138,6 +163,10 @@ impl GameOutput {
         index.sprites_data_count = self.sprite_data_buffer.len();
         index.terrain_data_ptr = self.terrain_data.as_ptr();
         index.terrain_data_count = self.terrain_data.len();
+        index.gui_indices_ptr = self.gui_indices.as_ptr();
+        index.gui_indices_count = self.gui_indices.len();
+        index.gui_vertex_ptr = self.gui_vertex.as_ptr();
+        index.gui_vertex_count = self.gui_vertex.len();
     }
 
 }
@@ -148,6 +177,7 @@ pub fn update(game: &mut DemoGame) {
     update_terrain(game);
     render_terrain(game);
     render_sprites(game);
+    render_gui(game);
     game.output.write_index();
 }
 
@@ -432,6 +462,25 @@ fn build_static_sprite(base: &crate::world::BaseStatic) -> SpriteData {
         sprite
     }
 
+/**
+    Generate the gui sprites. If the gui wasn't updated since the last frame, this doesn't do anything
+*/
+fn render_gui(game: &mut DemoGame) {
+    let gui = &mut game.data.gui;
+    let output = &mut game.output;
+
+    if !gui.needs_sync {
+        return;
+    }
+
+    output.commands.push(DrawUpdate {
+        graphics: DrawUpdateType::UpdateGui,
+        params: DrawUpdateParams { update_gui: UpdateGuiParams { indices_count: 0, vertex_count: 0 } },
+    });
+
+    gui.needs_sync = false;
+}
+
 impl Default for GameOutput {
 
     fn default() -> Self {
@@ -440,6 +489,8 @@ impl Default for GameOutput {
             output_index: Box::leak(output_index),
             sprite_data_buffer: Vec::with_capacity(32),
             terrain_data: Vec::with_capacity(1024),
+            gui_indices: Vec::with_capacity(1500),
+            gui_vertex: Vec::with_capacity(1000),
             commands: Vec::with_capacity(32),
             sprites_builder: Vec::with_capacity(128),
         }
@@ -457,6 +508,10 @@ impl Default for OutputIndex {
             sprites_data_count: 0,
             terrain_data_ptr: ::std::ptr::null(),
             terrain_data_count: 0,
+            gui_indices_ptr: ::std::ptr::null(),
+            gui_indices_count: 0,
+            gui_vertex_ptr: ::std::ptr::null(),
+            gui_vertex_count: 0,
             validation: 33355,
         }
     }

@@ -36,7 +36,7 @@ pub enum FontId {
 #[derive(Default)]
 pub struct Fonts {
     // Assets are shared with the gui system
-    pub roboto: FontAtlasData,
+    pub roboto: FontAsset,
 }
 
 #[derive(Default)]
@@ -101,7 +101,7 @@ impl Assets {
             .ok_or_else(|| assets_err!("Failed to match font name to font data") )?;
 
         let texture_id = self.textures.len() as u32;
-        let font = FontAtlasData::from_bytes(texture_id, font_atlas_data)?;
+        let font = FontAsset::from_bytes(texture_id, font_atlas_data)?;
 
         match font_name.as_str() {
             "roboto" => { self.fonts.roboto = font; },
@@ -111,6 +111,12 @@ impl Assets {
         self.textures.insert(font_name, Texture { id: texture_id });
 
         Ok(())
+    }
+
+    pub fn get_font<'a>(&'a self, id: FontId) -> &'a FontAsset {
+        match id {
+            FontId::Roboto => &self.fonts.roboto
+        }
     }
 }
 
