@@ -5,7 +5,6 @@ use crate::DemoGameData;
 use super::{PawnBehaviour, PawnBehaviourType};
 
 const MOVING: u8 = 0;
-const STOPPING: u8 = 1;
 
 pub fn new(game: &mut DemoGameData, pawn: WorldObject, target_position: Position<f32>) {
     let pawn_index = pawn.id as usize;
@@ -27,7 +26,6 @@ pub fn process(game: &mut DemoGameData, pawn_index: usize) {
     match state {
         BehaviourState::Initial => init(game, pawn_index),
         BehaviourState::Running(MOVING) => moving(game, pawn_index),
-        BehaviourState::Running(STOPPING) => stopping(game, pawn_index),
         _ => {},
     }
 }
@@ -56,7 +54,9 @@ fn moving(game: &mut DemoGameData, pawn_index: usize) {
     let current_position = pawn.position;
     let updated_position = move_to(current_position, target_position, game.global.frame_delta);
     if updated_position == target_position {
-        behaviour.state = BehaviourState::Running(STOPPING);
+        *behaviour = PawnBehaviour::idle();
+    } else {
+        pawn.flipped = current_position.x > target_position.x;
     }
 
     if let Some(resource_index) = pawn_data.grabbed_resource() {
@@ -66,21 +66,8 @@ fn moving(game: &mut DemoGameData, pawn_index: usize) {
     }
 
     pawn.position = updated_position;
-    pawn.flipped = updated_position.x > target_position.x;
 }
 
-fn stopping(game: &mut DemoGameData, pawn_index: usize) {
-    let pawn = &mut game.world.pawns[pawn_index];
-    let pawn_data = &mut game.world.pawns_data[pawn_index];
-    let behaviour = &mut game.world.pawns_behaviour[pawn_index];
-
-    pawn.animation = match pawn_data.grabbed_resource() {
-        Some(_) => game.assets.animations.pawn.idle_hold,
-        None => game.assets.animations.pawn.idle
-    };
-
-    *behaviour = PawnBehaviour::idle();
-}
 
 #[inline(always)]
 fn params(value: PawnBehaviourType) -> Position<f32> {

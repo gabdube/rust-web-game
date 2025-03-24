@@ -65,7 +65,7 @@ fn init_gui(game: &mut DemoGameData) -> Result<(), Error> {
         gui.container(|gui| {
             let font = gui.font(FontId::Roboto, 100.0);
             let text = gui.static_text("Hello World", font, GuiColor::white());
-            gui.label(GuiLabel::from_static_text(text));
+            //gui.label(GuiLabel::from_static_text(text));
         });
     })?;
 
@@ -176,6 +176,12 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
 }
 
 fn warrior_actions(game: &mut DemoGameData, warrior: WorldObject, target_object: Option<WorldObject>) {
+    let cursor_world_position = game.inputs.mouse_position + game.global.view_offset;
+
+    if target_object.is_none() || game.inputs.left_shift.pressed() {
+        behaviour::warrior::warrior_move::new(game, warrior, cursor_world_position);
+        return;
+    }
 }
 
 fn archer_actions(game: &mut DemoGameData, archer: WorldObject, target_object: Option<WorldObject>) {

@@ -102,6 +102,7 @@ pub struct World {
     pub pawns_behaviour: Vec<behaviour::pawn::PawnBehaviour>,
 
     pub warriors: Vec<BaseAnimated>,
+    pub warriors_behaviour: Vec<behaviour::warrior::WarriorBehaviour>,
 
     pub archers: Vec<BaseAnimated>,
     pub torch_goblins: Vec<BaseAnimated>,
@@ -142,6 +143,8 @@ impl World {
         self.pawns_behaviour.clear();
 
         self.warriors.clear();
+        self.warriors_behaviour.clear();
+
         self.archers.clear();
         self.torch_goblins.clear();
         self.tnt_goblins.clear();
@@ -181,6 +184,7 @@ impl World {
 
     pub fn create_warrior(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
         self.total_sprite_count += 1;
+        self.warriors_behaviour.push(behaviour::warrior::WarriorBehaviour::idle());
         Self::create_inner_actor(&mut self.warriors, position, animation)
     }
 
@@ -374,6 +378,8 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.pawns_behaviour);
 
         writer.write_slice(&self.warriors);
+        writer.write_slice(&self.warriors_behaviour);
+
         writer.write_slice(&self.archers);
         writer.write_slice(&self.torch_goblins);
         writer.write_slice(&self.tnt_goblins);
@@ -410,6 +416,8 @@ impl SaveAndLoad for World {
         let pawns_behaviour = reader.read_slice().to_vec();
 
         let warriors = reader.read_slice().to_vec();
+        let warriors_behaviour = reader.read_slice().to_vec();
+
         let archers = reader.read_slice().to_vec();
         let torch_goblins = reader.read_slice().to_vec();
         let tnt_goblins = reader.read_slice().to_vec();
@@ -451,6 +459,8 @@ impl SaveAndLoad for World {
             pawns_behaviour,
 
             warriors,
+            warriors_behaviour,
+
             archers,
             torch_goblins,
             tnt_goblins,
@@ -492,6 +502,8 @@ impl Default for World {
             pawns_behaviour: Vec::with_capacity(16),
 
             warriors: Vec::with_capacity(16),
+            warriors_behaviour: Vec::with_capacity(16),
+
             archers: Vec::with_capacity(16),
             torch_goblins: Vec::with_capacity(16),
             tnt_goblins: Vec::with_capacity(16),

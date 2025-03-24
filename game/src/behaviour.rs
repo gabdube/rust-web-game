@@ -1,6 +1,7 @@
 //! Behaviour are snippets of code that are evaluated each frame. Think "AI", but less fancy.
 pub mod behaviour_shared;
 pub mod pawn;
+pub mod warrior;
 pub mod sheep;
 pub mod spawn_resources;
 
@@ -14,6 +15,7 @@ pub enum BehaviourState {
 
 pub fn update(game: &mut DemoGame) {
     run_pawn_behaviour(game);
+    run_warrior_behaviour(game);
     run_sheep_behaviour(game);
 
     if game.data.world.resources_spawn.len() > 0 {
@@ -40,6 +42,22 @@ fn run_pawn_behaviour(game: &mut DemoGame) {
         index += 1;
     }
 
+}
+
+fn run_warrior_behaviour(game: &mut DemoGame) {
+    use warrior::WarriorBehaviourType;
+
+    let data = &mut game.data;
+    let mut index = 0;
+
+    while index < data.world.warriors.len() {
+        let behaviour_type = data.world.warriors_behaviour[index].ty;
+        match behaviour_type {
+            WarriorBehaviourType::Idle { .. } => warrior::idle(data, index),
+            WarriorBehaviourType::MoveTo { .. } => warrior::warrior_move::process(data, index),
+        }
+        index += 1;
+    }
 }
 
 fn run_sheep_behaviour(game: &mut DemoGame) {
