@@ -1,6 +1,5 @@
 use crate::assets::{FontId, ComputedGlyph};
 use crate::shared::Size;
-use super::GuiColor;
 
 #[derive(Copy, Clone)]
 pub struct GuiFontId(pub u32);
@@ -17,31 +16,23 @@ pub struct GuiFont {
 pub struct GuiStaticText {
     pub font: GuiFont,
     pub size: Size<f32>,
-    pub color: GuiColor,
     pub glyphs: Box<[ComputedGlyph]>,
-}
-
-impl GuiStaticText {
-
 }
 
 impl crate::store::SaveAndLoad for GuiStaticText {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write(&self.font);
         writer.write(&self.size);
-        writer.write(&self.color);
         writer.write_slice(&self.glyphs);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let font: GuiFont = reader.read();
         let size: Size<f32> = reader.read();
-        let color: GuiColor = reader.read();
-        let glyphs: Vec<ComputedGlyph> = reader.read_slice().to_vec();
+        let glyphs: Vec<ComputedGlyph> = reader.read_vec();
         GuiStaticText {
             font,
             size,
-            color,
             glyphs: glyphs.into_boxed_slice()
         }
     }

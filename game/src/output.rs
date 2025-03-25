@@ -95,6 +95,7 @@ pub struct TerrainChunkTexcoord {
 pub struct GuiVertex {
     pub position: [f32; 2],
     pub texcoord: [f32; 2],
+    pub color: [u8; 4],
 }
 
 /// Temporary storage for sprites when regrouping by texture_id and y position
@@ -491,26 +492,32 @@ fn render_gui(game: &mut DemoGame) {
  
         let [left, top, right, bottom] = sprite.positions.splat();
         let [tleft, ttop, tright, tbottom] = sprite.texcoord.splat();
+        
+        // The alpha channels holds rendering flags
+        let [r, g, b] = sprite.color.splat();
+        let color = [r, g, b, sprite.flags];
 
         output.gui_vertex.extend_from_slice(&[
-            GuiVertex { position: [left, top], texcoord: [tleft, ttop] },
-            GuiVertex { position: [right, top], texcoord: [tright, ttop] },
-            GuiVertex { position: [left, bottom], texcoord: [tleft, tbottom] },
-            GuiVertex { position: [right, bottom], texcoord: [tright, tbottom] },
+            GuiVertex { position: [left, top], texcoord: [tleft, ttop], color },
+            GuiVertex { position: [right, top], texcoord: [tright, ttop], color },
+            GuiVertex { position: [left, bottom], texcoord: [tleft, tbottom], color },
+            GuiVertex { position: [right, bottom], texcoord: [tright, tbottom], color },
         ]);
 
         v += 4;
     }
 
-    output.commands.push(DrawUpdate {
-        graphics: DrawUpdateType::UpdateGui,
-        params: DrawUpdateParams { 
-            update_gui: UpdateGuiParams {
-                indices_count: output.gui_indices.len() as u32,
-                vertex_count: output.gui_vertex.len() as u32,
-            } 
-        },
-    });
+    if output.gui_indices.len() > 0 {
+        output.commands.push(DrawUpdate {
+            graphics: DrawUpdateType::UpdateGui,
+            params: DrawUpdateParams { 
+                update_gui: UpdateGuiParams {
+                    indices_count: output.gui_indices.len() as u32,
+                    vertex_count: output.gui_vertex.len() as u32,
+                } 
+            },
+        });
+    }
 
     gui.needs_sync = false;
 }

@@ -179,23 +179,26 @@ impl World {
         self.terrain.init_terrain(width, height);
     }
 
-    pub fn create_pawn(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_pawn(&mut self, position: Position<f32>) -> usize {
         self.total_sprite_count += 1;
         self.pawns_data.push(PawnData::default());
         self.pawns_behaviour.push(behaviour::pawn::PawnBehaviour::idle());
-        Self::create_inner_actor(&mut self.pawns, position, animation)
+        self.pawns.push(BaseAnimated { position, ..Default::default()});
+        self.pawns.len() - 1
     }
 
-    pub fn create_warrior(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_warrior(&mut self, position: Position<f32>) -> usize {
         self.total_sprite_count += 1;
         self.warriors_behaviour.push(behaviour::warrior::WarriorBehaviour::idle());
-        Self::create_inner_actor(&mut self.warriors, position, animation)
+        self.warriors.push(BaseAnimated { position, ..Default::default()});
+        self.warriors.len() - 1
     }
 
-    pub fn create_archer(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_archer(&mut self, position: Position<f32>) -> usize {
         self.total_sprite_count += 1;
         self.archers_behaviour.push(behaviour::archer::ArcherBehaviour::idle());
-        Self::create_inner_actor(&mut self.archers, position, animation)
+        self.archers.push(BaseAnimated { position, ..Default::default()});
+        self.archers.len() - 1
     }
 
     pub fn create_sheep(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
@@ -418,37 +421,37 @@ impl SaveAndLoad for World {
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let pawns = reader.read_slice().to_vec();
-        let pawns_data = reader.read_slice().to_vec();
-        let pawns_behaviour = reader.read_slice().to_vec();
+        let pawns = reader.read_vec();
+        let pawns_data = reader.read_vec();
+        let pawns_behaviour = reader.read_vec();
 
-        let warriors = reader.read_slice().to_vec();
-        let warriors_behaviour = reader.read_slice().to_vec();
+        let warriors = reader.read_vec();
+        let warriors_behaviour = reader.read_vec();
 
-        let archers = reader.read_slice().to_vec();
-        let archers_behaviour = reader.read_slice().to_vec();
+        let archers = reader.read_vec();
+        let archers_behaviour = reader.read_vec();
 
-        let torch_goblins = reader.read_slice().to_vec();
-        let tnt_goblins = reader.read_slice().to_vec();
+        let torch_goblins = reader.read_vec();
+        let tnt_goblins = reader.read_vec();
 
-        let sheeps = reader.read_slice().to_vec();
+        let sheeps = reader.read_vec();
         let sheeps_data = reader.load_vec();
         let sheep_behaviour = reader.load_vec();
 
-        let decorations = reader.read_slice().to_vec();
+        let decorations = reader.read_vec();
 
-        let structures = reader.read_slice().to_vec();
+        let structures = reader.read_vec();
         let structures_data = reader.load_vec();
         
-        let resources = reader.read_slice().to_vec();
-        let resources_data = reader.read_slice().to_vec();
-        let resources_spawn = reader.read_slice().to_vec();
-        let resources_spawn_behaviour = reader.read_slice().to_vec();
+        let resources = reader.read_vec();
+        let resources_data = reader.read_vec();
+        let resources_spawn = reader.read_vec();
+        let resources_spawn_behaviour = reader.read_vec();
 
-        let trees = reader.read_slice().to_vec();
+        let trees = reader.read_vec();
         let trees_data = reader.load_vec();
 
-        let selected = reader.read_slice().to_vec();
+        let selected = reader.read_vec();
 
         let static_resources_texture = reader.read();
         let units_texture = reader.read();

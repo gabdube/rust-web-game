@@ -6,7 +6,7 @@ const OUTPUT_INDEX_SIZE: number = 48;  // size_of(OutputIndex)
 const DRAW_UPDATE_SIZE: number = 16;   // size_of(DrawUpdate)
 export const SPRITE_DATA_SIZE: number = 36;       // size_of(SpriteData)
 const TERRAIN_CHUNK_TEXT_COORD_SIZE: number = 32; // size_of(TerrainChunkTexcoord)
-export const GUI_VERTEX_SIZE: number = 16;        // size_of(GuiVertex)
+export const GUI_VERTEX_SIZE: number = 20;        // size_of(GuiVertex)
 
 const OUTPUT_INDEX_DRAW_UPDATES_OFFSET: number = 4;
 const OUTPUT_INDEX_DRAW_UPDATES_COUNT_OFFSET: number = 8;

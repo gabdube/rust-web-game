@@ -5,13 +5,15 @@ pub struct GuiColor {
     pub r: u8,
     pub g: u8,
     pub b: u8,
-    pub a: u8,
 }
 
 impl GuiColor {
+    pub const fn black() -> Self {
+        GuiColor { r: 0, g: 0, b: 0 }
+    }
 
-    pub const fn white() -> Self {
-        GuiColor { r: 255, g: 255, b: 255, a: 255 }
+    pub const fn splat(&self) -> [u8; 3] {
+        [self.r, self.g, self.b]
     }
 
 }
@@ -21,4 +23,6 @@ impl GuiColor {
 pub struct GuiOutputSprite {
     pub positions: AABB,
     pub texcoord: AABB,
+    pub color: GuiColor,
+    pub flags: u8,
 }

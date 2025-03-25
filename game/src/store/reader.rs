@@ -135,6 +135,10 @@ impl<'a> SaveFileReader<'a> {
         data
     }
 
+    pub fn read_vec<T: Copy>(&mut self) -> Vec<T> {
+        self.read_slice().to_vec()
+    }
+
     pub fn read_bool_vec(&mut self) -> Vec<bool> {
         let length = self.read_u32();
         if length == 0 {

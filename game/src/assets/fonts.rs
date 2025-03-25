@@ -104,7 +104,7 @@ impl crate::store::SaveAndLoad for FontAsset {
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         FontAsset { 
             info: reader.read(),
-            glyphs: reader.read_slice().to_vec(),
+            glyphs: reader.read_vec(),
             texture_id: reader.read_u32(),
         }
     }

@@ -1,15 +1,18 @@
-use super::{GuiBuilder, GuiStaticTextId};
+use crate::shared::{Position, Size};
+use super::{GuiStaticTextId, GuiColor};
 
 #[derive(Copy, Clone)]
 pub struct GuiLabel {
-    pub text: GuiStaticTextId
+    pub text: GuiStaticTextId,
+    pub text_color: GuiColor,
 }
 
 impl GuiLabel {
 
-    pub fn from_static_text(text: GuiStaticTextId) -> Self {
+    pub fn from_static_text_and_color(text: GuiStaticTextId, text_color: GuiColor) -> Self {
         GuiLabel {
             text,
+            text_color,
         }
     }
 
@@ -17,5 +20,17 @@ impl GuiLabel {
 
 #[derive(Copy, Clone)]
 pub enum GuiComponent {
+    Container,
     Label(GuiLabel)
+}
+
+#[derive(Copy, Clone)]
+pub struct GuiNode {
+    pub children_count: u32,
+}
+
+#[derive(Copy, Clone, Default, Debug)]
+pub struct GuiComponentView {
+    pub position: Position<f32>,
+    pub size: Size<f32>,
 }

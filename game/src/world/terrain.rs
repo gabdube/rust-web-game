@@ -89,7 +89,7 @@ impl crate::store::SaveAndLoad for Terrain {
             chunk_width: reader.read_u32(),
             chunk_height: reader.read_u32(),
             chunks_updates: reader.read_bool_vec(),
-            chunks: reader.read_slice().to_vec(),
+            chunks: reader.read_vec(),
         }
     }
 }

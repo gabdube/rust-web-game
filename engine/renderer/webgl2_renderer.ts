@@ -68,6 +68,7 @@ class RendererShaders {
 
     draw_gui_position_attrloc: number;
     draw_gui_uv_attrloc: number;
+    draw_gui_color_attrloc: number;
     draw_gui_view_size: WebGLUniformLocation;
     draw_gui: WebGLProgram;
 }
@@ -740,6 +741,7 @@ export class WebGL2Backend {
 
         shaders.draw_gui_position_attrloc = ctx.getAttribLocation(gui_program, "in_position");
         shaders.draw_gui_uv_attrloc = ctx.getAttribLocation(gui_program, "in_uv");
+        shaders.draw_gui_color_attrloc = ctx.getAttribLocation(gui_program, "in_color");
         shaders.draw_gui_view_size = ctx.getUniformLocation(gui_program, "view_size") as any;
         shaders.draw_gui = gui_program;
 
@@ -894,6 +896,7 @@ export class WebGL2Backend {
 
         const position = this.shaders.draw_gui_position_attrloc;
         const uv = this.shaders.draw_gui_uv_attrloc;
+        const color = this.shaders.draw_gui_color_attrloc;
 
         if (!buffers.gui_vao) {
             buffers.gui_vao = ctx.createVertexArray();
@@ -905,10 +908,13 @@ export class WebGL2Backend {
         ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.gui_vertex);
 
         ctx.enableVertexAttribArray(position);
-        ctx.vertexAttribPointer(position, 2, ctx.FLOAT, false, 16, 0);
+        ctx.vertexAttribPointer(position, 2, ctx.FLOAT, false, 20, 0);
 
         ctx.enableVertexAttribArray(uv);
-        ctx.vertexAttribPointer(uv, 2, ctx.FLOAT, false, 16, 8);
+        ctx.vertexAttribPointer(uv, 2, ctx.FLOAT, false, 20, 8);
+
+        ctx.enableVertexAttribArray(color);
+        ctx.vertexAttribPointer(color, 4, ctx.UNSIGNED_BYTE, true, 20, 16);
 
         ctx.bindVertexArray(null);
     }

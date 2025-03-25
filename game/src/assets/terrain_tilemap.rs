@@ -43,7 +43,7 @@ impl crate::store::SaveAndLoad for TerrainTilemap {
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         TerrainTilemap {
-            cells_texture_coordinates: reader.read_slice().to_vec()
+            cells_texture_coordinates: reader.read_vec()
         }
     }
 

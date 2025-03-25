@@ -139,6 +139,13 @@ impl AABB {
         self.bottom - self.top
     }
 
+    pub fn offset(&mut self, offset: Position<f32>) {
+        self.left += offset.x;
+        self.right += offset.x;
+        self.top += offset.y;
+        self.bottom += offset.y;
+    }
+
     pub const fn intersects(&self, other: &Self) -> bool {
         if self.right < other.left || other.right < self.left {
             return false

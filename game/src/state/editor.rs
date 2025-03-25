@@ -61,11 +61,11 @@ fn init_gui(game: &mut DemoGameData) -> Result<(), Error> {
     game.gui.resize(game.global.view_size);
 
     game.gui.build(&game.assets, |gui| {
-        gui.layout(GuiLayout {  });
+        gui.origin(GuiLayoutOrigin::BottomLeft);
         gui.container(|gui| {
             let font = gui.font(FontId::Roboto, 100.0);
-            let text = gui.static_text("Hello World", font, GuiColor::white());
-            //gui.label(GuiLabel::from_static_text(text));
+            let text = gui.static_text("Hello World", font);
+            gui.label(GuiLabel::from_static_text_and_color(text, GuiColor { r: 255, g: 255, b: 255 }));
         });
     })?;
 
@@ -76,9 +76,9 @@ fn init_pawn_tests(data: &mut DemoGameData) {
     let world = &mut data.world;
     let assets = &data.assets;
 
-    world.create_pawn(pos(100.0, 100.0), &assets.animations.pawn.idle);
-    world.create_pawn(pos(100.0, 200.0), &assets.animations.pawn.idle);
-    world.create_pawn(pos(100.0, 300.0), &assets.animations.pawn.idle);
+    world.create_pawn(pos(100.0, 100.0));
+    world.create_pawn(pos(100.0, 200.0));
+    world.create_pawn(pos(100.0, 300.0));
     
     world.create_tree(pos(300.0, 220.0), &assets.resources.tree_idle);
     world.create_tree(pos(380.0, 300.0), &assets.resources.tree_idle);
@@ -91,22 +91,19 @@ fn init_pawn_tests(data: &mut DemoGameData) {
 
 fn init_warrior_ai(data: &mut DemoGameData) {
     let world = &mut data.world;
-    let assets = &data.assets;
 
-    world.create_warrior(pos(100.0, 100.0), &assets.animations.warrior.idle);
-    world.create_warrior(pos(200.0, 100.0), &assets.animations.warrior.idle);
-    world.create_warrior(pos(300.0, 100.0), &assets.animations.warrior.idle);
+    world.create_warrior(pos(100.0, 100.0));
+    world.create_warrior(pos(200.0, 100.0));
+    world.create_warrior(pos(300.0, 100.0));
 
     create_sheeps(data);
 }
 
 fn init_archer_ai(data: &mut DemoGameData) {
     let world = &mut data.world;
-    let assets = &data.assets;
-
-    world.create_archer(pos(100.0, 100.0), &assets.animations.archer.idle);
-    world.create_archer(pos(200.0, 100.0), &assets.animations.archer.idle);
-    world.create_archer(pos(300.0, 100.0), &assets.animations.archer.idle);
+    world.create_archer(pos(100.0, 100.0));
+    world.create_archer(pos(200.0, 100.0));
+    world.create_archer(pos(300.0, 100.0));
 
     create_sheeps(data);
 }
