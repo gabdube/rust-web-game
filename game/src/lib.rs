@@ -83,7 +83,8 @@ impl DemoGame {
 
         let mut demo_app = DemoGame::default();
         demo_app.data.global.seed = init.seed;
-        demo_app.data.global.view_size = init.initial_window_size;
+        demo_app.data.inputs.view_size = init.initial_window_size;
+        demo_app.data.inputs.last_view_size = init.initial_window_size;
 
         fastrand::seed(init.seed);
 
@@ -132,8 +133,8 @@ impl DemoGame {
     }
 
     pub fn update_view_size(&mut self, width: f32, height: f32) {
-        self.data.global.view_size.width = width;
-        self.data.global.view_size.height = height;
+        self.data.inputs.view_size.width = width;
+        self.data.inputs.view_size.height = height;
     }
 
     pub fn update_mouse_position(&mut self, x: f32, y: f32) {
@@ -199,19 +200,12 @@ impl Default for DemoGame {
 
 impl store::SaveAndLoad for DemoGame {
     fn save(&self, writer: &mut store::SaveFileWriter) {
-        writer.save(&self.data.global);
-        writer.save(&self.data.assets);
-        writer.save(&self.data.world);
-        writer.save(&self.data.state);
+        writer.save(&self.data);
     }
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
         let mut demo_app = DemoGame::default();
-        demo_app.data.global = reader.load();
-        demo_app.data.assets = reader.load();
-        demo_app.data.world = reader.load();
-        demo_app.data.state = reader.load();
-
+        demo_app.data = reader.load();
         demo_app
     }
 }

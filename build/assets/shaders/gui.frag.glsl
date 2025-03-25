@@ -36,6 +36,6 @@ void main() {
     if (is_font > 0) {
         outColor = vec4(opacity) * color;
     } else {
-        outColor = vec4(color.rbg, 1.0);
+        outColor = vec4((color_sample.rgb * color.rgb), 1.0) * color_sample.a;
     }
 }

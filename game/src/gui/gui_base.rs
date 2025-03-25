@@ -8,15 +8,11 @@ pub struct GuiColor {
 }
 
 impl GuiColor {
-    pub const fn black() -> Self {
-        GuiColor { r: 0, g: 0, b: 0 }
-    }
-
     pub const fn splat(&self) -> [u8; 3] {
         [self.r, self.g, self.b]
     }
-
 }
+
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

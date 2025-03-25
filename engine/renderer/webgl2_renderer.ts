@@ -70,6 +70,8 @@ class RendererShaders {
     draw_gui_uv_attrloc: number;
     draw_gui_color_attrloc: number;
     draw_gui_view_size: WebGLUniformLocation;
+    draw_gui_font_texture: WebGLUniformLocation;
+    draw_gui_image_texture: WebGLUniformLocation;
     draw_gui: WebGLProgram;
 }
 
@@ -125,6 +127,7 @@ export class WebGL2Backend {
     textures: RendererTexture[];
     terrain_texture: RendererTexture;
     font_texture: RendererTexture;
+    gui_texture: RendererTexture;
 
     shaders: RendererShaders;
     buffers: RendererBuffers;
@@ -543,6 +546,9 @@ export class WebGL2Backend {
         ctx.activeTexture(ctx.TEXTURE0);
         ctx.bindTexture(ctx.TEXTURE_2D, this.font_texture.handle);
 
+        ctx.activeTexture(ctx.TEXTURE1);
+        ctx.bindTexture(ctx.TEXTURE_2D, this.gui_texture.handle);
+
         ctx.bindVertexArray(buffers.gui_vao);
         ctx.drawElements(ctx.TRIANGLES, buffers.gui_indices_len, ctx.UNSIGNED_SHORT, 0);
     }
@@ -743,6 +749,8 @@ export class WebGL2Backend {
         shaders.draw_gui_uv_attrloc = ctx.getAttribLocation(gui_program, "in_uv");
         shaders.draw_gui_color_attrloc = ctx.getAttribLocation(gui_program, "in_color");
         shaders.draw_gui_view_size = ctx.getUniformLocation(gui_program, "view_size") as any;
+        shaders.draw_gui_font_texture = ctx.getUniformLocation(gui_program, "fonts_texture") as any;
+        shaders.draw_gui_image_texture = ctx.getUniformLocation(gui_program, "images_texture") as any;
         shaders.draw_gui = gui_program;
 
         // Cleanup
@@ -770,8 +778,15 @@ export class WebGL2Backend {
             return false;
         }
 
+        const gui_texture_id = this.assets.textures.get("gui")?.id;
+        if (!gui_texture_id) {
+            set_last_error("Failed to load gui texture")
+            return false;
+        }
+
         this.terrain_texture = this.create_renderer_texture(texture_id);
         this.font_texture = this.create_renderer_texture(font_texture_id);
+        this.gui_texture = this.create_renderer_texture(gui_texture_id);
 
         return true;
     }
@@ -939,6 +954,8 @@ export class WebGL2Backend {
 
         ctx.useProgram(this.shaders.draw_gui);
         ctx.uniform2f(this.shaders.draw_gui_view_size, this.canvas.width, this.canvas.height);
+        ctx.uniform1i(this.shaders.draw_gui_font_texture, 0);
+        ctx.uniform1i(this.shaders.draw_gui_image_texture, 1);
     }
 }
 

@@ -51,10 +51,11 @@ fn move_sheep(game: &mut DemoGameData, sheep_index: usize) {
     let updated_position = move_to_with_speed(current_position, target_position, game.global.frame_delta, 0.1);
     if updated_position == target_position {
         *behaviour = SheepBehaviour::idle(); 
+    } else {
+        sheep.flipped = current_position.x > target_position.x;
     }
 
     sheep.position = updated_position;
-    sheep.flipped = updated_position.x > updated_position.x;
 }
 
 #[inline(always)]

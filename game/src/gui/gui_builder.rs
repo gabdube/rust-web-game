@@ -1,6 +1,6 @@
 use crate::assets::{FontId, Assets, ComputedGlyph};
 use crate::error::Error;
-use crate::shared::{size, pos};
+use crate::shared::{pos, size, AABB};
 use super::*;
 
 #[derive(Default)]
@@ -34,14 +34,25 @@ impl<'a> GuiBuilder<'a> {
     // Components
     //
 
-    pub fn container<CB: FnOnce(&mut GuiBuilder)>(&mut self, callback: CB) {
+    pub fn container<CB: FnOnce(&mut GuiBuilder)>(
+        &mut self,
+        background: GuiImageId,
+        color: GuiColor,
+        callback: CB
+    ) {
         let layout = self.next_layout();
         let index = self.gui.components.len();
-        self.gui.components.push(GuiComponent::Container);
+        
+        let container = GuiContainer {
+            background,
+            color
+        };
+
+        self.gui.components.push(GuiComponent::Container(container));
         self.gui.components_nodes.push(GuiNode { children_count: 0 });
         self.gui.components_layout.push(layout);
         self.gui.components_views.push(GuiComponentView::default());
-        
+
         self.data.children_count_stack.push(0);
         self.data.children_size_stack.push(size(0.0, 0.0));
 
@@ -80,9 +91,18 @@ impl<'a> GuiBuilder<'a> {
         self.data.next_layout.align_self.origin = value;
     }
 
+    pub fn sizing(&mut self, size: GuiSizing) {
+
+    }
+
     //
     // Resources
     //
+
+    pub fn image(&mut self, texcoord: AABB) -> GuiImageId {
+        self.gui.images.push(GuiImage { texcoord });
+        GuiImageId((self.gui.images.len() - 1) as u32)
+    }
 
     pub fn font(&mut self, font_id: FontId, size: f32) -> GuiFontId {
         self.gui.fonts.push(GuiFont { font_id, size });

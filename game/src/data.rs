@@ -1,6 +1,6 @@
 //! Storage for the game data
-
-use crate::shared::{Position, Size};
+use crate::inputs::InputState;
+use crate::shared::Position;
 use crate::{assets, inputs, state, store, world, gui};
 
 #[derive(Copy, Clone, Default)]
@@ -32,7 +32,6 @@ pub struct DemoGameGlobalData {
     pub last_animation_tick: f64,
     pub seed: u64,
     pub view_offset: Position<f32>,
-    pub view_size: Size<f32>,
     pub frame_delta: f32,
     pub flags: DemoGameFlags,
 }
@@ -82,7 +81,6 @@ impl store::SaveAndLoad for DemoGameGlobalData {
         writer.write_f64(self.last_animation_tick);
         writer.write_u64(self.seed);
         writer.write(&self.view_offset);
-        writer.write(&self.view_size);
         writer.write_f32(self.frame_delta);
         writer.write_u32(self.flags.inner);
     }
@@ -93,7 +91,6 @@ impl store::SaveAndLoad for DemoGameGlobalData {
             last_animation_tick: reader.read_f64(),
             seed: reader.read_u64(),
             view_offset: reader.read(),
-            view_size: reader.read(),
             frame_delta: reader.read_f32(),
             flags: DemoGameFlags { inner: reader.read_u32() },
         }
@@ -107,6 +104,7 @@ impl store::SaveAndLoad for DemoGameData {
         writer.save(&self.gui);
         writer.save(&self.state);
         writer.save(&self.global);
+        writer.write(&self.inputs);
     }
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
@@ -115,10 +113,11 @@ impl store::SaveAndLoad for DemoGameData {
         let gui = reader.load();
         let state = reader.load();
         let global = reader.load();
+        let inputs: InputState = reader.read();
 
         DemoGameData {
             global,
-            inputs: Default::default(),
+            inputs,
 
             assets,
             world,

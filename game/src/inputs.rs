@@ -1,4 +1,4 @@
-use crate::shared::{Position, pos};
+use crate::shared::{Position, Size, pos, size};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Key {
@@ -14,7 +14,7 @@ impl Key {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum ButtonState {
     Released = 0,
     JustReleased = 1,
@@ -36,13 +36,16 @@ impl ButtonState {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub enum MouseButton {
     Left  = 0,
     Right = 1
 }
 
+#[derive(Copy, Clone)]
 pub struct InputState {
+    pub last_view_size: Size<f32>,
+    pub view_size: Size<f32>,
     pub last_mouse_position: Position<f32>,
     pub mouse_position: Position<f32>,
     pub mouse_buttons: [ButtonState; 2],
@@ -70,6 +73,10 @@ impl InputState {
         } else {
             None
         }
+    }
+
+    pub fn view_resized(&self) -> bool {
+        self.last_view_size != self.view_size
     }
 
     //
@@ -102,6 +109,8 @@ impl InputState {
 impl Default for InputState {
     fn default() -> Self {
         InputState {
+            last_view_size: size(0.0, 0.0),
+            view_size: size(0.0, 0.0),
             last_mouse_position: pos(0.0, 0.0),
             mouse_position: pos(0.0, 0.0),
             mouse_buttons: [ButtonState::Released; 2],

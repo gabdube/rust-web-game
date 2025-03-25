@@ -30,6 +30,10 @@ pub struct EditorState {
     selected_object: Option<WorldObject>,
 }
 
+//
+// Init
+//
+
 pub fn init(game: &mut DemoGameData, test: TestId) -> Result<(), Error> {
     let inner_state = EditorState {
         current_test: test,
@@ -57,14 +61,17 @@ fn init_gui(game: &mut DemoGameData) -> Result<(), Error> {
     use crate::gui::*;
 
     game.gui.clear();
-
-    game.gui.resize(game.global.view_size);
+    game.gui.resize(game.inputs.view_size);
 
     game.gui.build(&game.assets, |gui| {
+        let solid = gui.image(game.assets.gui.solid);
+        let red = GuiColor { r: 255, g: 0, b: 0 };
+
         gui.origin(GuiLayoutOrigin::BottomLeft);
-        gui.container(|gui| {
-            let font = gui.font(FontId::Roboto, 100.0);
-            let text = gui.static_text("Hello World", font);
+        gui.sizing(GuiSizing::Auto);
+        gui.container(solid, red, |gui| {
+            let font = gui.font(FontId::Roboto, 50.0);
+            let text = gui.static_text("Hello World!", font);
             gui.label(GuiLabel::from_static_text_and_color(text, GuiColor { r: 255, g: 255, b: 255 }));
         });
     })?;
@@ -116,6 +123,14 @@ fn create_sheeps(data: &mut DemoGameData) {
     world.create_sheep(pos(590.0, 210.0), &assets.animations.sheep.idle);
     world.create_sheep(pos(520.0, 240.0), &assets.animations.sheep.idle);
     world.create_sheep(pos(490.0, 190.0), &assets.animations.sheep.idle);
+}
+
+//
+// On state events
+//
+
+pub fn on_resized(game: &mut DemoGameData) {
+    game.gui.resize(game.inputs.view_size);
 }
 
 pub fn on_left_mouse(game: &mut DemoGameData) {
@@ -209,6 +224,10 @@ fn state(state: &mut GameState) -> &mut EditorState {
         _ => unsafe { std::hint::unreachable_unchecked() }  // state will always be editor in this module
     }
 }
+
+//
+// Other
+//
 
 impl crate::store::SaveAndLoad for EditorState {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {

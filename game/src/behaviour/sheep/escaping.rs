@@ -58,6 +58,8 @@ pub fn escaping(game: &mut DemoGameData, sheep_index: usize) {
     let updated_position = move_to_with_speed(sheep.position, target_position, game.global.frame_delta, 0.25);
     if updated_position == target_position {
         *behaviour = SheepBehaviour::idle(); 
+    } else {
+        sheep.flipped = sheep.position.x > target_position.x;
     }
 
     sheep.position = updated_position;

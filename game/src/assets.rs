@@ -17,6 +17,9 @@ pub use structures::*;
 mod resources;
 pub use resources::*;
 
+mod gui;
+pub use gui::GuiBundle;
+
 use fnv::FnvHashMap;
 
 use crate::error::Error;
@@ -44,6 +47,7 @@ pub struct Assets {
     pub textures: FnvHashMap<String, Texture>,
     pub fonts: Fonts,
     pub terrain: TerrainTilemap,
+    pub gui: GuiBundle,
     pub decorations: DecorationBundle,
     pub structures: StructuresBundle,
     pub resources: ResourcesBundle,
@@ -81,8 +85,10 @@ impl Assets {
                 self.resources.load(sprites);
             },
             "units_sprites" => {
-                let sprites = csv_string.as_str();
-                self.animations.load_animations(sprites)?;
+                self.animations.load_animations(csv_string)?;
+            },
+            "gui" => {
+                self.gui.load(csv_string);
             },
             name => {
                 warn!("Unknown csv: {:?}", name);
@@ -183,6 +189,7 @@ impl crate::store::SaveAndLoad for Assets {
         writer.write(&self.structures);
         writer.write(&self.resources);
         writer.write(&self.animations);
+        writer.write(&self.gui);
         writer.save(&self.fonts);
     }
 
@@ -194,6 +201,7 @@ impl crate::store::SaveAndLoad for Assets {
         assets.structures = reader.read();
         assets.resources = reader.read();
         assets.animations = reader.read();
+        assets.gui = reader.read();
         assets.fonts = reader.load();
         assets
     }

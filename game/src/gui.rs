@@ -24,6 +24,7 @@ use crate::shared::Size;
 pub struct Gui {
     builder_data: UnsafeCell<GuiBuilderData>,
 
+    pub images: Vec<GuiImage>,
     pub fonts: Vec<GuiFont>,
     pub text: Vec<GuiStaticText>,
 
@@ -59,6 +60,7 @@ impl Gui {
     }
 
     pub fn clear(&mut self) {
+        self.images.clear();
         self.fonts.clear();
         self.text.clear();
         self.components.clear();
@@ -74,6 +76,7 @@ impl Gui {
         if self.components.len() > 0 {
             layout_compute::layout_compute(self);
             generate_sprites::generate_sprites(self);
+            self.needs_sync = true;
         }
     }
 
@@ -85,6 +88,7 @@ impl Default for Gui {
         Gui {
             builder_data: UnsafeCell::new(GuiBuilderData::default()),
 
+            images: Vec::with_capacity(16),
             fonts: Vec::with_capacity(2),
             text: Vec::with_capacity(16),
 
@@ -104,6 +108,7 @@ impl Default for Gui {
 
 impl crate::store::SaveAndLoad for Gui {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
+        writer.write_slice(&self.images);
         writer.write_slice(&self.fonts);
         writer.save_slice(&self.text);
         writer.write_slice(&self.components_nodes);
@@ -119,6 +124,7 @@ impl crate::store::SaveAndLoad for Gui {
         let builder_data = UnsafeCell::new(GuiBuilderData::default());
         Gui {
             builder_data,
+            images: reader.read_vec(),
             fonts: reader.read_vec(),
             text: reader.load_vec(),
             components_nodes: reader.read_vec(),

@@ -81,7 +81,7 @@ impl<T: Copy+Default> Default for Position<T> {
 
 
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Size<T: Copy> {
     pub width: T,
     pub height: T,

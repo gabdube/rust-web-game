@@ -33,6 +33,10 @@ pub fn update(game: &mut DemoGame) {
             
         },
         GameState::Editor(_) => {
+            if data.inputs.view_resized() {
+                crate::state::editor::on_resized(data);
+            }
+
             if data.inputs.left_mouse_clicked() {
                 crate::state::editor::on_left_mouse(data);
             }
@@ -50,6 +54,7 @@ pub fn update(game: &mut DemoGame) {
 
 fn clear_inputs_after_state_process(inputs: &mut InputState) {
     inputs.last_mouse_position = inputs.mouse_position;
+    inputs.last_view_size = inputs.view_size;
     
     for state in inputs.mouse_buttons.iter_mut() {
         state.flip();

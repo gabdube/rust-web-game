@@ -1,10 +1,12 @@
 TEXTURE;units;assets/units.png;
 TEXTURE;static_resources;assets/static_resources.png;
 TEXTURE;terrain;assets/terrain.png;
+TEXTURE;gui;assets/gui.png;
 
 CSV;terrain_sprites;assets/terrain.csv;
 CSV;static_sprites;assets/static_resources.csv;
 CSV;units_sprites;assets/units.csv;
+CSV;gui;assets/gui.csv;
 
 FONT;roboto;assets/fonts/roboto.png;assets/fonts/roboto.bin;
 

@@ -250,7 +250,7 @@ fn update_terrain(game: &mut DemoGame) {
 */
 fn render_terrain(game: &mut DemoGame) {
     let output = &mut game.output;
-    let view = aabb(game.data.global.view_offset, game.data.global.view_size);
+    let view = aabb(game.data.global.view_offset, game.data.inputs.view_size);
 
     let mut params = DrawTerrainChunkParams { chunk_id: 0, x: 0.0, y: 0.0 };
 

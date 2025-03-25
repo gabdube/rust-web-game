@@ -6,6 +6,7 @@
 /build/assets/fonts/*.json
 .DS_Store
 *.png
+*.png~
 *.kra
 *.ttf
 *.bin

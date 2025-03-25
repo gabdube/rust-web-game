@@ -1,5 +1,8 @@
 use crate::assets::{FontId, ComputedGlyph};
-use crate::shared::Size;
+use crate::shared::{Size, AABB};
+
+#[derive(Copy, Clone)]
+pub struct GuiImageId(pub u32);
 
 #[derive(Copy, Clone)]
 pub struct GuiFontId(pub u32);
@@ -11,6 +14,11 @@ pub struct GuiStaticTextId(pub u32);
 pub struct GuiFont {
     pub size: f32,
     pub font_id: FontId,
+}
+
+#[derive(Copy, Clone)]
+pub struct GuiImage {
+    pub texcoord: AABB,
 }
 
 pub struct GuiStaticText {

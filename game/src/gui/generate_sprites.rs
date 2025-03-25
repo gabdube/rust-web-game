@@ -1,5 +1,5 @@
 use crate::shared::AABB;
-use super::{Gui, GuiComponent, GuiComponentView, GuiLabel, GuiOutputSprite, GuiColor};
+use super::{Gui, GuiComponent, GuiComponentView, GuiContainer, GuiLabel, GuiOutputSprite};
 
 pub(super) fn generate_sprites(gui: &mut Gui) {
     gui.output_sprites.clear();
@@ -13,13 +13,13 @@ pub(super) fn generate_sprites(gui: &mut Gui) {
         let view = gui.components_views[i];
         let component = gui.components[i];
         match component {
-            GuiComponent::Container => { generate_container(gui, view); }
+            GuiComponent::Container(background) => { generate_container(gui, view, background); }
             GuiComponent::Label(label) => { generate_label(gui, view, label); }
         }
     }
 }
 
-fn generate_container(gui: &mut Gui, view: GuiComponentView) {
+fn generate_container(gui: &mut Gui, view: GuiComponentView, container: GuiContainer) {
     let positions = AABB {
         left: view.position.x,
         top: view.position.y,
@@ -27,10 +27,14 @@ fn generate_container(gui: &mut Gui, view: GuiComponentView) {
         bottom: view.position.y + view.size.height,
     };
 
+    let image_index = container.background.0 as usize;
+    let texcoord = gui.images[image_index].texcoord;
+    let color = container.color;
+
     gui.output_sprites.push(GuiOutputSprite {
         positions,
-        texcoord: AABB::default(),
-        color: GuiColor::black(),
+        texcoord,
+        color,
         flags: 0,
     });
 }

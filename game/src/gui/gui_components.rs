@@ -1,5 +1,5 @@
 use crate::shared::{Position, Size};
-use super::{GuiStaticTextId, GuiColor};
+use super::{GuiColor, GuiImageId, GuiStaticTextId};
 
 #[derive(Copy, Clone)]
 pub struct GuiLabel {
@@ -19,8 +19,14 @@ impl GuiLabel {
 }
 
 #[derive(Copy, Clone)]
+pub struct GuiContainer {
+    pub background: GuiImageId,
+    pub color: GuiColor,
+}
+
+#[derive(Copy, Clone)]
 pub enum GuiComponent {
-    Container,
+    Container(GuiContainer),
     Label(GuiLabel)
 }
 
