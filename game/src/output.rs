@@ -479,15 +479,16 @@ fn render_gui(game: &mut DemoGame) {
     let gui = &mut game.data.gui;
     let output = &mut game.output;
 
-    if !gui.needs_sync {
+    if !gui.needs_sync() {
         return;
     }
 
+    gui.build_sprites();
     output.gui_indices.clear();
     output.gui_vertex.clear();
 
     let mut v = 0;
-    for sprite in gui.output_sprites.iter() {
+    for sprite in gui.sprites().iter() {
         output.gui_indices.extend_from_slice(&[v+0, v+3, v+2, v+1, v+0, v+3]);
  
         let [left, top, right, bottom] = sprite.positions.splat();
@@ -518,8 +519,6 @@ fn render_gui(game: &mut DemoGame) {
             },
         });
     }
-
-    gui.needs_sync = false;
 }
 
 impl Default for GameOutput {

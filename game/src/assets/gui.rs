@@ -4,7 +4,7 @@ use crate::shared::AABB;
 pub struct GuiBundle {
     pub info_panel: AABB,
     pub pawn_portrait: AABB,
-    pub knight_portrait: AABB,
+    pub warrior_portrait: AABB,
     pub archer_portrait: AABB,
     pub goblin_dynamite_portrait: AABB,
     pub goblin_torch_portrait: AABB,
@@ -28,7 +28,7 @@ impl GuiBundle {
             let aabb = match name {
                 "info_panel" => &mut self.info_panel,
                 "pawn_portrait" => &mut self.pawn_portrait,
-                "knight_portrait" => &mut self.knight_portrait,
+                "warrior_portrait" => &mut self.warrior_portrait,
                 "archer_portrait" => &mut self.archer_portrait,
                 "gobindynamite_portrait" => &mut self.goblin_dynamite_portrait,
                 "gobintorch_portrait" => &mut self.goblin_torch_portrait,

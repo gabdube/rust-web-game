@@ -1,7 +1,6 @@
 #[derive(Copy, Clone)]
 pub enum GuiLayoutOrigin {
     Auto,
-    TopLeft,
     BottomLeft
 }
 
@@ -18,19 +17,19 @@ pub struct GuiAlignSelf {
 }
 
 #[derive(Copy, Clone)]
-pub enum ChildrenDirection {
+pub enum ItemsDirection {
     Column
 }
 
 #[derive(Copy, Clone)]
-pub enum ChildrenPosition {
+pub enum ItemsPosition {
     Center
 }
 
 #[derive(Copy, Clone)]
 pub struct GuiAlignItems {
-    pub direction: ChildrenDirection,
-    pub position: ChildrenPosition,
+    pub direction: ItemsDirection,
+    pub position: ItemsPosition,
 }
 
 #[derive(Copy, Clone)]
@@ -47,8 +46,8 @@ impl Default for GuiLayout {
                 sizing: GuiSizing::Auto,
             },
             align_items: GuiAlignItems {
-                direction: ChildrenDirection::Column,
-                position: ChildrenPosition::Center,
+                direction: ItemsDirection::Column,
+                position: ItemsPosition::Center,
             }
         }
     }
@@ -57,8 +56,8 @@ impl Default for GuiLayout {
 impl Default for GuiAlignItems {
     fn default() -> Self {
         GuiAlignItems {
-            direction: ChildrenDirection::Column,
-            position: ChildrenPosition::Center,
+            direction: ItemsDirection::Column,
+            position: ItemsPosition::Center,
         }
     }
 }

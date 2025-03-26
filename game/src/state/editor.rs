@@ -1,6 +1,7 @@
 //! Special debugging state to test features
 use crate::behaviour;
 use crate::error::Error;
+use crate::gui::{GuiImageId, GuiImage};
 use crate::state::GameState;
 use crate::world::{StructureData, WorldObject, WorldObjectType};
 use crate::{DemoGameData, pos};
@@ -28,6 +29,7 @@ impl TestId {
 pub struct EditorState {
     current_test: TestId,
     selected_object: Option<WorldObject>,
+    selected_object_image: Option<GuiImageId>,
 }
 
 //
@@ -35,14 +37,15 @@ pub struct EditorState {
 //
 
 pub fn init(game: &mut DemoGameData, test: TestId) -> Result<(), Error> {
-    let inner_state = EditorState {
+    let mut inner_state = EditorState {
         current_test: test,
         selected_object: None,
+        selected_object_image: None,
     };
 
     game.init_terrain(16, 16);
 
-    init_gui(game)?;
+    init_gui(game, &mut inner_state)?;
 
     match test {
         TestId::None => {},
@@ -56,26 +59,25 @@ pub fn init(game: &mut DemoGameData, test: TestId) -> Result<(), Error> {
     Ok(())
 }
 
-fn init_gui(game: &mut DemoGameData) -> Result<(), Error> {
-    use crate::assets::FontId;
+fn init_gui(game: &mut DemoGameData, state: &mut EditorState) -> Result<(), Error> {
     use crate::gui::*;
 
     game.gui.clear();
     game.gui.resize(game.inputs.view_size);
 
-    game.gui.build(&game.assets, |gui| {
+    game.gui.build(|gui| {
         let info_panel = gui.image(game.assets.gui.info_panel);
 
         gui.origin(GuiLayoutOrigin::BottomLeft);
         gui.sizing(GuiSizing::Static { width: 200.0, height: 200.0 });
-        gui.child_align(ChildrenDirection::Column, ChildrenPosition::Center);
+        gui.items_align(ItemsDirection::Column, ItemsPosition::Center);
         gui.container(info_panel, GuiColor::white(), |gui| {
-            let portrait = gui.image(game.assets.gui.pawn_portrait);
-            gui.image_display(GuiImageDisplay::from_image(portrait));
+            let image_id = gui.dyn_empty_image();
+            state.selected_object_image = Some(image_id);
+            gui.image_display(GuiImageDisplay::from_image(image_id));
 
-            let font = gui.font(FontId::Roboto, 24.0);
             let text_color = GuiColor::rgb(40, 30, 20);
-            let text = gui.static_text("Pawn", font);
+            let text = gui.static_text(game.assets.fonts.roboto.compute_text_metrics("Pawn", 24.0));
             gui.label(GuiLabel::from_static_text_and_color(text, text_color));
         });
     })?;
@@ -139,7 +141,7 @@ pub fn on_resized(game: &mut DemoGameData) {
 
 pub fn on_left_mouse(game: &mut DemoGameData) {
     let inputs = &game.inputs;
-    let state = state(&mut game.state);
+    let state = get_state(&mut game.state);
 
     let cursor_world_position = inputs.mouse_position + game.global.view_offset;
     let new_selected = game.world.object_at(cursor_world_position);
@@ -149,10 +151,19 @@ pub fn on_left_mouse(game: &mut DemoGameData) {
         (None, Some(new)) => set_new_object_selection(game, new),
         (Some(old), Some(new)) => replace_object_selection(game, old, new),
     }
+
+    let state = get_state(&mut game.state);
+    if let Some(new) = state.selected_object {
+        if let Some(image_id) = state.selected_object_image {
+            let image_asset = game.assets.object_gui_image(new.ty);
+            let image = GuiImage::from_aabb(image_asset);
+            game.gui.set_image(image_id, image);
+        }
+    }
 }
 
 pub fn on_right_mouse(game: &mut DemoGameData) {
-    let state = state(&mut game.state);
+    let state = get_state(&mut game.state);
     let selected_object = match state.selected_object {
         Some(obj) => obj,
         None => { return; }
@@ -210,19 +221,19 @@ fn archer_actions(game: &mut DemoGameData, archer: WorldObject, target_object: O
 }
 
 fn set_new_object_selection(data: &mut DemoGameData, new_selection: WorldObject) {
-    let state = state(&mut data.state);
+    let state = get_state(&mut data.state);
     data.world.set_object_selected(new_selection, true);
     state.selected_object = Some(new_selection);
 }
 
 fn replace_object_selection(data: &mut DemoGameData, old_selection: WorldObject, new_selection: WorldObject) {
-    let state = state(&mut data.state);
+    let state = get_state(&mut data.state);
     data.world.set_object_selected(old_selection, false);
     data.world.set_object_selected(new_selection, true);
     state.selected_object = Some(new_selection);
 }
 
-fn state(state: &mut GameState) -> &mut EditorState {
+fn get_state(state: &mut GameState) -> &mut EditorState {
     match state {
         GameState::Editor(inner) => inner,
         _ => unsafe { std::hint::unreachable_unchecked() }  // state will always be editor in this module
@@ -237,15 +248,18 @@ impl crate::store::SaveAndLoad for EditorState {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_u32(self.current_test as u32);
         writer.save_option(&self.selected_object);
+        writer.write(&self.selected_object_image);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let current_test = TestId::from_u32(reader.read_u32());
         let selected_object = reader.load_option();
+        let selected_object_image = reader.read();
         
         EditorState {
             current_test,
             selected_object,
+            selected_object_image,
         }
     }
 }

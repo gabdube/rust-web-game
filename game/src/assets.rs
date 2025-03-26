@@ -23,17 +23,14 @@ pub use gui::GuiBundle;
 use fnv::FnvHashMap;
 
 use crate::error::Error;
+use crate::shared::AABB;
+use crate::world::WorldObjectType;
 use crate::{DemoGame, DemoGameInit};
 
 #[derive(Copy, Clone)]
 pub struct Texture {
     // The unique ID of the texture. It is also the index of the texture in the engine texture array
     pub id: u32,
-}
-
-#[derive(Copy, Clone)]
-pub enum FontId {
-    Roboto
 }
 
 #[derive(Default)]
@@ -119,9 +116,16 @@ impl Assets {
         Ok(())
     }
 
-    pub fn get_font<'a>(&'a self, id: FontId) -> &'a FontAsset {
-        match id {
-            FontId::Roboto => &self.fonts.roboto
+    pub fn object_gui_image(&self, object_type: WorldObjectType) -> AABB {
+        let gui = &self.gui;
+        match object_type {
+            WorldObjectType::Pawn => gui.pawn_portrait,
+            WorldObjectType::Warrior => gui.warrior_portrait,
+            WorldObjectType::Archer => gui.archer_portrait,
+            WorldObjectType::TorchGoblin => gui.goblin_torch_portrait,
+            WorldObjectType::DynamiteGoblin => gui.goblin_dynamite_portrait,
+            WorldObjectType::Sheep => gui.sheep_portrait,
+            _ => AABB::default()
         }
     }
 }

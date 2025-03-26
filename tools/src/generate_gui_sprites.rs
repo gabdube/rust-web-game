@@ -21,7 +21,7 @@ const DST_WIDTH: usize = 512; // Manually tune this number to minimise wasted sp
 static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     ("info_panel", "info_panel.png", SpriteInfo::auto()),
     ("pawn_portrait", "units_portrait.png", SpriteInfo::sub(0, 0, 61, 61)),
-    ("knight_portrait", "units_portrait.png", SpriteInfo::sub(64, 0, 145, 95)),
+    ("warrior_portrait", "units_portrait.png", SpriteInfo::sub(64, 0, 145, 95)),
     ("archer_portrait", "units_portrait.png", SpriteInfo::sub(146, 0, 212, 79)),
 
     ("gobindynamite_portrait", "units_portrait.png", SpriteInfo::sub(0, 95, 88, 165)),

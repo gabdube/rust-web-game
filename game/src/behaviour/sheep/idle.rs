@@ -59,8 +59,8 @@ fn idle(game: &mut DemoGameData, sheep_index: usize) {
 
     if elapsed(game.global.time, timestamp_value, timer) {
         let mut target_position = sheep_anchor;
-        target_position.x += fastrand::i8(-100..100) as f32;
-        target_position.y += fastrand::i8(-100..100) as f32;
+        target_position.x += fastrand::i16(-100..100) as f32;
+        target_position.y += fastrand::i16(-100..100) as f32;
         *behaviour = SheepBehaviour {
             ty: SheepBehaviourType::Moving { target_position },
             state: BehaviourState::Initial

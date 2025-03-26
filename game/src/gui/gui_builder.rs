@@ -1,4 +1,3 @@
-use crate::assets::{FontId, Assets, ComputedGlyph};
 use crate::error::Error;
 use crate::shared::{pos, size, AABB};
 use super::*;
@@ -15,19 +14,17 @@ pub struct GuiBuilderData {
 pub struct GuiBuilder<'a> {
     pub(super) gui: &'a mut Gui,
     pub(super) data: &'a mut GuiBuilderData,
-    pub(super) assets: &'a Assets,
 }
 
 impl<'a> GuiBuilder<'a> {
 
-    pub(super) fn new(gui: &'a mut Gui, assets: &'a Assets) -> Self {
+    pub(super) fn new(gui: &'a mut Gui) -> Self {
         // Allow us to store the pointer to the builder data straight into the builder struct (skipping a double indirection)
         // Safety: `gui.builder_data` must not be accessed while the GuiBuilder is instanced.
         let data = unsafe { &mut *gui.builder_data.get() };
         GuiBuilder {
             gui,
             data,
-            assets,
         }
     }
 
@@ -37,7 +34,7 @@ impl<'a> GuiBuilder<'a> {
 
     pub fn container<CB: FnOnce(&mut GuiBuilder)>(
         &mut self,
-        background: GuiImageId,
+        background: GuiResourceId<GuiImage>,
         color: GuiColor,
         callback: CB
     ) {
@@ -82,7 +79,7 @@ impl<'a> GuiBuilder<'a> {
         self.gui.components_layout.push(layout);
 
         // TODO: layout sizing for text
-        let text_id = label.text.0 as usize;
+        let text_id = label.text.index();
         let component_size = match self.gui.text.get(text_id) {
             Some(text) => text.size,
             None => {
@@ -104,12 +101,17 @@ impl<'a> GuiBuilder<'a> {
     pub fn image_display(&mut self, display: GuiImageDisplay) {
         let layout = self.next_layout();
 
+        if display.image.is_dyn() {
+            let dyn_resource = &mut self.gui.dynamic_resources[display.image.dyn_index()];
+            dyn_resource.users.push(self.gui.components.len() as u32);
+        }
+
         self.gui.components.push(GuiComponent::ImageDisplay(display));
         self.gui.components_nodes.push(GuiNode::default());
         self.gui.components_layout.push(layout);
 
         // TODO: layout sizing for image display
-        let image_id = display.image.0 as usize;
+        let image_id = display.image.index();
         let component_size = match self.gui.images.get(image_id) {
             Some(image) => image.texcoord.size(),
             None => {
@@ -140,7 +142,7 @@ impl<'a> GuiBuilder<'a> {
         self.data.next_layout.align_self.sizing = sizing;
     }
 
-    pub fn child_align(&mut self, direction: ChildrenDirection, position: ChildrenPosition) {
+    pub fn items_align(&mut self, direction: ItemsDirection, position: ItemsPosition) {
         self.data.next_layout.align_items = GuiAlignItems {
             direction,
             position,
@@ -151,55 +153,23 @@ impl<'a> GuiBuilder<'a> {
     // Resources
     //
 
-    pub fn image(&mut self, texcoord: AABB) -> GuiImageId {
+    pub fn image(&mut self, texcoord: AABB) -> GuiResourceId<GuiImage> {
         self.gui.images.push(GuiImage { texcoord });
-        GuiImageId((self.gui.images.len() - 1) as u32)
+        GuiResourceId::new(self.gui.images.len() - 1)
     }
 
-    pub fn font(&mut self, font_id: FontId, size: f32) -> GuiFontId {
-        self.gui.fonts.push(GuiFont { font_id, size });
-        GuiFontId((self.gui.fonts.len() - 1) as u32)
+    /// Add a dynamic image to the gui. The initial image data is empty.
+    pub fn dyn_empty_image(&mut self) -> GuiResourceId<GuiImage> {
+        let image_index = self.gui.images.len();
+        let image_dyn_index = self.gui.dynamic_resources.len();
+        self.gui.images.push(GuiImage { texcoord: AABB::default() });
+        self.gui.dynamic_resources.push(DynamicResource::default());
+        GuiResourceId::new_dyn(image_index, image_dyn_index)
     }
 
-    pub fn static_text(&mut self, text: &str, font: GuiFontId) -> GuiStaticTextId {
-        use unicode_segmentation::UnicodeSegmentation;
-        
-        let font = match self.gui.fonts.get(font.0 as usize) {
-            Some(font) => *font,
-            None => {
-                self.set_error(gui_err!("Unknown font with ID {:?} in gui", font.0));
-                return GuiStaticTextId(u32::MAX)
-            }
-        };
-
-        let font_asset = self.assets.get_font(font.font_id);
-        let mut glyphs = Vec::with_capacity(text.len());
-        let mut advance = 0.0;
-        let mut max_height = 0.0;
-        let mut glyph = ComputedGlyph::default();
-        for g in text.graphemes(true) {
-            let a = font_asset.compute_glyph(g, font.size, &mut glyph);
-            glyph.position.left += advance;
-            glyph.position.right += advance;
-    
-            advance += a;
-            max_height = f32::max(max_height, glyph.position.bottom);
-
-            glyphs.push(glyph);
-        }
-
-        let size = match text.len() {
-            0 => size(0.0, 0.0),
-            _ => size(glyph.position.right, max_height)
-        };
-
-        self.gui.text.push(GuiStaticText { 
-            font,
-            size,
-            glyphs: glyphs.into_boxed_slice()
-        });
-
-        GuiStaticTextId((self.gui.text.len() - 1) as u32)
+    pub fn static_text(&mut self, text: TextMetrics) -> GuiResourceId<GuiStaticText> {
+        self.gui.text.push(text);
+        GuiResourceId::new(self.gui.text.len() - 1)
     }
 
     //
@@ -221,7 +191,7 @@ impl<'a> GuiBuilder<'a> {
 
         match self.data.layout_stack.last() {
             Some(layout) => match layout.align_items.direction {
-                ChildrenDirection::Column => {
+                ItemsDirection::Column => {
                     children_size.width = f32::max(children_size.width, child_size.width);
                     children_size.height += child_size.height;
                 }

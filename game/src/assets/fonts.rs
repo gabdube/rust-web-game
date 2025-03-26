@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::shared::AABB;
+use crate::shared::{AABB, Size, size};
 
 
 #[repr(C)]
@@ -28,6 +28,11 @@ pub struct AtlasGlyph {
 pub struct ComputedGlyph {
     pub position: AABB,
     pub texcoord: AABB,
+}
+
+pub struct TextMetrics {
+    pub size: Size<f32>,
+    pub glyphs: Vec<ComputedGlyph>,
 }
 
 #[derive(Default)]
@@ -91,6 +96,36 @@ impl FontAsset {
         atlas_glyph.advance * scale
     }
 
+    pub fn compute_text_metrics(&self, text: &str, scale: f32) -> TextMetrics {
+        use unicode_segmentation::UnicodeSegmentation;
+        
+        let mut glyphs = Vec::with_capacity(text.len());
+        let mut advance = 0.0;
+        let mut max_height = 0.0;
+        let mut glyph = ComputedGlyph::default();
+        for g in text.graphemes(true) {
+            let a = self.compute_glyph(g, scale, &mut glyph);
+            glyph.position.left += advance;
+            glyph.position.right += advance;
+    
+            advance += a;
+            max_height = f32::max(max_height, glyph.position.bottom);
+
+            glyphs.push(glyph);
+        }
+
+        let size = match text.len() {
+            0 => size(0.0, 0.0),
+            _ => size(glyph.position.right, max_height)
+        };
+
+
+        TextMetrics { 
+            size,
+            glyphs
+        }
+    }
+
 }
 
 
@@ -110,3 +145,20 @@ impl crate::store::SaveAndLoad for FontAsset {
     }
 
 }
+
+impl crate::store::SaveAndLoad for TextMetrics {
+    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
+        writer.write(&self.size);
+        writer.write_slice(&self.glyphs);
+    }
+
+    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
+        let size: Size<f32> = reader.read();
+        let glyphs: Vec<ComputedGlyph> = reader.read_vec();
+        TextMetrics {
+            size,
+            glyphs
+        }
+    }
+}
+

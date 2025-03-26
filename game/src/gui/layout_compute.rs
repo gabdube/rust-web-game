@@ -1,7 +1,7 @@
 use std::hint::unreachable_unchecked;
 use crate::shared::{pos, size};
 
-use super::{Gui, GuiComponentView, GuiLayout, GuiAlignItems, GuiLayoutOrigin, GuiNode, ChildrenDirection, ChildrenPosition};
+use super::{Gui, GuiComponentView, GuiLayout, GuiAlignItems, GuiLayoutOrigin, GuiNode, ItemsDirection, ItemsPosition};
 
 struct LayoutPositionParent {
     pub view: GuiComponentView,
@@ -14,8 +14,15 @@ pub(super) fn layout_compute(gui: &mut Gui) {
         return;
     }
 
-    position_pass(gui);
+    if gui.update_flags.compute_layout_positions() {
+        position_pass(gui);
+    }
 }
+
+//
+// Sizing pass
+//
+
 
 //
 // Positioning pass
@@ -46,16 +53,12 @@ fn layout_position(gui: &mut Gui, index: &mut usize, parent: &mut LayoutPosition
             // Auto use the parent layout to position the children
             let align_items = parent.align_items;
             match (align_items.direction, align_items.position) {
-                (ChildrenDirection::Column, ChildrenPosition::Center) => {
+                (ItemsDirection::Column, ItemsPosition::Center) => {
                     view.position.x = parent.view.position.x + ((parent.view.size.width - view.size.width) / 2.0);
                     view.position.y = parent.view.position.y + parent.child_offset;
                     parent.child_offset += view.size.height;
                 },
             }
-        },
-        GuiLayoutOrigin::TopLeft => {
-            view.position.x = parent.view.position.x;
-            view.position.y = parent.view.position.y;
         },
         GuiLayoutOrigin::BottomLeft => {
             view.position.x = parent.view.position.x;
@@ -72,8 +75,7 @@ fn layout_position(gui: &mut Gui, index: &mut usize, parent: &mut LayoutPosition
 
     let mut parent = LayoutPositionParent { view, align_items: layout.align_items, child_offset: 0.0 };
     match (layout.align_items.direction, layout.align_items.position) {
-        (ChildrenDirection::Column, ChildrenPosition::Center) => {
-            dbg!("{:?} {:?}", view.size.height, view.items_size.height);
+        (ItemsDirection::Column, ItemsPosition::Center) => {
             parent.child_offset = (view.size.height - view.items_size.height) / 2.0;
         }
     }
