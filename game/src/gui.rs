@@ -48,6 +48,7 @@ impl Gui {
 
         let builder_data = self.builder_data.get_mut();
         if let Some(error) = builder_data.error.take() {
+            self.clear();
             return Err(error);
         }
 

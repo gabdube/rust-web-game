@@ -1,5 +1,5 @@
 use crate::shared::AABB;
-use super::{Gui, GuiComponent, GuiComponentView, GuiContainer, GuiLabel, GuiOutputSprite};
+use super::{Gui, GuiComponent, GuiComponentView, GuiContainer, GuiImageDisplay, GuiLabel, GuiOutputSprite};
 
 pub(super) fn generate_sprites(gui: &mut Gui) {
     gui.output_sprites.clear();
@@ -15,18 +15,13 @@ pub(super) fn generate_sprites(gui: &mut Gui) {
         match component {
             GuiComponent::Container(background) => { generate_container(gui, view, background); }
             GuiComponent::Label(label) => { generate_label(gui, view, label); }
+            GuiComponent::ImageDisplay(image) => { generate_image_display(gui, view, image); }
         }
     }
 }
 
 fn generate_container(gui: &mut Gui, view: GuiComponentView, container: GuiContainer) {
-    let positions = AABB {
-        left: view.position.x,
-        top: view.position.y,
-        right: view.position.x + view.size.width,
-        bottom: view.position.y + view.size.height,
-    };
-
+    let positions = AABB::from_position_and_size(view.position, view.size);
     let image_index = container.background.0 as usize;
     let texcoord = gui.images[image_index].texcoord;
     let color = container.color;
@@ -54,4 +49,16 @@ fn generate_label(gui: &mut Gui, view: GuiComponentView, label: GuiLabel) {
             flags: 1,
         });
     }
+}
+
+fn generate_image_display(gui: &mut Gui, view: GuiComponentView, display: GuiImageDisplay) {
+    let positions = AABB::from_position_and_size(view.position, view.size);
+    let image_index = display.image.0 as usize;
+    let texcoord = gui.images[image_index].texcoord;
+    gui.output_sprites.push(GuiOutputSprite {
+        positions,
+        texcoord,
+        color: super::GuiColor::white(),
+        flags: 0,
+    });
 }

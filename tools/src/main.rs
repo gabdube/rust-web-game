@@ -4,6 +4,7 @@ mod packing;
 
 mod generate_objects_sprites;
 mod generate_characters_sprites;
+mod generate_gui_sprites;
 mod generate_fonts;
 
 fn command_name() -> Option<String> {
@@ -27,6 +28,9 @@ fn main() {
         },
         "generate_objects_sprites" => {
             generate_objects_sprites::generate_sprites();
+        },
+        "generate_gui_sprites" => {
+            generate_gui_sprites::generate_sprites();
         },
         "generate_fonts" => {
             generate_fonts::generate_fonts();

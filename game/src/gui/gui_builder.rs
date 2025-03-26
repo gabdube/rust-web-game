@@ -76,14 +76,47 @@ impl<'a> GuiBuilder<'a> {
 
     pub fn label(&mut self, label: GuiLabel) {
         let layout = self.next_layout();
-        let text = &self.gui.text[label.text.0 as usize];
-        let size = text.size;
 
         self.gui.components.push(GuiComponent::Label(label));
         self.gui.components_nodes.push(GuiNode { children_count: 0 });
         self.gui.components_layout.push(layout);
 
         // TODO: layout sizing for text
+        let text_id = label.text.0 as usize;
+        let size = match self.gui.text.get(text_id) {
+            Some(text) => text.size,
+            None => {
+                self.set_error(gui_err!("Unknown text with ID {:?} in gui", text_id));
+                return;
+            }
+        };
+
+        self.gui.components_views.push(GuiComponentView {
+            position: pos(0.0, 0.0),
+            size
+        });
+
+        self.update_parent_children_size(size);
+        self.update_parent_children_count();
+    }
+
+    pub fn image_display(&mut self, display: GuiImageDisplay) {
+        let layout = self.next_layout();
+
+        self.gui.components.push(GuiComponent::ImageDisplay(display));
+        self.gui.components_nodes.push(GuiNode { children_count: 0 });
+        self.gui.components_layout.push(layout);
+
+        // TODO: layout sizing for image display
+        let image_id = display.image.0 as usize;
+        let size = match self.gui.images.get(image_id) {
+            Some(image) => image.texcoord.size(),
+            None => {
+                self.set_error(gui_err!("Unknown image with ID {:?} in gui", image_id));
+                return;
+            }
+        };
+
         self.gui.components_views.push(GuiComponentView {
             position: pos(0.0, 0.0),
             size

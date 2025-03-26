@@ -3,6 +3,7 @@
 /build/engine.js
 /build/assets/*.json
 /build/assets/tiny_sword/
+/build/assets/gui_assets/
 /build/assets/fonts/*.json
 .DS_Store
 *.png

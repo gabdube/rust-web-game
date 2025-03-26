@@ -127,6 +127,15 @@ pub struct AABB {
 
 impl AABB {
 
+    pub const fn from_position_and_size(pos: Position<f32>, size: Size<f32>) -> Self {
+        AABB {
+            left: pos.x,
+            top: pos.y,
+            right: pos.x + size.width,
+            bottom: pos.y + size.height,
+        }
+    }
+
     pub const fn splat(&self) -> [f32; 4] {
         [self.left, self.top, self.right, self.bottom]
     }
@@ -139,6 +148,10 @@ impl AABB {
         self.bottom - self.top
     }
 
+    pub const fn size(&self) -> Size<f32> {
+        Size { width: self.width(), height: self.height() }
+    }
+   
     pub fn offset(&mut self, offset: Position<f32>) {
         self.left += offset.x;
         self.right += offset.x;

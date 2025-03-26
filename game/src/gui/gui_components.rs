@@ -19,6 +19,19 @@ impl GuiLabel {
 }
 
 #[derive(Copy, Clone)]
+pub struct GuiImageDisplay {
+    pub image: GuiImageId,
+}
+
+impl GuiImageDisplay {
+
+    pub fn from_image(image: GuiImageId) -> Self {
+        GuiImageDisplay { image }
+    }
+
+}
+
+#[derive(Copy, Clone)]
 pub struct GuiContainer {
     pub background: GuiImageId,
     pub color: GuiColor,
@@ -27,7 +40,8 @@ pub struct GuiContainer {
 #[derive(Copy, Clone)]
 pub enum GuiComponent {
     Container(GuiContainer),
-    Label(GuiLabel)
+    Label(GuiLabel),
+    ImageDisplay(GuiImageDisplay),
 }
 
 #[derive(Copy, Clone)]
