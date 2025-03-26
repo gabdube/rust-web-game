@@ -67,14 +67,16 @@ fn init_gui(game: &mut DemoGameData) -> Result<(), Error> {
         let info_panel = gui.image(game.assets.gui.info_panel);
 
         gui.origin(GuiLayoutOrigin::BottomLeft);
-        gui.sizing(GuiSizing::Static { width: 250.0, height: 250.0 });
+        gui.sizing(GuiSizing::Static { width: 200.0, height: 200.0 });
+        gui.child_align(ChildrenDirection::Column, ChildrenPosition::Center);
         gui.container(info_panel, GuiColor::white(), |gui| {
             let portrait = gui.image(game.assets.gui.pawn_portrait);
             gui.image_display(GuiImageDisplay::from_image(portrait));
 
-            // let font = gui.font(FontId::Roboto, 50.0);
-            // let text = gui.static_text("Hello World!", font);
-            // gui.label(GuiLabel::from_static_text_and_color(text, GuiColor { r: 255, g: 255, b: 255 }));
+            let font = gui.font(FontId::Roboto, 24.0);
+            let text_color = GuiColor::rgb(40, 30, 20);
+            let text = gui.static_text("Pawn", font);
+            gui.label(GuiLabel::from_static_text_and_color(text, text_color));
         });
     })?;
 

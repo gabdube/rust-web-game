@@ -1,10 +1,12 @@
 use std::hint::unreachable_unchecked;
-use crate::shared::pos;
+use crate::shared::{pos, size};
 
-use super::{Gui, GuiComponentView, GuiLayout, GuiLayoutOrigin, GuiNode};
+use super::{Gui, GuiComponentView, GuiLayout, GuiAlignItems, GuiLayoutOrigin, GuiNode, ChildrenDirection, ChildrenPosition};
 
 struct LayoutPositionParent {
     pub view: GuiComponentView,
+    pub align_items: GuiAlignItems,
+    pub child_offset: f32,
 }
 
 pub(super) fn layout_compute(gui: &mut Gui) {
@@ -20,41 +22,64 @@ pub(super) fn layout_compute(gui: &mut Gui) {
 //
 
 fn position_pass(gui: &mut Gui) {
-    let parent = LayoutPositionParent {
-        view: GuiComponentView { position: pos(0.0, 0.0), size: gui.view_size },
+    let mut parent = LayoutPositionParent {
+        view: GuiComponentView { position: pos(0.0, 0.0), size: gui.view_size, items_size: size(0.0, 0.0) },
+        align_items: GuiAlignItems::default(),
+        child_offset: 0.0,
     };
 
     let mut index = 0;
     while index < gui.components.len() {
-        layout_position(gui, &mut index, &parent);
+        layout_position(gui, &mut index, &mut parent);
     }
 }
 
-fn layout_position(gui: &mut Gui, index: &mut usize, parent: &LayoutPositionParent) {
+fn layout_position(gui: &mut Gui, index: &mut usize, parent: &mut LayoutPositionParent) {
     let i = *index;
+    *index += 1;
+
     let layout = get_layout(gui, i);
     let mut view = get_view(gui, i);
 
     match layout.align_self.origin {
-        GuiLayoutOrigin::Auto | GuiLayoutOrigin::TopLeft => {
+        GuiLayoutOrigin::Auto => {
+            // Auto use the parent layout to position the children
+            let align_items = parent.align_items;
+            match (align_items.direction, align_items.position) {
+                (ChildrenDirection::Column, ChildrenPosition::Center) => {
+                    view.position.x = parent.view.position.x + ((parent.view.size.width - view.size.width) / 2.0);
+                    view.position.y = parent.view.position.y + parent.child_offset;
+                    parent.child_offset += view.size.height;
+                },
+            }
+        },
+        GuiLayoutOrigin::TopLeft => {
+            view.position.x = parent.view.position.x;
             view.position.y = parent.view.position.y;
         },
         GuiLayoutOrigin::BottomLeft => {
+            view.position.x = parent.view.position.x;
             view.position.y = parent.view.position.y + (parent.view.size.height - view.size.height);
         }
     }
 
     set_view(gui, i, view);
-    *index += 1;
 
     let node = get_node(gui, i);
-    if node.children_count > 0 {
-        let parent = LayoutPositionParent {
-            view,
-        };
-        for _ in 0..node.children_count {
-            layout_position(gui, index, &parent);
+    if node.children_count == 0 {
+        return;
+    }
+
+    let mut parent = LayoutPositionParent { view, align_items: layout.align_items, child_offset: 0.0 };
+    match (layout.align_items.direction, layout.align_items.position) {
+        (ChildrenDirection::Column, ChildrenPosition::Center) => {
+            dbg!("{:?} {:?}", view.size.height, view.items_size.height);
+            parent.child_offset = (view.size.height - view.items_size.height) / 2.0;
         }
+    }
+
+    for _ in 0..node.children_count {
+        layout_position(gui, index, &mut parent);
     }
 }
 

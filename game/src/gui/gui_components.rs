@@ -44,7 +44,7 @@ pub enum GuiComponent {
     ImageDisplay(GuiImageDisplay),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct GuiNode {
     pub children_count: u32,
 }
@@ -53,4 +53,5 @@ pub struct GuiNode {
 pub struct GuiComponentView {
     pub position: Position<f32>,
     pub size: Size<f32>,
+    pub items_size: Size<f32>,
 }

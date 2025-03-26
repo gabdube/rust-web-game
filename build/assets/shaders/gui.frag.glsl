@@ -34,7 +34,7 @@ void main() {
     float opacity = smoothstep(0.5 - w, 0.5 + w, dist);
 
     if (is_font > 0) {
-        outColor = vec4(opacity) * color;
+        outColor = vec4(color.rbg, 1.0) * vec4(opacity);
     } else {
         outColor = vec4((color_sample.rgb * color.rgb), 1.0) * color_sample.a;
     }

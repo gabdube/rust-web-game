@@ -8,6 +8,10 @@ pub struct GuiColor {
 }
 
 impl GuiColor {
+    pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
+        GuiColor { r, g, b }
+    }
+
     pub const fn white() -> Self {
         GuiColor { r: 255, g: 255, b: 255 }
     }

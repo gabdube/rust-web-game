@@ -5,6 +5,7 @@ use super::*;
 
 #[derive(Default)]
 pub struct GuiBuilderData {
+    pub layout_stack: Vec<GuiLayout>,
     pub children_size_stack: Vec<Size<f32>>,
     pub children_count_stack: Vec<u32>,
     pub next_layout: GuiLayout,
@@ -49,28 +50,27 @@ impl<'a> GuiBuilder<'a> {
         };
 
         self.gui.components.push(GuiComponent::Container(container));
-        self.gui.components_nodes.push(GuiNode { children_count: 0 });
-        self.gui.components_views.push(Self::view_from_layout(&layout));
+        self.gui.components_nodes.push(GuiNode::default());
+        self.gui.components_views.push(GuiComponentView::default());
         self.gui.components_layout.push(layout);
 
         self.data.children_count_stack.push(0);
         self.data.children_size_stack.push(size(0.0, 0.0));
+        self.data.layout_stack.push(layout);
 
         callback(self);
+
+        self.data.layout_stack.pop();
 
         // Sets the children count for the container
         self.gui.components_nodes[index].children_count = self.data.children_count_stack.pop().unwrap_or(0);
 
-        // Update the component view to match the children size
-        match layout.align_self.sizing {
-            GuiSizing::Auto => { 
-                self.gui.components_views[index].size = self.data.children_size_stack.pop().unwrap_or_default();
-            },
-            GuiSizing::Static { .. } => {}
-        }
-
-        let size = self.gui.components_views[index].size;
-        self.update_parent_children_size(size);
+        // Update the component view to match the children size if needed
+        let items_size = self.data.children_size_stack.pop().unwrap_or_default();
+        let view = Self::container_view_from_layout(&layout, items_size);
+        self.gui.components_views[index] = view;
+        
+        self.update_parent_children_size(view.size);
         self.update_parent_children_count();
     }
 
@@ -78,12 +78,12 @@ impl<'a> GuiBuilder<'a> {
         let layout = self.next_layout();
 
         self.gui.components.push(GuiComponent::Label(label));
-        self.gui.components_nodes.push(GuiNode { children_count: 0 });
+        self.gui.components_nodes.push(GuiNode::default());
         self.gui.components_layout.push(layout);
 
         // TODO: layout sizing for text
         let text_id = label.text.0 as usize;
-        let size = match self.gui.text.get(text_id) {
+        let component_size = match self.gui.text.get(text_id) {
             Some(text) => text.size,
             None => {
                 self.set_error(gui_err!("Unknown text with ID {:?} in gui", text_id));
@@ -93,10 +93,11 @@ impl<'a> GuiBuilder<'a> {
 
         self.gui.components_views.push(GuiComponentView {
             position: pos(0.0, 0.0),
-            size
+            size: component_size,
+            items_size: size(0.0, 0.0),
         });
 
-        self.update_parent_children_size(size);
+        self.update_parent_children_size(component_size);
         self.update_parent_children_count();
     }
 
@@ -104,12 +105,12 @@ impl<'a> GuiBuilder<'a> {
         let layout = self.next_layout();
 
         self.gui.components.push(GuiComponent::ImageDisplay(display));
-        self.gui.components_nodes.push(GuiNode { children_count: 0 });
+        self.gui.components_nodes.push(GuiNode::default());
         self.gui.components_layout.push(layout);
 
         // TODO: layout sizing for image display
         let image_id = display.image.0 as usize;
-        let size = match self.gui.images.get(image_id) {
+        let component_size = match self.gui.images.get(image_id) {
             Some(image) => image.texcoord.size(),
             None => {
                 self.set_error(gui_err!("Unknown image with ID {:?} in gui", image_id));
@@ -119,10 +120,11 @@ impl<'a> GuiBuilder<'a> {
 
         self.gui.components_views.push(GuiComponentView {
             position: pos(0.0, 0.0),
-            size
+            size: component_size,
+            items_size: size(0.0, 0.0),
         });
 
-        self.update_parent_children_size(size);
+        self.update_parent_children_size(component_size);
         self.update_parent_children_count();
     }
 
@@ -136,6 +138,13 @@ impl<'a> GuiBuilder<'a> {
 
     pub fn sizing(&mut self, sizing: GuiSizing) {
         self.data.next_layout.align_self.sizing = sizing;
+    }
+
+    pub fn child_align(&mut self, direction: ChildrenDirection, position: ChildrenPosition) {
+        self.data.next_layout.align_items = GuiAlignItems {
+            direction,
+            position,
+        };
     }
 
     //
@@ -210,6 +219,19 @@ impl<'a> GuiBuilder<'a> {
             None => { return; }
         };
 
+        match self.data.layout_stack.last() {
+            Some(layout) => match layout.align_items.direction {
+                ChildrenDirection::Column => {
+                    children_size.width = f32::max(children_size.width, child_size.width);
+                    children_size.height += child_size.height;
+                }
+            },
+            _ => {
+                children_size.width = f32::max(children_size.width, child_size.width);
+                children_size.height = f32::max(children_size.height, child_size.height);
+            },
+        }
+
         children_size.width += child_size.width;
         children_size.height = f32::max(children_size.height, child_size.height);
     }
@@ -226,15 +248,16 @@ impl<'a> GuiBuilder<'a> {
         out
     }
     
-    fn view_from_layout(layout: &GuiLayout) -> GuiComponentView {
-        let size = match layout.align_self.sizing {
+    fn container_view_from_layout(layout: &GuiLayout, items_size: Size<f32>) -> GuiComponentView {
+        let component_size = match layout.align_self.sizing {
             GuiSizing::Static { width, height } => size(width, height),
-            _ => size(0.0, 0.0)
+            GuiSizing::Auto => items_size
         };
 
         GuiComponentView {
             position: pos(0.0, 0.0),
-            size,
+            size: component_size,
+            items_size
         }
     }
 
