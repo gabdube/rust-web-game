@@ -40,6 +40,15 @@ export class Renderer {
         }
     }
 
+    reload_assets(reload_list: string[]): boolean {
+        if (this.backend) {
+            return this.backend.reload_assets(reload_list);
+        } else {
+            set_last_error("reload_assets called on an uninitialized renderer")
+            return false;
+        }
+    }
+
     canvas(): HTMLCanvasElement {
         if (this.backend) {
             return this.backend.canvas.element;

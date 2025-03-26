@@ -28,7 +28,7 @@ use futures::{stream::StreamExt, SinkExt};
 use http_body_util::Full;
 
 /// Build path for the application
-pub const BUILD_PATH: &'static str = "./build";
+pub const BUILD_PATH: &'static str = "./build/";
 
 /// Alias for a generic error type
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;

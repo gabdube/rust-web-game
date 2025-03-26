@@ -50,18 +50,26 @@ impl<'a> GuiBuilder<'a> {
 
         self.gui.components.push(GuiComponent::Container(container));
         self.gui.components_nodes.push(GuiNode { children_count: 0 });
+        self.gui.components_views.push(Self::view_from_layout(&layout));
         self.gui.components_layout.push(layout);
-        self.gui.components_views.push(GuiComponentView::default());
 
         self.data.children_count_stack.push(0);
         self.data.children_size_stack.push(size(0.0, 0.0));
 
         callback(self);
 
-        let size = self.data.children_size_stack.pop().unwrap_or_default();
+        // Sets the children count for the container
         self.gui.components_nodes[index].children_count = self.data.children_count_stack.pop().unwrap_or(0);
-        self.gui.components_views[index].size = size;
 
+        // Update the component view to match the children size
+        match layout.align_self.sizing {
+            GuiSizing::Auto => { 
+                self.gui.components_views[index].size = self.data.children_size_stack.pop().unwrap_or_default();
+            },
+            GuiSizing::Static { .. } => {}
+        }
+
+        let size = self.gui.components_views[index].size;
         self.update_parent_children_size(size);
         self.update_parent_children_count();
     }
@@ -74,6 +82,8 @@ impl<'a> GuiBuilder<'a> {
         self.gui.components.push(GuiComponent::Label(label));
         self.gui.components_nodes.push(GuiNode { children_count: 0 });
         self.gui.components_layout.push(layout);
+
+        // TODO: layout sizing for text
         self.gui.components_views.push(GuiComponentView {
             position: pos(0.0, 0.0),
             size
@@ -91,8 +101,8 @@ impl<'a> GuiBuilder<'a> {
         self.data.next_layout.align_self.origin = value;
     }
 
-    pub fn sizing(&mut self, size: GuiSizing) {
-
+    pub fn sizing(&mut self, sizing: GuiSizing) {
+        self.data.next_layout.align_self.sizing = sizing;
     }
 
     //
@@ -181,6 +191,18 @@ impl<'a> GuiBuilder<'a> {
         let mut out = GuiLayout::default();
         ::std::mem::swap(&mut out, &mut self.data.next_layout);
         out
+    }
+    
+    fn view_from_layout(layout: &GuiLayout) -> GuiComponentView {
+        let size = match layout.align_self.sizing {
+            GuiSizing::Static { width, height } => size(width, height),
+            _ => size(0.0, 0.0)
+        };
+
+        GuiComponentView {
+            position: pos(0.0, 0.0),
+            size,
+        }
     }
 
 }

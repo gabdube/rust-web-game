@@ -5,7 +5,6 @@ use super::{Gui, GuiComponentView, GuiLayout, GuiLayoutOrigin, GuiNode};
 
 struct LayoutPositionParent {
     pub view: GuiComponentView,
-    pub layout: GuiLayout,
 }
 
 pub(super) fn layout_compute(gui: &mut Gui) {
@@ -13,9 +12,16 @@ pub(super) fn layout_compute(gui: &mut Gui) {
         return;
     }
 
+    position_pass(gui);
+}
+
+//
+// Positioning pass
+//
+
+fn position_pass(gui: &mut Gui) {
     let parent = LayoutPositionParent {
         view: GuiComponentView { position: pos(0.0, 0.0), size: gui.view_size },
-        layout: GuiLayout::default()
     };
 
     let mut index = 0;
@@ -45,13 +51,16 @@ fn layout_position(gui: &mut Gui, index: &mut usize, parent: &LayoutPositionPare
     if node.children_count > 0 {
         let parent = LayoutPositionParent {
             view,
-            layout
         };
         for _ in 0..node.children_count {
             layout_position(gui, index, &parent);
         }
     }
 }
+
+//
+// Helpers
+//
 
 #[inline(always)]
 fn get_node(gui: &Gui, index: usize) -> GuiNode {

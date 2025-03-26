@@ -1,5 +1,5 @@
 import { set_last_error } from "./error";
-import { fetch_text, fetch_blob, fetch_arraybuffer } from "./helpers";
+import { fetch_text, fetch_blob, fetch_arraybuffer, file_extension } from "./helpers";
 
 export class Shader {
     vertex: string;
@@ -13,10 +13,12 @@ export class Shader {
 export class Texture {
     id: number;
     bitmap: ImageBitmap;
+    path: string;
 
-    constructor(texture_id: number, bitmap: ImageBitmap) {
+    constructor(texture_id: number, path: string, bitmap: ImageBitmap) {
         this.id = texture_id;
         this.bitmap = bitmap;
+        this.path = path;
     }
 }
 
@@ -56,6 +58,43 @@ export class EngineAssets {
         }
 
         return true
+    }
+
+    async reload_assets(assets: string[]): Promise<boolean> {
+        let reload_list: Promise<boolean>[] = [];
+
+        for (let asset of assets) {
+            const ext = file_extension(asset);
+            switch(ext) {
+                case "png": {
+                    reload_list.push(this.reload_texture(asset))
+                    break;
+                }
+            }
+        }
+
+        let ok = true;
+        if (reload_list.length > 0) {
+            const reload_results = await Promise.all(reload_list);
+            for (let reload_result of reload_results) {
+                ok &&= reload_result;
+            }
+        }
+
+        return ok;
+    }
+
+    find_texture_by_path(path: string): [string|null, Texture|null] {
+        let texture_name: string|null = null;
+        let texture_target: Texture|null = null;
+        for (let [name, texture] of this.textures.entries()) {
+            if (texture.path == path) {
+                texture_name = name;
+                texture_target = texture;
+            }
+        }
+
+        return [texture_name, texture_target];
     }
 
     private async load_bundle(): Promise<boolean> {
@@ -126,11 +165,24 @@ export class EngineAssets {
             return false;
         }
 
-        const texture = new Texture(texture_id, bitmap);
+        const texture = new Texture(texture_id, path, bitmap);
         this.textures.set(name, texture);
         this.textures_by_id[texture_id] = texture;
 
         return true;
+    }
+
+    private async reload_texture(path: string): Promise<boolean> {
+        console.log(`Reloading ${path}`);
+
+        let [texture_name, texture] = this.find_texture_by_path(path);
+        if (texture_name && texture) {
+            return await this.load_texture(texture.id, texture_name, path);
+        } else {
+            console.log(this);
+            console.log(`Failed to reload ${path}: texture not found`)
+            return true;
+        }
     }
 
     private async load_csv(name: string, path: string): Promise<boolean> {
@@ -177,7 +229,7 @@ export class EngineAssets {
         }
 
         this.fonts.set(name, new Font(texture_id, texture_data, atlas_data));
-        this.textures_by_id[texture_id] = new Texture(texture_id, texture_data);
+        this.textures_by_id[texture_id] = new Texture(texture_id, image_path, texture_data);
 
         return true;
     }

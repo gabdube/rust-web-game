@@ -1,20 +1,13 @@
 import { EngineGameInstance, EngineGameInstanceUpdates, EngineGameDrawUpdate, DrawUpdateType,
     SPRITE_DATA_SIZE, TERRAIN_CHUNK_STRIDE, TERRAIN_CHUNK_SIZE_BYTES, GUI_VERTEX_SIZE } from "../game_interface";
-import { EngineAssets } from "../assets";
+import { EngineAssets, Texture } from "../assets";
 import { set_last_error } from "../error";
-import { Size } from "../helpers";
+import { Size, file_extension } from "../helpers";
 
 
 const TERRAIN_CHUNK_INDEX_COUNT: number = TERRAIN_CHUNK_STRIDE * TERRAIN_CHUNK_STRIDE * 6;
 
-enum DrawCommandType {
-    DrawSprites = 1,
-    DrawTerrainChunk = 2,
-}
-
 class DrawCommand {
-    ty: DrawCommandType;
-
     // Types depends on the module
     // See static methods
     resource0: any;
@@ -27,7 +20,6 @@ class DrawCommand {
         instance_count: number,
         texture: WebGLTexture,
     ) {
-        draw.ty = DrawCommandType.DrawSprites;
         draw.resource0 = vao;
         draw.resource1 = instance_count;
         draw.resource2 = texture;
@@ -39,7 +31,6 @@ class DrawCommand {
         chunk_y: number,
         chunk_vao: WebGLVertexArrayObject,
     ) {
-        draw.ty = DrawCommandType.DrawTerrainChunk;
         draw.resource0 = chunk_x;
         draw.resource1 = chunk_y;
         draw.resource2 = chunk_vao;
@@ -493,7 +484,7 @@ export class WebGL2Backend {
     // Render
     //
 
-    render_sprites() {
+    private render_sprites() {
         const SPRITE_INDEX_COUNT: number = 6;
         const ctx = this.ctx;
 
@@ -514,7 +505,7 @@ export class WebGL2Backend {
         }
     }
 
-    render_terrain_chunks() {
+    private render_terrain_chunks() {
         const ctx = this.ctx;
 
         ctx.useProgram(this.shaders.draw_terrain);
@@ -534,7 +525,7 @@ export class WebGL2Backend {
         }
     }
 
-    render_gui() {
+    private render_gui() {
         const ctx = this.ctx;
         const buffers = this.buffers;
         if (buffers.gui_indices_len == 0) {
@@ -571,7 +562,48 @@ export class WebGL2Backend {
     }
 
     //
+    // Reload
     //
+
+    private reload_texture(name: string, texture: Texture): boolean {
+        const ctx = this.ctx;
+        const old_texture = this.textures[texture.id];
+        ctx.deleteTexture(old_texture.handle);
+
+        const new_texture = this.create_renderer_texture(texture.id);
+
+        // Hardcoded textures
+        switch (name) {
+            case "terrain": { this.terrain_texture = new_texture; break; }
+            case "roboto": { this.font_texture = new_texture; break; }
+            case "gui": { this.gui_texture = new_texture; break; }
+        }
+
+        return true;
+    }
+
+    reload_assets(reload_list: string[]): boolean {
+        let ok = true;
+
+        for (let asset of reload_list) {
+            const ext = file_extension(asset);
+            switch (ext) {
+                case "png": {
+                    const [texture_name, texture] = this.assets.find_texture_by_path(asset);
+                    if (texture_name && texture) {
+                        ok &&= this.reload_texture(texture_name, texture);
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        return ok;
+    }
+
+    //
+    // Setup
     //
 
     private setup_canvas(): boolean {
@@ -957,6 +989,7 @@ export class WebGL2Backend {
         ctx.uniform1i(this.shaders.draw_gui_font_texture, 0);
         ctx.uniform1i(this.shaders.draw_gui_image_texture, 1);
     }
+
 }
 
 function create_shader(ctx: WebGL2RenderingContext, type: GLenum, source: string): WebGLShader|undefined {

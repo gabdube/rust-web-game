@@ -8,6 +8,10 @@ pub struct GuiColor {
 }
 
 impl GuiColor {
+    pub const fn white() -> Self {
+        GuiColor { r: 255, g: 255, b: 255 }
+    }
+
     pub const fn splat(&self) -> [u8; 3] {
         [self.r, self.g, self.b]
     }

@@ -64,15 +64,14 @@ fn init_gui(game: &mut DemoGameData) -> Result<(), Error> {
     game.gui.resize(game.inputs.view_size);
 
     game.gui.build(&game.assets, |gui| {
-        let solid = gui.image(game.assets.gui.solid);
-        let red = GuiColor { r: 255, g: 0, b: 0 };
+        let info_panel = gui.image(game.assets.gui.info_panel);
 
         gui.origin(GuiLayoutOrigin::BottomLeft);
-        gui.sizing(GuiSizing::Auto);
-        gui.container(solid, red, |gui| {
-            let font = gui.font(FontId::Roboto, 50.0);
-            let text = gui.static_text("Hello World!", font);
-            gui.label(GuiLabel::from_static_text_and_color(text, GuiColor { r: 255, g: 255, b: 255 }));
+        gui.sizing(GuiSizing::Static { width: 300.0, height: 300.0 });
+        gui.container(info_panel, GuiColor::white(), |gui| {
+            // let font = gui.font(FontId::Roboto, 50.0);
+            // let text = gui.static_text("Hello World!", font);
+            // gui.label(GuiLabel::from_static_text_and_color(text, GuiColor { r: 255, g: 255, b: 255 }));
         });
     })?;
 

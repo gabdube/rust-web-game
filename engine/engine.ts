@@ -37,6 +37,7 @@ class Engine {
     errors_count: number = 0;
 
     reload_client: boolean = false;
+    reload_assets: string[] = [];
     reload: boolean = false;
     exit: boolean = false;
 }
@@ -189,11 +190,19 @@ function handle_game_err(engine: Engine) {
     }
 }
 
+
 function on_file_changed(engine: Engine, message: WebSocketMessage) {
+    // Reloading is async so we don't execute it right away in the game loop.
+    // See the `reload` function in this file
     const ext = file_extension(message.data);
     switch (ext) {
         case "wasm": {
             engine.reload_client = true;
+            engine.reload = true;
+            break;
+        }
+        case "png": {
+            engine.reload_assets.push(message.data);
             engine.reload = true;
             break;
         }
@@ -301,6 +310,15 @@ export function render(engine: Engine) {
 // Reload
 //
 
+async function reload_assets(engine: Engine): Promise<boolean> {
+    const reload_result = await engine.assets.reload_assets(engine.reload_assets);
+    if (!reload_result) {
+        return false;
+    }
+
+    return engine.renderer.reload_assets(engine.reload_assets);
+}
+
 async function reload_client(engine: Engine) {
     const game = engine.game;
     game.reload_count += 1;
@@ -315,10 +333,27 @@ async function reload_client(engine: Engine) {
 }
 
 export async function reload(engine: Engine) {
+    let ok = true;
+
+    if (engine.reload_assets.length > 0) {
+        ok &&= await reload_assets(engine);
+        engine.reload_assets = [];
+    }
+
     if (engine.reload_client) {
         await reload_client(engine);
         engine.reload_client = false;
     }
+
+    if (!ok) {
+        let error = get_last_error();
+        if (error) {
+            show_critical_error(error);
+            engine.exit = true;
+        }
+    }
+
+    engine.reload = false;
 }
 
 // Runtime
@@ -344,15 +379,13 @@ function show_critical_error(error: Error) {
     show(panel);
 }
 
-let last_p = performance.now();
-
 function run(engine: Engine) {
-    update(engine, performance.now());
-    render(engine);
-
     if (engine.exit) {
         return;
     }
+
+    update(engine, performance.now());
+    render(engine);
 
     if (engine.reload) {
         reload(engine)

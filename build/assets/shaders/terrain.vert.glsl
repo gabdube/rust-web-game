@@ -15,7 +15,6 @@ void main() {
     uv = in_uv;
 
     vec2 pos = view_position + chunk_position + (in_position * vec2(CELL_SIZE));
-    pos = (pos / vec2(view_size.x, view_size.y)) * 2.0;
-    pos -= vec2(1.0, 1.0);
+    pos = ((pos / vec2(view_size.x, view_size.y)) * 2.0) - vec2(1.0, 1.0);
     gl_Position = vec4(pos.x, -pos.y, 0.0, 1.0);
 }

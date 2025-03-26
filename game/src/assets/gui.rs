@@ -2,7 +2,9 @@ use crate::shared::AABB;
 
 #[derive(Copy, Clone, Default)]
 pub struct GuiBundle {
+    // A solid color area
     pub solid: AABB,
+    pub info_panel: AABB,
 }
 
 impl GuiBundle {
@@ -21,6 +23,7 @@ impl GuiBundle {
 
             let aabb = match name {
                 "solid" => &mut self.solid,
+                "info_panel" => &mut self.info_panel,
                 _ => {
                     return;
                 }
