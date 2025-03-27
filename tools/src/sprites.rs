@@ -18,7 +18,7 @@ pub struct AnimationInfo {
 pub enum SpriteInfo {
     /// The sprite spans the whole image
     Simple,
-    /// The sprite spans the whole image and the blank space should not be trimmed automatically
+    /// The sprite spans the whole image and the blank space should not be trimmed
     /// PADDING is ignored
     SimpleNoTrimming,
     /// The sprite in a subsection of the image delimited by `Rect`

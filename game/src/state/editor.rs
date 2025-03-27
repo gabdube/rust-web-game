@@ -153,7 +153,7 @@ pub fn on_left_mouse(game: &mut DemoGameData) {
     }
 
     let state = get_state(&mut game.state);
-    if let Some(new) = state.selected_object {
+    if let Some(new) = new_selected {
         if let Some(image_id) = state.selected_object_image {
             let image_asset = game.assets.object_gui_image(new.ty);
             let image = GuiImage::from_aabb(image_asset);

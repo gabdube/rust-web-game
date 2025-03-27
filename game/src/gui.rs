@@ -24,12 +24,13 @@ use crate::shared::Size;
 struct GuiUpdateFlags(u8);
 impl GuiUpdateFlags {
     const ALL: u8 = 0b011;
-    const GENERATE_SPRITES: u8          = 0b001;
-    const COMPUTE_LAYOUT_POSITIONS: u8  = 0b010;
+    const COMPUTE_LAYOUT_SIZES: u8      = 0b01;
+    const COMPUTE_LAYOUT_POSITIONS: u8  = 0b11;
     pub fn set(&mut self, flags: u8) { self.0 = flags; }
     pub fn clear(&mut self) { self.0 = 0; }
-    pub fn generate_sprites(&self) -> bool { self.0 & Self::GENERATE_SPRITES > 0 }
-    pub fn compute_layout_positions(&self) -> bool { self.0 & Self::COMPUTE_LAYOUT_POSITIONS > 0 }
+    pub fn generate_sprites(&self) -> bool { self.0 != 0 }
+    pub fn compute_layout_sizes(&self) -> bool { self.0 & Self::COMPUTE_LAYOUT_SIZES > 0 }
+    pub fn compute_layout_positions(&self) -> bool { self.0 & (Self::COMPUTE_LAYOUT_POSITIONS | Self::COMPUTE_LAYOUT_SIZES) > 0 }
 }
 
 pub struct Gui {
@@ -65,7 +66,8 @@ impl Gui {
             return Err(error);
         }
 
-        self.update_flags.set(GuiUpdateFlags::ALL);
+        // Sizing is already done by the building so we only need to compute the positions
+        self.update_flags.set(GuiUpdateFlags::COMPUTE_LAYOUT_POSITIONS);
         
         Ok(())
     }
@@ -118,6 +120,12 @@ impl Gui {
 
         // Todo layout update optimization
         self.images[image_index] = image;
+
+        // Tag the root node for recompute
+        for &index in self.dynamic_resources[dyn_index].users.iter() {
+            let root_index = self.components_nodes[index as usize].root_index as usize;
+            self.components_nodes[root_index].dirty = true;
+        }
 
         self.update_flags.set(GuiUpdateFlags::ALL);
     }

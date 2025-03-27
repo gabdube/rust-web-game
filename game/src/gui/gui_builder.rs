@@ -6,9 +6,10 @@ use super::*;
 pub struct GuiBuilderData {
     pub layout_stack: Vec<GuiLayout>,
     pub children_size_stack: Vec<Size<f32>>,
-    pub children_count_stack: Vec<u32>,
+    pub children_count_stack: Vec<[u32; 2]>,
     pub next_layout: GuiLayout,
     pub error: Option<Error>,
+    pub root_index: u32,
 }
 
 pub struct GuiBuilder<'a> {
@@ -22,6 +23,7 @@ impl<'a> GuiBuilder<'a> {
         // Allow us to store the pointer to the builder data straight into the builder struct (skipping a double indirection)
         // Safety: `gui.builder_data` must not be accessed while the GuiBuilder is instanced.
         let data = unsafe { &mut *gui.builder_data.get() };
+        data.root_index = u32::MAX;
         GuiBuilder {
             gui,
             data,
@@ -38,6 +40,7 @@ impl<'a> GuiBuilder<'a> {
         color: GuiColor,
         callback: CB
     ) {
+        let node = self.new_gui_node();
         let layout = self.next_layout();
         let index = self.gui.components.len();
         
@@ -47,11 +50,11 @@ impl<'a> GuiBuilder<'a> {
         };
 
         self.gui.components.push(GuiComponent::Container(container));
-        self.gui.components_nodes.push(GuiNode::default());
+        self.gui.components_nodes.push(node);
         self.gui.components_views.push(GuiComponentView::default());
         self.gui.components_layout.push(layout);
 
-        self.data.children_count_stack.push(0);
+        self.data.children_count_stack.push([0, 0]);
         self.data.children_size_stack.push(size(0.0, 0.0));
         self.data.layout_stack.push(layout);
 
@@ -60,7 +63,10 @@ impl<'a> GuiBuilder<'a> {
         self.data.layout_stack.pop();
 
         // Sets the children count for the container
-        self.gui.components_nodes[index].children_count = self.data.children_count_stack.pop().unwrap_or(0);
+        let [children_count, descendants_count] = self.children_count();
+        let node = &mut self.gui.components_nodes[index];
+        node.children_count = children_count;
+        node.descendants_count = descendants_count;
 
         // Update the component view to match the children size if needed
         let items_size = self.data.children_size_stack.pop().unwrap_or_default();
@@ -69,13 +75,20 @@ impl<'a> GuiBuilder<'a> {
         
         self.update_parent_children_size(view.size);
         self.update_parent_children_count();
+        self.update_root_node();
     }
 
     pub fn label(&mut self, label: GuiLabel) {
+        let node = self.new_gui_node();
         let layout = self.next_layout();
 
+        if label.text.is_dyn() {
+            let dyn_resource = &mut self.gui.dynamic_resources[label.text.dyn_index()];
+            dyn_resource.users.push(self.gui.components.len() as u32);
+        }
+
         self.gui.components.push(GuiComponent::Label(label));
-        self.gui.components_nodes.push(GuiNode::default());
+        self.gui.components_nodes.push(node);
         self.gui.components_layout.push(layout);
 
         // TODO: layout sizing for text
@@ -96,9 +109,11 @@ impl<'a> GuiBuilder<'a> {
 
         self.update_parent_children_size(component_size);
         self.update_parent_children_count();
+        self.update_root_node();
     }
 
     pub fn image_display(&mut self, display: GuiImageDisplay) {
+        let node = self.new_gui_node();
         let layout = self.next_layout();
 
         if display.image.is_dyn() {
@@ -107,7 +122,7 @@ impl<'a> GuiBuilder<'a> {
         }
 
         self.gui.components.push(GuiComponent::ImageDisplay(display));
-        self.gui.components_nodes.push(GuiNode::default());
+        self.gui.components_nodes.push(node);
         self.gui.components_layout.push(layout);
 
         // TODO: layout sizing for image display
@@ -128,6 +143,7 @@ impl<'a> GuiBuilder<'a> {
 
         self.update_parent_children_size(component_size);
         self.update_parent_children_count();
+        self.update_root_node();
     }
 
     //
@@ -207,9 +223,19 @@ impl<'a> GuiBuilder<'a> {
     }
 
     fn update_parent_children_count(&mut self) {
-        if let Some(count) = self.data.children_count_stack.last_mut() {
-            *count += 1;
+        if let Some([children_count, descendants_count]) = self.data.children_count_stack.last_mut() {
+            *children_count += 1;
+            *descendants_count += 1;
         }
+    }
+
+    fn children_count(&mut self) -> [u32; 2] {
+        let [children_count, descendants_count] = self.data.children_count_stack.pop().unwrap_or([0, 0]);
+        if let Some([_, parent_descendants_count]) = self.data.children_count_stack.last_mut() {
+            *parent_descendants_count += children_count;
+        }
+
+        [children_count, descendants_count]
     }
 
     fn next_layout(&mut self) -> GuiLayout {
@@ -231,4 +257,22 @@ impl<'a> GuiBuilder<'a> {
         }
     }
 
+    fn new_gui_node(&mut self) -> GuiNode {
+        if self.data.root_index == u32::MAX {
+            self.data.root_index = self.gui.components_nodes.len() as u32;
+        }
+        
+        GuiNode {
+            root_index: self.data.root_index,
+            children_count: 0,
+            descendants_count: 0,
+            dirty: true,
+        }
+    }
+
+    fn update_root_node(&mut self) {
+        if self.data.children_size_stack.is_empty() {
+            self.data.root_index = u32::MAX;
+        }
+    }
 }
