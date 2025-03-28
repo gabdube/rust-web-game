@@ -1,7 +1,7 @@
 //! Special debugging state to test features
 use crate::behaviour;
 use crate::error::Error;
-use crate::gui::{GuiImageId, GuiImage};
+use crate::gui::{GuiImageId, GuiStaticTextId};
 use crate::state::GameState;
 use crate::world::{StructureData, WorldObject, WorldObjectType};
 use crate::{DemoGameData, pos};
@@ -26,10 +26,20 @@ impl TestId {
     }
 }
 
+#[derive(Default)]
+#[derive(Copy, Clone)]
+pub struct EditorStateGuiBindings {
+    selected_image: GuiImageId,
+    selected_name1: GuiStaticTextId,
+    selected_name2: GuiStaticTextId,
+    selected_extra_icon: GuiImageId,
+    selected_extra_text: GuiStaticTextId,
+}
+
 pub struct EditorState {
     current_test: TestId,
     selected_object: Option<WorldObject>,
-    selected_object_image: Option<GuiImageId>,
+    gui_bindings: Box<EditorStateGuiBindings>
 }
 
 //
@@ -40,7 +50,7 @@ pub fn init(game: &mut DemoGameData, test: TestId) -> Result<(), Error> {
     let mut inner_state = EditorState {
         current_test: test,
         selected_object: None,
-        selected_object_image: None,
+        gui_bindings: Box::default(),
     };
 
     game.init_terrain(16, 16);
@@ -62,23 +72,27 @@ pub fn init(game: &mut DemoGameData, test: TestId) -> Result<(), Error> {
 fn init_gui(game: &mut DemoGameData, state: &mut EditorState) -> Result<(), Error> {
     use crate::gui::*;
 
+    let bindings = &mut state.gui_bindings;
+
     game.gui.clear();
     game.gui.resize(game.inputs.view_size);
 
     game.gui.build(|gui| {
+        let text_color = GuiColor::rgb(40, 30, 20);
         let info_panel = gui.image(game.assets.gui.info_panel);
 
         gui.origin(GuiLayoutOrigin::BottomLeft);
         gui.sizing(GuiSizing::Static { width: 200.0, height: 200.0 });
         gui.items_align(ItemsDirection::Column, ItemsPosition::Center);
-        gui.container(info_panel, GuiColor::white(), |gui| {
-            let image_id = gui.dyn_empty_image();
-            state.selected_object_image = Some(image_id);
-            gui.image_display(GuiImageDisplay::from_image(image_id));
+        gui.simple_frame(info_panel, GuiColor::white(), |gui| {
+            bindings.selected_image = gui.dyn_image();
+            gui.image_display(GuiImageDisplay::from_image(bindings.selected_image));
 
-            let text_color = GuiColor::rgb(40, 30, 20);
-            let text = gui.static_text(game.assets.fonts.roboto.compute_text_metrics("Pawn", 24.0));
-            gui.label(GuiLabel::from_static_text_and_color(text, text_color));
+            bindings.selected_name1 = gui.dyn_static_text();
+            gui.label(GuiLabel::from_static_text_and_color(bindings.selected_name1, text_color));
+
+            bindings.selected_name2 = gui.dyn_static_text();
+            gui.label(GuiLabel::from_static_text_and_color(bindings.selected_name2, text_color));
         });
     })?;
 
@@ -152,13 +166,8 @@ pub fn on_left_mouse(game: &mut DemoGameData) {
         (Some(old), Some(new)) => replace_object_selection(game, old, new),
     }
 
-    let state = get_state(&mut game.state);
-    if let Some(new) = new_selected {
-        if let Some(image_id) = state.selected_object_image {
-            let image_asset = game.assets.object_gui_image(new.ty);
-            let image = GuiImage::from_aabb(image_asset);
-            game.gui.set_image(image_id, image);
-        }
+    if new_selected.is_some() {
+        update_selected_gui_state(game);
     }
 }
 
@@ -233,6 +242,37 @@ fn replace_object_selection(data: &mut DemoGameData, old_selection: WorldObject,
     state.selected_object = Some(new_selection);
 }
 
+fn update_selected_gui_state(game: &mut DemoGameData) {
+    let state = get_state(&mut game.state);
+    let bindings = &state.gui_bindings;
+    let gui = &mut game.gui;
+    let font = &game.assets.fonts.roboto;
+
+    let selected = state.selected_object.unwrap();
+    let image_asset = game.assets.object_gui_image(selected.ty);
+    gui.set_image(bindings.selected_image, image_asset);
+
+    let text = font.compute_text_metrics(selected.ty.name(), 26.0);
+    gui.set_text(bindings.selected_name1, text);
+
+    match selected.ty {
+        WorldObjectType::Structure => {
+            match game.world.structures_data[selected.id as usize] {
+                StructureData::GoldMine(_) => {
+                    let text = font.compute_text_metrics("Gold Mine", 22.0);
+                    gui.set_text(bindings.selected_name2, text);
+                }
+            }
+        }
+        _ => {
+            gui.clear_text(bindings.selected_name2);
+            gui.clear_text(bindings.selected_extra_text);
+            gui.clear_image(bindings.selected_extra_icon);
+        }
+    }
+
+}
+
 fn get_state(state: &mut GameState) -> &mut EditorState {
     match state {
         GameState::Editor(inner) => inner,
@@ -248,18 +288,18 @@ impl crate::store::SaveAndLoad for EditorState {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write_u32(self.current_test as u32);
         writer.save_option(&self.selected_object);
-        writer.write(&self.selected_object_image);
+        writer.write(self.gui_bindings.as_ref());
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let current_test = TestId::from_u32(reader.read_u32());
         let selected_object = reader.load_option();
-        let selected_object_image = reader.read();
+        let gui_bindings = Box::new(reader.read());
         
         EditorState {
             current_test,
             selected_object,
-            selected_object_image,
+            gui_bindings
         }
     }
 }

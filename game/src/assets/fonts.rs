@@ -30,6 +30,7 @@ pub struct ComputedGlyph {
     pub texcoord: AABB,
 }
 
+#[derive(Default)]
 pub struct TextMetrics {
     pub size: Size<f32>,
     pub glyphs: Vec<ComputedGlyph>,
@@ -79,7 +80,7 @@ impl FontAsset {
         let atlas_height = self.info.height;
         let atlas_glyph = self.glyphs.get(chr as usize).copied().unwrap_or_default();
 
-        let line_height = self.info.line_height * 0.75;
+        let line_height = self.info.line_height;
         let top = line_height - atlas_glyph.plane_bound[1];
         let bottom = line_height - atlas_glyph.plane_bound[3];
 

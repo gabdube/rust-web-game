@@ -40,6 +40,7 @@ pub struct GuiContainer {
 #[derive(Copy, Clone)]
 pub enum GuiComponent {
     Container(GuiContainer),
+    Group,
     Label(GuiLabel),
     ImageDisplay(GuiImageDisplay),
 }

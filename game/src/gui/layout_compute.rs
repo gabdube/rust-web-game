@@ -54,7 +54,7 @@ fn sizing_pass(gui: &mut Gui) {
 
 fn get_component_size(gui: &Gui, index: usize) -> Size<f32> {
     match get_component(gui, index) {
-        GuiComponent::Container(_) => size(0.0, 0.0),
+        GuiComponent::Container(_) | GuiComponent::Group => size(0.0, 0.0),
         GuiComponent::ImageDisplay(image_display) => {
             gui.images[image_display.image.index()].texcoord.size()
         },
@@ -81,10 +81,9 @@ fn layout_size(gui: &mut Gui, index: &mut usize, parent: &mut LayoutSizingParent
     let mut view = get_view(gui, i);
     let base_size = get_component_size(gui, i);
 
-    update_parent_size(parent, base_size);
-
     if node.children_count == 0 {
         view.size = base_size;
+        update_parent_size(parent, base_size);
         set_view(gui, i, view);
         return;
     }
@@ -104,6 +103,7 @@ fn layout_size(gui: &mut Gui, index: &mut usize, parent: &mut LayoutSizingParent
         GuiSizing::Auto => child_sizing.size
     };
 
+    update_parent_size(parent, view.size);
     set_view(gui, i, view);
 }
 

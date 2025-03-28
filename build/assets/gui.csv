@@ -4,4 +4,7 @@ warrior_portrait;1;200;0;281;94;
 archer_portrait;1;281;0;346;78;
 gobindynamite_portrait;1;346;0;434;71;
 gobintorch_portrait;1;200;94;277;176;
-sheep_portrait;1;281;139;327;180;
+sheep_portrait;1;346;71;392;112;
+meat_icon;1;434;0;486;40;
+wood_icon;1;434;40;486;73;
+gold_icon;1;281;139;327;187;

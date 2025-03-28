@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
-use crate::assets::ComputedGlyph;
-use crate::shared::{Size, AABB};
+use crate::assets::TextMetrics;
+use crate::shared::AABB;
 
 pub type GuiImageId = GuiResourceId<GuiImage>;
-pub type GuiStaticTextId = GuiResourceId<GuiStaticText>;
+pub type GuiStaticTextId = GuiResourceId<TextMetrics>;
 
 /// Id representing a resource type in the gui
 pub struct GuiResourceId<T> {
@@ -42,8 +42,7 @@ impl<T> GuiResourceId<T> {
     }
 }
 
-
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct GuiImage {
     pub texcoord: AABB,
 }
@@ -51,27 +50,6 @@ pub struct GuiImage {
 impl GuiImage {
     pub const fn from_aabb(texcoord: AABB) -> Self {
         GuiImage { texcoord }
-    }
-}
-
-pub struct GuiStaticText {
-    pub size: Size<f32>,
-    pub glyphs: Box<[ComputedGlyph]>,
-}
-
-impl crate::store::SaveAndLoad for GuiStaticText {
-    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        writer.write(&self.size);
-        writer.write_slice(&self.glyphs);
-    }
-
-    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let size: Size<f32> = reader.read();
-        let glyphs: Vec<ComputedGlyph> = reader.read_vec();
-        GuiStaticText {
-            size,
-            glyphs: glyphs.into_boxed_slice()
-        }
     }
 }
 
@@ -95,6 +73,12 @@ impl crate::store::SaveAndLoad for DynamicResource {
         DynamicResource { 
             users: reader.read_vec(),
         }
+    }
+}
+
+impl<T> Default for GuiResourceId<T> {
+    fn default() -> Self {
+        GuiResourceId { value: u32::MAX, dynamic_id: u32::MAX, _t: PhantomData }
     }
 }
 

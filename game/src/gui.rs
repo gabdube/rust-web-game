@@ -19,13 +19,13 @@ mod generate_sprites;
 use std::cell::UnsafeCell;
 use crate::assets::TextMetrics;
 use crate::error::Error;
-use crate::shared::Size;
+use crate::shared::{Size, AABB};
 
 struct GuiUpdateFlags(u8);
 impl GuiUpdateFlags {
     const ALL: u8 = 0b011;
-    const COMPUTE_LAYOUT_SIZES: u8      = 0b01;
-    const COMPUTE_LAYOUT_POSITIONS: u8  = 0b11;
+    const COMPUTE_LAYOUT_POSITIONS: u8  = 0b01;
+    const COMPUTE_LAYOUT_SIZES: u8      = 0b10;
     pub fn set(&mut self, flags: u8) { self.0 = flags; }
     pub fn clear(&mut self) { self.0 = 0; }
     pub fn generate_sprites(&self) -> bool { self.0 != 0 }
@@ -107,27 +107,58 @@ impl Gui {
         }
     }
 
-    pub fn set_image(&mut self, image_id: GuiResourceId<GuiImage>, image: GuiImage) {
-        if !image_id.is_dyn() {
-            return;
-        }
-
+    pub fn set_image(&mut self, image_id: GuiImageId, image: AABB) {
         let image_index = image_id.index();
         let dyn_index = image_id.dyn_index();
         if image_index >= self.images.len() || dyn_index >= self.dynamic_resources.len() {
             return;
         }
 
-        // Todo layout update optimization
-        self.images[image_index] = image;
+        self.images[image_index] = GuiImage::from_aabb(image);
+        self.tag_dynamic_resource(dyn_index);
 
-        // Tag the root node for recompute
-        for &index in self.dynamic_resources[dyn_index].users.iter() {
+        self.update_flags.set(GuiUpdateFlags::ALL);
+    }
+
+    pub fn clear_image(&mut self, image_id: GuiImageId) {
+        let image_index = image_id.index();
+        let dyn_index = image_id.dyn_index();
+        if image_index >= self.images.len() || dyn_index >= self.dynamic_resources.len() {
+            return;
+        }
+
+        self.images[image_index].texcoord = AABB::default();
+        self.tag_dynamic_resource(dyn_index);
+    }
+
+    pub fn set_text(&mut self, text_id: GuiStaticTextId, text: TextMetrics) {
+        let text_index = text_id.index();
+        let dyn_index = text_id.dyn_index();
+        if text_index >= self.text.len() || dyn_index >= self.dynamic_resources.len() {
+            return;
+        }
+
+        self.text[text_index] = text;
+        self.tag_dynamic_resource(dyn_index);
+    }
+
+    pub fn clear_text(&mut self, text_id: GuiStaticTextId) {
+        let text_index = text_id.index();
+        let dyn_index = text_id.dyn_index();
+        if text_index >= self.text.len() || dyn_index >= self.dynamic_resources.len() {
+            return;
+        }
+
+        self.text[text_index].glyphs.clear();
+        self.text[text_index].size = Default::default();
+        self.tag_dynamic_resource(dyn_index);
+    }
+
+    fn tag_dynamic_resource(&mut self, resource_index: usize) {
+        for &index in self.dynamic_resources[resource_index].users.iter() {
             let root_index = self.components_nodes[index as usize].root_index as usize;
             self.components_nodes[root_index].dirty = true;
         }
-
-        self.update_flags.set(GuiUpdateFlags::ALL);
     }
 
 }

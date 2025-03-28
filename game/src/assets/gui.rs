@@ -9,6 +9,9 @@ pub struct GuiBundle {
     pub goblin_dynamite_portrait: AABB,
     pub goblin_torch_portrait: AABB,
     pub sheep_portrait: AABB,
+    pub gold_icon: AABB,
+    pub meat_icon: AABB,
+    pub wood_icon: AABB,
 }
 
 impl GuiBundle {
@@ -33,6 +36,9 @@ impl GuiBundle {
                 "gobindynamite_portrait" => &mut self.goblin_dynamite_portrait,
                 "gobintorch_portrait" => &mut self.goblin_torch_portrait,
                 "sheep_portrait" => &mut self.sheep_portrait,
+                "gold_icon" => &mut self.gold_icon,
+                "meat_icon" => &mut self.meat_icon,
+                "wood_icon" => &mut self.wood_icon,
                 _ => {
                     return;
                 }

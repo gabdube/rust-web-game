@@ -26,6 +26,23 @@ pub enum WorldObjectType {
     Tree,
 }
 
+impl WorldObjectType {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Pawn => "Pawn",
+            Self::Warrior => "Warrior",
+            Self::Archer => "Archer",
+            Self::TorchGoblin => "Torch Goblin",
+            Self::DynamiteGoblin => "Dynamite Goblin",
+            Self::Sheep => "Sheep",
+            Self::Decoration => "Decoration",
+            Self::Structure => "Structure",
+            Self::Tree => "Tree",
+            _ => ""
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct WorldObject {
     pub id: u32,

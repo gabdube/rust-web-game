@@ -28,6 +28,10 @@ static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     ("gobintorch_portrait", "units_portrait.png", SpriteInfo::sub(91, 95, 167, 177)),
 
     ("sheep_portrait", "units_portrait.png", SpriteInfo::sub(167, 124, 214, 169)),
+
+    ("meat_icon", "meat.png", SpriteInfo::auto()),
+    ("wood_icon", "wood.png", SpriteInfo::auto()),
+    ("gold_icon", "gold.png", SpriteInfo::auto()),
 ];
 
 struct AssetsState {
