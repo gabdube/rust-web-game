@@ -1,4 +1,4 @@
-//! Behaviour are snippets of code that are evaluated each frame. Think "AI", but less fancy.
+//! Behaviour are snippets of code that are evaluated each frame
 pub mod behaviour_shared;
 pub mod pawn;
 pub mod warrior;

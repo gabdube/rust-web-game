@@ -164,7 +164,7 @@ fn mining(game: &mut DemoGameData, pawn_index: usize) {
     let mine = &mut world.structures[structure_index];
     let mine_data = world.structures_data[structure_index].gold_mine_mut();
 
-    if !mine_data.can_be_mined() {
+    if mine_data.remaining_gold == 0 {
         *behaviour = PawnBehaviour::idle();
         return;
     }

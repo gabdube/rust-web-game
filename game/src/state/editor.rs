@@ -3,7 +3,7 @@ use crate::behaviour;
 use crate::error::Error;
 use crate::gui::{GuiImageId, GuiStaticTextId};
 use crate::state::GameState;
-use crate::world::{StructureData, WorldObject, WorldObjectType};
+use crate::world::{ResourceType, StructureData, WorldObject, WorldObjectType};
 use crate::{DemoGameData, pos};
 
 #[repr(u32)]
@@ -82,17 +82,30 @@ fn init_gui(game: &mut DemoGameData, state: &mut EditorState) -> Result<(), Erro
         let info_panel = gui.image(game.assets.gui.info_panel);
 
         gui.origin(GuiLayoutOrigin::BottomLeft);
-        gui.sizing(GuiSizing::Static { width: 200.0, height: 200.0 });
-        gui.items_align(ItemsDirection::Column, ItemsPosition::Center);
-        gui.simple_frame(info_panel, GuiColor::white(), |gui| {
-            bindings.selected_image = gui.dyn_image();
-            gui.image_display(GuiImageDisplay::from_image(bindings.selected_image));
+        gui.sizing(GuiSizing::Static { width: 450.0, height: 196.0 });
+        gui.items_align(ItemsDirection::Row, ItemsPosition::Start, ItemsAlign::Center);
+        gui.simple_frame(info_panel, |gui| {
+            
+            gui.sizing(GuiSizing::Static { width: 200.0, height: 200.0 });
+            gui.items_align(ItemsDirection::Column, ItemsPosition::Center, ItemsAlign::Center);
+            gui.group(|gui| {
+                bindings.selected_image = gui.dyn_image();
+                gui.image_display(GuiImageDisplay::from_image(bindings.selected_image));
 
-            bindings.selected_name1 = gui.dyn_static_text();
-            gui.label(GuiLabel::from_static_text_and_color(bindings.selected_name1, text_color));
+                bindings.selected_name1 = gui.dyn_static_text();
+                gui.label(GuiLabel::from_static_text_and_color(bindings.selected_name1, text_color));
 
-            bindings.selected_name2 = gui.dyn_static_text();
-            gui.label(GuiLabel::from_static_text_and_color(bindings.selected_name2, text_color));
+                bindings.selected_name2 = gui.dyn_static_text();
+                gui.label(GuiLabel::from_static_text_and_color(bindings.selected_name2, text_color));
+            });
+
+            gui.sizing(GuiSizing::Static { width: 250.0, height: 200.0 });
+            gui.padding(GuiPadding { left: 10.0, top: 10.0 });
+            gui.items_align(ItemsDirection::Column, ItemsPosition::Start, ItemsAlign::Start);
+            gui.group(|gui| {
+                let text = gui.static_text(game.assets.fonts.roboto.compute_text_metrics("Test", 30.0));
+                gui.label(GuiLabel::from_static_text_and_color(text, text_color));
+            });
         });
     })?;
 
@@ -263,6 +276,16 @@ fn update_selected_gui_state(game: &mut DemoGameData) {
                     gui.set_text(bindings.selected_name2, text);
                 }
             }
+        }
+        WorldObjectType::Resource => {
+            let (image, name) = match game.world.resources_data[selected.id as usize].resource_type {
+                ResourceType::Food => (game.assets.gui.meat_icon, "Meat"),
+                ResourceType::Gold => (game.assets.gui.gold_icon, "Gold"),
+                ResourceType::Wood => (game.assets.gui.wood_icon, "Wood"),
+            };
+
+            gui.set_image(bindings.selected_image, image);
+            gui.set_text(bindings.selected_name2, font.compute_text_metrics(name, 22.0));
         }
         _ => {
             gui.clear_text(bindings.selected_name2);

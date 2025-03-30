@@ -44,7 +44,6 @@ impl<'a> GuiBuilder<'a> {
     pub fn simple_frame<CB: FnOnce(&mut GuiBuilder)>(
         &mut self,
         background: GuiResourceId<GuiImage>,
-        color: GuiColor,
         callback: CB
     ) {
         let node = self.new_gui_node();
@@ -53,7 +52,7 @@ impl<'a> GuiBuilder<'a> {
         
         let container = GuiContainer {
             background,
-            color
+            color: GuiColor::white()
         };
 
         self.gui.components.push(GuiComponent::Container(container));
@@ -76,6 +75,7 @@ impl<'a> GuiBuilder<'a> {
         self.update_root_node();
     }
 
+    /// An invisible container
     pub fn group<CB: FnOnce(&mut GuiBuilder)>(&mut self, callback: CB) {
         let node = self.new_gui_node();
         let layout = self.next_layout();
@@ -181,9 +181,14 @@ impl<'a> GuiBuilder<'a> {
         self.data.next_layout.align_self.sizing = sizing;
     }
 
-    pub fn items_align(&mut self, direction: ItemsDirection, position: ItemsPosition) {
+    pub fn padding(&mut self, padding: GuiPadding) {
+        self.data.next_layout.align_self.padding = padding;
+    }
+
+    pub fn items_align(&mut self, direction: ItemsDirection, position: ItemsPosition, alignment: ItemsAlign) {
         self.data.next_layout.align_items = GuiAlignItems {
             direction,
+            alignment,
             position,
         };
     }
@@ -257,6 +262,10 @@ impl<'a> GuiBuilder<'a> {
             ItemsDirection::Column => {
                 build.items_size.width = f32::max(build.items_size.width, child_size.width);
                 build.items_size.height += child_size.height;
+            },
+            ItemsDirection::Row => {
+                build.items_size.width += child_size.width;
+                build.items_size.height = f32::max(build.items_size.height, child_size.height);
             }
         }
     }

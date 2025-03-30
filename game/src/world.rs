@@ -38,6 +38,7 @@ impl WorldObjectType {
             Self::Decoration => "Decoration",
             Self::Structure => "Structure",
             Self::Tree => "Tree",
+            Self::Resource => "Resource",
             _ => ""
         }
     }

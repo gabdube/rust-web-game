@@ -3,7 +3,7 @@ use crate::shared::{Size, pos, size};
 
 use super::{
     Gui, GuiComponentView, GuiLayout, GuiAlignItems, GuiSizing, GuiLayoutOrigin,
-    GuiNode, ItemsDirection, ItemsPosition, GuiComponent
+    GuiNode, ItemsDirection, ItemsAlign, ItemsPosition, GuiComponent
 };
 
 struct LayoutSizingParent {
@@ -14,7 +14,7 @@ struct LayoutSizingParent {
 struct LayoutPositionParent {
     pub view: GuiComponentView,
     pub align_items: GuiAlignItems,
-    pub child_offset: f32,
+    pub child_offsets: [f32; 2],
 }
 
 pub(super) fn layout_compute(gui: &mut Gui) {
@@ -69,6 +69,10 @@ fn update_parent_size(parent: &mut LayoutSizingParent, base_size: Size<f32>) {
         ItemsDirection::Column => {
             parent.size.width = f32::max(parent.size.width, base_size.width);
             parent.size.height += base_size.height;
+        },
+        ItemsDirection::Row => {
+            parent.size.width += base_size.width;
+            parent.size.height = f32::max(parent.size.height, base_size.height);
         }
     }
 }
@@ -78,8 +82,12 @@ fn layout_size(gui: &mut Gui, index: &mut usize, parent: &mut LayoutSizingParent
     *index += 1;
 
     let node = get_node1(gui, i);
+    let layout = get_layout(gui, i);
     let mut view = get_view(gui, i);
-    let base_size = get_component_size(gui, i);
+    let base_size = match layout.align_self.sizing {
+        GuiSizing::Static { width, height } => size(width, height),
+        GuiSizing::Auto => get_component_size(gui, i)
+    };
 
     if node.children_count == 0 {
         view.size = base_size;
@@ -88,7 +96,6 @@ fn layout_size(gui: &mut Gui, index: &mut usize, parent: &mut LayoutSizingParent
         return;
     }
 
-    let layout = get_layout(gui, i);
     let mut child_sizing = LayoutSizingParent {
         align_items: layout.align_items,
         size: size(0.0, 0.0)
@@ -99,8 +106,8 @@ fn layout_size(gui: &mut Gui, index: &mut usize, parent: &mut LayoutSizingParent
     
     view.items_size = child_sizing.size;
     view.size = match layout.align_self.sizing {
-        GuiSizing::Static { width, height } => size(width, height),
-        GuiSizing::Auto => child_sizing.size
+        GuiSizing::Auto => child_sizing.size,
+        _ => view.size,
     };
 
     update_parent_size(parent, view.size);
@@ -116,7 +123,7 @@ fn position_pass(gui: &mut Gui) {
     let mut parent = LayoutPositionParent {
         view: GuiComponentView { position: pos(0.0, 0.0), size: gui.view_size, items_size: size(0.0, 0.0) },
         align_items: GuiAlignItems::default(),
-        child_offset: 0.0,
+        child_offsets: [0.0, 0.0],
     };
 
     let mut index = 0;
@@ -141,11 +148,26 @@ fn layout_position(gui: &mut Gui, index: &mut usize, parent: &mut LayoutPosition
         GuiLayoutOrigin::Auto => {
             // Auto use the parent layout to position the children
             let align_items = parent.align_items;
-            match (align_items.direction, align_items.position) {
-                (ItemsDirection::Column, ItemsPosition::Center) => {
+            match (align_items.direction, align_items.alignment) {
+                (ItemsDirection::Column, ItemsAlign::Start) => {
+                    view.position.x = parent.view.position.x + parent.child_offsets[0];
+                    view.position.y = parent.view.position.y + parent.child_offsets[1];
+                    parent.child_offsets[1] += view.size.height;
+                },
+                (ItemsDirection::Column, ItemsAlign::Center) => {
                     view.position.x = parent.view.position.x + ((parent.view.size.width - view.size.width) / 2.0);
-                    view.position.y = parent.view.position.y + parent.child_offset;
-                    parent.child_offset += view.size.height;
+                    view.position.y = parent.view.position.y + parent.child_offsets[1];
+                    parent.child_offsets[1] += view.size.height;
+                },
+                (ItemsDirection::Row, ItemsAlign::Start) => {
+                    view.position.x = parent.view.position.x + parent.child_offsets[0];
+                    view.position.y = parent.view.position.y + parent.child_offsets[1];
+                    parent.child_offsets[0] += view.size.width;
+                },
+                (ItemsDirection::Row, ItemsAlign::Center) => {
+                    view.position.x = parent.view.position.x + parent.child_offsets[0];
+                    view.position.y = parent.view.position.y + ((parent.view.size.height - view.size.height) / 2.0);
+                    parent.child_offsets[0] += view.size.width;
                 },
             }
         },
@@ -162,11 +184,17 @@ fn layout_position(gui: &mut Gui, index: &mut usize, parent: &mut LayoutPosition
         return;
     }
 
-    let mut parent = LayoutPositionParent { view, align_items: layout.align_items, child_offset: 0.0 };
+    let mut parent = LayoutPositionParent { view, align_items: layout.align_items, child_offsets: [0.0; 2] };
     match (layout.align_items.direction, layout.align_items.position) {
+        (_, ItemsPosition::Start) => {
+            parent.child_offsets = [layout.align_self.padding.left, layout.align_self.padding.top];
+        },
         (ItemsDirection::Column, ItemsPosition::Center) => {
-            parent.child_offset = (view.size.height - view.items_size.height) / 2.0;
-        }
+            parent.child_offsets[1] = (view.size.height - view.items_size.height) / 2.0;
+        },
+        (ItemsDirection::Row, ItemsPosition::Center) => {
+            parent.child_offsets[0] = (view.size.width - view.items_size.width) / 2.0;
+        },
     }
 
     for _ in 0..node.children_count {

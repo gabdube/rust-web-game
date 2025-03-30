@@ -15,7 +15,7 @@ const DST_ROOT: &str = "build/assets/";
 const DST_NAME_IMAGE: &str = "gui.png";
 const DST_NAME_CSV: &str = "gui.csv";
 
-const DST_WIDTH: usize = 512; // Manually tune this number to minimise wasted space
+const DST_WIDTH: usize = 768; // Manually tune this number to minimise wasted space
 
 /// Sprites to pack in the objects atlas
 static ASSETS: &[(&str, &str, SpriteInfo)] = &[
