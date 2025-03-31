@@ -16,6 +16,7 @@ mod output;
 mod behaviour;
 
 use data::DemoGameData;
+use state::GameState;
 use shared::*;
 
 use parking_lot::Mutex;
@@ -72,6 +73,7 @@ impl DemoGameInit {
 #[wasm_bindgen]
 pub struct DemoGame {
     data: DemoGameData,
+    state: GameState,
     output: output::GameOutput,
 }
 
@@ -94,14 +96,14 @@ impl DemoGame {
         }
 
         #[cfg(feature="editor")]
-        if let Err(e) = state::editor::init(&mut demo_app.data, crate::state::TestId::PawnAi) {
+        if let Err(e) = state::editor::init(&mut demo_app, crate::state::TestId::PawnAi) {
             set_last_error(e);
             return None;
         }
 
         #[cfg(not(feature="editor"))]
         state::gameplay::init(&mut demo_app.data);
-    
+
         dbg!("Game client initialized. Game client size: {}", size_of::<DemoGame>());
 
         Some(demo_app)
@@ -109,7 +111,7 @@ impl DemoGame {
 
     pub fn on_reload(&mut self) -> bool {
         #[cfg(feature="editor")]
-        if let Err(e) = state::editor::init(&mut self.data, crate::state::TestId::PawnAi) {
+        if let Err(e) = state::editor::init(self, crate::state::TestId::PawnAi) {
             set_last_error(e);
             return false;
         }
@@ -199,6 +201,7 @@ impl Default for DemoGame {
     fn default() -> Self {
         DemoGame {
             data: DemoGameData::default(),
+            state: GameState::Startup,
             output: output::GameOutput::default(),
         }
     }

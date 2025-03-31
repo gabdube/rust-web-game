@@ -163,7 +163,7 @@ impl Gui {
 
 }
 
- impl Default for Gui {
+impl Default for Gui {
 
     fn default() -> Self {
         Gui {

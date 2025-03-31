@@ -1,7 +1,7 @@
 //! Storage for the game data
 use crate::inputs::InputState;
 use crate::shared::Position;
-use crate::{assets, inputs, state, store, world, gui};
+use crate::{assets, inputs, store, world, gui};
 
 #[derive(Copy, Clone, Default)]
 pub struct DemoGameFlags {
@@ -48,8 +48,6 @@ pub struct DemoGameData {
     pub world: world::World,
     /// Gui state
     pub gui: gui::Gui,
-    /// Data unique to certain application state
-    pub state: state::GameState,
 }
 
 impl DemoGameData {
@@ -70,7 +68,6 @@ impl Default for DemoGameData {
             assets: assets::Assets::default(),
             world: world::World::default(),
             gui: gui::Gui::default(),
-            state: state::GameState::Startup,
         }
     }
 }
@@ -102,7 +99,6 @@ impl store::SaveAndLoad for DemoGameData {
         writer.save(&self.assets);
         writer.save(&self.world);
         writer.save(&self.gui);
-        writer.save(&self.state);
         writer.save(&self.global);
         writer.write(&self.inputs);
     }
@@ -111,7 +107,6 @@ impl store::SaveAndLoad for DemoGameData {
         let assets = reader.load();
         let world = reader.load();
         let gui = reader.load();
-        let state = reader.load();
         let global = reader.load();
         let inputs: InputState = reader.read();
 
@@ -122,7 +117,6 @@ impl store::SaveAndLoad for DemoGameData {
             assets,
             world,
             gui,
-            state,
         }
     }
 }

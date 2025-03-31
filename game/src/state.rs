@@ -1,4 +1,4 @@
-mod shared_state;
+mod gameplay_gui_state;
 
 pub mod gameplay;
 pub use gameplay::GameplayState;
@@ -16,7 +16,7 @@ pub enum GameState {
     Startup,
     MainMenu,
     Gameplay(GameplayState),
-    
+
     #[cfg(feature="editor")]
     Editor(EditorState)
 }
@@ -25,7 +25,13 @@ pub fn update(game: &mut DemoGame) {
     use crate::state::GameState;
 
     let data = &mut game.data;
-    match data.state {
+    let state = &mut game.state;
+
+    if data.inputs.view_resized() {
+        data.gui.resize(data.inputs.view_size);
+    }
+
+    match state {
         GameState::MainMenu => {
 
         },
@@ -33,16 +39,12 @@ pub fn update(game: &mut DemoGame) {
             
         },
         GameState::Editor(_) => {
-            if data.inputs.view_resized() {
-                crate::state::editor::on_resized(data);
-            }
-
             if data.inputs.left_mouse_clicked() {
-                crate::state::editor::on_left_mouse(data);
+                crate::state::editor::on_left_mouse(state, data);
             }
 
             if data.inputs.right_mouse_clicked() {
-                crate::state::editor::on_right_mouse(data);
+                crate::state::editor::on_right_mouse(state, data);
             }
         },
         GameState::Startup => {
