@@ -32,8 +32,10 @@ pub struct EditorStateGuiBindings {
     selected_image: GuiImageId,
     selected_name1: GuiStaticTextId,
     selected_name2: GuiStaticTextId,
-    selected_extra_icon: GuiImageId,
     selected_extra_text: GuiStaticTextId,
+
+    details_icon1: GuiImageId,
+    details_text1: GuiStaticTextId,
 }
 
 pub struct EditorState {
@@ -92,19 +94,31 @@ fn init_gui(game: &mut DemoGameData, state: &mut EditorState) -> Result<(), Erro
                 bindings.selected_image = gui.dyn_image();
                 gui.image_display(GuiImageDisplay::from_image(bindings.selected_image));
 
+                gui.spacer(0.0, 5.0);
+
                 bindings.selected_name1 = gui.dyn_static_text();
                 gui.label(GuiLabel::from_static_text_and_color(bindings.selected_name1, text_color));
+
+                gui.spacer(0.0, 15.0);
 
                 bindings.selected_name2 = gui.dyn_static_text();
                 gui.label(GuiLabel::from_static_text_and_color(bindings.selected_name2, text_color));
             });
 
             gui.sizing(GuiSizing::Static { width: 250.0, height: 200.0 });
-            gui.padding(GuiPadding { left: 10.0, top: 10.0 });
+            gui.padding(GuiPadding { left: 15.0, top: 25.0 });
             gui.items_align(ItemsDirection::Column, ItemsPosition::Start, ItemsAlign::Start);
             gui.group(|gui| {
-                let text = gui.static_text(game.assets.fonts.roboto.compute_text_metrics("Test", 30.0));
-                gui.label(GuiLabel::from_static_text_and_color(text, text_color));
+                
+                gui.items_align(ItemsDirection::Row, ItemsPosition::Center, ItemsAlign::Center);
+                gui.group(|gui| {
+                    let image = gui.image(game.assets.gui.life_icon);
+                    gui.image_display(GuiImageDisplay::from_image_and_scaled_width(image, 24.0));
+
+                    let text = gui.static_text(game.assets.fonts.roboto.compute_text_metrics("  10 / 10", 24.0));
+                    gui.label(GuiLabel::from_static_text_and_color(text, text_color));
+                });
+
             });
         });
     })?;
@@ -290,7 +304,6 @@ fn update_selected_gui_state(game: &mut DemoGameData) {
         _ => {
             gui.clear_text(bindings.selected_name2);
             gui.clear_text(bindings.selected_extra_text);
-            gui.clear_image(bindings.selected_extra_icon);
         }
     }
 

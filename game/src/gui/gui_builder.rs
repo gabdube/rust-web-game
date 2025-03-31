@@ -101,6 +101,26 @@ impl<'a> GuiBuilder<'a> {
         self.update_root_node();
     }
 
+    /// An invisible components to add space between two components
+    pub fn spacer(&mut self, width: f32, height: f32) {
+        let node = self.new_gui_node();
+        let layout = self.next_layout();
+        let component_size = size(width, height);
+
+        self.gui.components.push(GuiComponent::Spacer(component_size));
+        self.gui.components_nodes.push(node);
+        self.gui.components_layout.push(layout);
+        self.gui.components_views.push(GuiComponentView {
+            position: pos(0.0, 0.0),
+            size: component_size,
+            items_size: size(0.0, 0.0),
+        });
+
+        self.update_parent_items_size(component_size);
+        self.update_parent_children_count(0);
+        self.update_root_node();
+    }
+
     pub fn label(&mut self, label: GuiLabel) {
         let node = self.new_gui_node();
         let layout = self.next_layout();
@@ -136,6 +156,12 @@ impl<'a> GuiBuilder<'a> {
     }
 
     pub fn image_display(&mut self, display: GuiImageDisplay) {
+        let image_id = display.image.index();
+        if self.gui.images.get(image_id).is_none() {
+            self.set_error(gui_err!("Unknown image with ID {:?} in gui", image_id));
+            return;
+        }
+
         let node = self.new_gui_node();
         let layout = self.next_layout();
 
@@ -148,15 +174,15 @@ impl<'a> GuiBuilder<'a> {
         self.gui.components_nodes.push(node);
         self.gui.components_layout.push(layout);
 
-        // TODO: layout sizing for image display
-        let image_id = display.image.index();
-        let component_size = match self.gui.images.get(image_id) {
-            Some(image) => image.texcoord.size(),
-            None => {
-                self.set_error(gui_err!("Unknown image with ID {:?} in gui", image_id));
-                return;
+        let mut component_size = self.gui.images[image_id].texcoord.size();
+        match display.size {
+            GuiImageSize::Auto => {},
+            GuiImageSize::ScaledWidth(width) => {
+                let ratio = width / component_size.width;
+                component_size.width = width;
+                component_size.height = component_size.height * ratio;
             }
-        };
+        }
 
         self.gui.components_views.push(GuiComponentView {
             position: pos(0.0, 0.0),

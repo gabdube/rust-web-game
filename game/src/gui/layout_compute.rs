@@ -2,8 +2,8 @@ use std::hint::unreachable_unchecked;
 use crate::shared::{Size, pos, size};
 
 use super::{
-    Gui, GuiComponentView, GuiLayout, GuiAlignItems, GuiSizing, GuiLayoutOrigin,
-    GuiNode, ItemsDirection, ItemsAlign, ItemsPosition, GuiComponent
+    Gui, GuiAlignItems, GuiComponent, GuiComponentView, GuiImageSize, GuiLayout, GuiLayoutOrigin, GuiNode,
+    GuiSizing, ItemsAlign, ItemsDirection, ItemsPosition
 };
 
 struct LayoutSizingParent {
@@ -55,8 +55,19 @@ fn sizing_pass(gui: &mut Gui) {
 fn get_component_size(gui: &Gui, index: usize) -> Size<f32> {
     match get_component(gui, index) {
         GuiComponent::Container(_) | GuiComponent::Group => size(0.0, 0.0),
+        GuiComponent::Spacer(size) => size,
         GuiComponent::ImageDisplay(image_display) => {
-            gui.images[image_display.image.index()].texcoord.size()
+            let mut texture_size = gui.images[image_display.image.index()].texcoord.size();
+            match image_display.size {
+                GuiImageSize::Auto => {},
+                GuiImageSize::ScaledWidth(width) => {
+                    let ratio = width / texture_size.width;
+                    texture_size.width = width;
+                    texture_size.height = texture_size.height * ratio;
+                }
+            }
+
+            texture_size
         },
         GuiComponent::Label(label) => {
             gui.text[label.text.index()].size

@@ -13,7 +13,7 @@ pub(super) fn generate_sprites(gui: &mut Gui) {
         let view = gui.components_views[i];
         let component = gui.components[i];
         match component {
-            GuiComponent::Group => {},
+            GuiComponent::Group | GuiComponent::Spacer(_) => {},
             GuiComponent::Container(background) => { generate_container(gui, view, background); }
             GuiComponent::Label(label) => { generate_label(gui, view, label); }
             GuiComponent::ImageDisplay(image) => { generate_image_display(gui, view, image); }

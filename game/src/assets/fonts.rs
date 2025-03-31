@@ -80,19 +80,15 @@ impl FontAsset {
         let atlas_height = self.info.height;
         let atlas_glyph = self.glyphs.get(chr as usize).copied().unwrap_or_default();
 
-        let line_height = self.info.line_height;
-        let top = line_height - atlas_glyph.plane_bound[1];
-        let bottom = line_height - atlas_glyph.plane_bound[3];
-
         glyph.position.left = scale * atlas_glyph.plane_bound[0];
-        glyph.position.top = scale * top;
+        glyph.position.top = scale * atlas_glyph.plane_bound[3];
         glyph.position.right = scale * atlas_glyph.plane_bound[2];
-        glyph.position.bottom = scale * bottom;
+        glyph.position.bottom = scale * atlas_glyph.plane_bound[1];
 
         glyph.texcoord.left = atlas_glyph.atlas_bound[0];
-        glyph.texcoord.top = atlas_height - atlas_glyph.atlas_bound[1];
+        glyph.texcoord.top = atlas_height - atlas_glyph.atlas_bound[3];
         glyph.texcoord.right = atlas_glyph.atlas_bound[2];
-        glyph.texcoord.bottom = atlas_height - atlas_glyph.atlas_bound[3];
+        glyph.texcoord.bottom = atlas_height - atlas_glyph.atlas_bound[1];
 
         atlas_glyph.advance * scale
     }
@@ -115,11 +111,17 @@ impl FontAsset {
             glyphs.push(glyph);
         }
 
+        // Second pass to align the glyph on the bottom
+        // This also flips the y axis
+        for glyph in glyphs.iter_mut() {
+            glyph.position.top = max_height - glyph.position.top;
+            glyph.position.bottom = max_height - glyph.position.bottom;
+        }
+
         let size = match text.len() {
             0 => size(0.0, 0.0),
             _ => size(glyph.position.right, max_height)
         };
-
 
         TextMetrics { 
             size,

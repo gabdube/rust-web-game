@@ -87,6 +87,12 @@ pub struct Size<T: Copy> {
     pub height: T,
 }
 
+impl Size<f32> {
+    pub fn is_zero(self) -> bool {
+        self.width == 0.0 && self.height == 0.0
+    }
+}
+
 impl<T: Default+Copy> Default for Size<T> {
     fn default () -> Self {
         let v = Default::default();

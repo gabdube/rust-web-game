@@ -178,6 +178,12 @@ impl DemoGame {
         global.frame_delta = (new_time - global.time) as f32;
         global.time = new_time;
 
+        // Can happen if the application was paused.
+        // In this case we set the delta to 0 for this frame so the game logic doesn't break.
+        if global.frame_delta > 1000.0 {
+            global.frame_delta = 0.0;
+        }
+
         // This only sets a flag
         // Sprite animation are computed at sprite generation in `output.gen_sprites_with_animation` 
         let delta = new_time - global.last_animation_tick;

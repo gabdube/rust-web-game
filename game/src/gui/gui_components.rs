@@ -19,14 +19,26 @@ impl GuiLabel {
 }
 
 #[derive(Copy, Clone)]
+
+pub(super) enum GuiImageSize {
+    Auto,
+    ScaledWidth(f32)
+}
+
+#[derive(Copy, Clone)]
 pub struct GuiImageDisplay {
     pub image: GuiImageId,
+    pub size: GuiImageSize,
 }
 
 impl GuiImageDisplay {
 
     pub fn from_image(image: GuiImageId) -> Self {
-        GuiImageDisplay { image }
+        GuiImageDisplay { image, size: GuiImageSize::Auto }
+    }
+
+    pub fn from_image_and_scaled_width(image: GuiImageId, scaled: f32) -> Self {
+        GuiImageDisplay { image, size: GuiImageSize::ScaledWidth(scaled) }
     }
 
 }
@@ -39,8 +51,9 @@ pub struct GuiContainer {
 
 #[derive(Copy, Clone)]
 pub enum GuiComponent {
-    Container(GuiContainer),
     Group,
+    Container(GuiContainer),
+    Spacer(Size<f32>),
     Label(GuiLabel),
     ImageDisplay(GuiImageDisplay),
 }

@@ -12,6 +12,7 @@ pub struct GuiBundle {
     pub gold_icon: AABB,
     pub meat_icon: AABB,
     pub wood_icon: AABB,
+    pub life_icon: AABB,
 }
 
 impl GuiBundle {
@@ -39,6 +40,7 @@ impl GuiBundle {
                 "gold_icon" => &mut self.gold_icon,
                 "meat_icon" => &mut self.meat_icon,
                 "wood_icon" => &mut self.wood_icon,
+                "life_icon" => &mut self.life_icon,
                 _ => {
                     return;
                 }
