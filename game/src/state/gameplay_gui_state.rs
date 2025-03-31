@@ -71,7 +71,7 @@ impl GameplayGuiState {
                     gui.items_align(ItemsDirection::Row, ItemsPosition::Center, ItemsAlign::Center);
                     gui.group(|gui| {
                         bindings.details_icon1 = gui.dyn_image();
-                        gui.image_display(GuiImageDisplay::from_image_and_scaled_width(bindings.details_icon1, 24.0));
+                        gui.image_display(GuiImageDisplay::from_image_and_scaled_width(bindings.details_icon1, 28.0));
     
                         bindings.details_text1 = gui.dyn_static_text();
                         gui.label(GuiLabel::from_static_text_and_color(bindings.details_text1, text_color));
@@ -99,6 +99,7 @@ impl GameplayGuiState {
             WorldObjectType::Structure => self.select_structure(data, new_selected),
             WorldObjectType::Resource => self.select_resource(data, new_selected),
             WorldObjectType::Sheep => self.select_sheep(data, new_selected),
+            WorldObjectType::Tree => self.select_tree(data, new_selected),
             _ => self.select_other(data)
         }
     }
@@ -108,9 +109,13 @@ impl GameplayGuiState {
         let font = &data.assets.fonts.roboto;
         let bindings = &self.bindings;
         match data.world.structures_data[new_selected.id as usize] {
-            StructureData::GoldMine(_) => {
-                let text = font.compute_text_metrics("Gold Mine", 22.0);
-                gui.set_text(bindings.selected_name2, text);
+            StructureData::GoldMine(mine_data) => {
+                let text_1 = font.compute_text_metrics("Gold Mine", 22.0);
+                let text_2 = font.compute_text_metrics(&format!("  {:?}", mine_data.remaining_gold), 28.0);
+
+                gui.set_text(bindings.selected_name2, text_1);
+                gui.set_image(self.bindings.details_icon1, data.assets.gui.gold_icon);
+                gui.set_text(self.bindings.details_text1, text_2);
             }
         }
     }
@@ -132,8 +137,22 @@ impl GameplayGuiState {
         gui.clear_text(bindings.details_text1);
     }
 
-    fn select_sheep(&mut self, data: &mut DemoGameData, new_selected: WorldObject) {
+    fn select_tree(&mut self, data: &mut DemoGameData, new_selected: WorldObject) {
+        let tree_data = data.world.trees_data[new_selected.id as usize];
+        let text = data.assets.fonts.roboto.compute_text_metrics(&format!("  {:?}", tree_data.life), 28.0);
 
+        data.gui.set_image(self.bindings.details_icon1, data.assets.gui.life_icon);
+        data.gui.set_text(self.bindings.details_text1, text);
+        data.gui.clear_text(self.bindings.selected_name2);
+    }
+
+    fn select_sheep(&mut self, data: &mut DemoGameData, new_selected: WorldObject) {
+        let sheep_data = data.world.sheeps_data[new_selected.id as usize];
+        let text = data.assets.fonts.roboto.compute_text_metrics(&format!("  {:?}", sheep_data.life), 28.0);
+
+        data.gui.set_image(self.bindings.details_icon1, data.assets.gui.life_icon);
+        data.gui.set_text(self.bindings.details_text1, text);
+        data.gui.clear_text(self.bindings.selected_name2);
     }
 
     fn select_other(&mut self, data: &mut DemoGameData) {
