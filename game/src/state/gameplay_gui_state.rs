@@ -111,12 +111,36 @@ impl GameplayGuiState {
         match data.world.structures_data[new_selected.id as usize] {
             StructureData::GoldMine(mine_data) => {
                 let text_1 = font.compute_text_metrics("Gold Mine", 22.0);
-                let text_2 = font.compute_text_metrics(&format!("  {:?}", mine_data.remaining_gold), 28.0);
+                let text_2 = font.compute_text_metrics(&format!("  {} / {}", mine_data.remaining_gold, crate::world::MAX_GOLD_MINE_AMOUNT), 28.0);
 
                 gui.set_text(bindings.selected_name2, text_1);
                 gui.set_image(self.bindings.details_icon1, data.assets.gui.gold_icon);
                 gui.set_text(self.bindings.details_text1, text_2);
-            }
+            },
+            StructureData::Castle(castle_data) => {
+                let text_1 = font.compute_text_metrics("Castle", 22.0);
+                let text_2 = font.compute_text_metrics(&format!("  {} / {}", castle_data.hp, crate::world::MAX_CASTLE_HP), 28.0);
+
+                gui.set_text(bindings.selected_name2, text_1);
+                gui.set_image(self.bindings.details_icon1, data.assets.gui.life_icon);
+                gui.set_text(self.bindings.details_text1, text_2);
+            },
+            StructureData::Tower(tower_data) => {
+                let text_1 = font.compute_text_metrics("Tower", 22.0);
+                let text_2 = font.compute_text_metrics(&format!("  {} / {}", tower_data.hp, crate::world::MAX_TOWER_HP), 28.0);
+
+                gui.set_text(bindings.selected_name2, text_1);
+                gui.set_image(self.bindings.details_icon1, data.assets.gui.life_icon);
+                gui.set_text(self.bindings.details_text1, text_2);
+            },
+            StructureData::House(house_data) => {
+                let text_1 = font.compute_text_metrics("House", 22.0);
+                let text_2 = font.compute_text_metrics(&format!("  {} / {}", house_data.hp, crate::world::MAX_HOUSE_HP), 28.0);
+
+                gui.set_text(bindings.selected_name2, text_1);
+                gui.set_image(self.bindings.details_icon1, data.assets.gui.life_icon);
+                gui.set_text(self.bindings.details_text1, text_2);
+            },
         }
     }
 

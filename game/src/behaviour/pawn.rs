@@ -3,6 +3,7 @@ pub mod harvest_wood;
 pub mod harvest_gold;
 pub mod grab_resource;
 pub mod hunt_sheep;
+pub mod build_structure;
 
 use crate::behaviour::BehaviourState;
 use crate::shared::Position;
@@ -14,10 +15,11 @@ use crate::DemoGameData;
 pub enum PawnBehaviourType {
     Idle,
     MoveTo { target_position: Position<f32> },
-    HarvestWood { tree_id: u32 },
-    HarvestGold { structure_id: u32 },
+    HarvestWood { tree_id: u32, last_timestamp: f32 },
+    HarvestGold { structure_id: u32, last_timestamp: f32 },
     GrabResource { resource_id: u32 },
-    HuntSheep { sheep_id: u32 }
+    HuntSheep { sheep_id: u32 },
+    BuildStructure { structure_id: u32, last_timestamp: f32 },
 }
 
 #[derive(Copy, Clone)]
@@ -35,12 +37,19 @@ impl PawnBehaviour {
         }
     }
 
-    pub fn cancel(game: &mut DemoGameData, pawn_id: u32) {
+    pub fn cancel(game: &mut DemoGameData, pawn_id: u32, drop: bool) {
         let pawn_index = pawn_id as usize;
+
+        if drop {
+            if game.world.pawns_data[pawn_index].grabbed_resource().is_some() {
+                drop_resource(game, pawn_index);
+            }
+        }
+
         let ty = game.world.pawns_behaviour[pawn_index].ty;
         match ty {
             PawnBehaviourType::HarvestWood { .. } => { harvest_wood::cancel(game, pawn_index); }
-            PawnBehaviourType::HarvestGold { .. } => { harvest_gold::cancel(game, pawn_index); },
+            PawnBehaviourType::HarvestGold { .. } => { harvest_gold::cancel(game, pawn_index); }
             _ => {},
         }
     }

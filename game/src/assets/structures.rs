@@ -54,7 +54,7 @@ impl StructuresBundle {
             "knight_tower_destroyed" => Some(&mut self.knights_tower_destroyed),
             "knight_house" => Some(&mut self.knights_house),
             "knight_house_construction" => Some(&mut self.knights_house_construction),
-            "knight_house_destroyed" => Some(&mut self.knights_castle_destroyed),
+            "knight_house_destroyed" => Some(&mut self.knights_house_destroyed),
             "goblin_house" =>  Some(&mut self.goblin_house),
             "goblin_house_destroyed" =>  Some(&mut self.goblin_house_destroyed),
             "gold_mine" =>  Some(&mut self.gold_mine),

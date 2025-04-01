@@ -23,20 +23,17 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, mine_structure: WorldObje
 
     let mine_data = match game.world.structures_data[structure_index] {
         StructureData::GoldMine(mine_data) => mine_data,
+        _ => { return; }
     };
 
     if !mine_data.can_be_mined() {
         return;
     }
 
-    PawnBehaviour::cancel(game, pawn.id);
-
-    if game.world.pawns_data[pawn_index].grabbed_resource().is_some() {
-        super::drop_resource(game, pawn_index);
-    }
+    PawnBehaviour::cancel(game, pawn.id, true);
 
     game.world.pawns_behaviour[pawn_index] = PawnBehaviour {
-        ty: PawnBehaviourType::HarvestGold { structure_id: mine_structure.id },
+        ty: PawnBehaviourType::HarvestGold { structure_id: mine_structure.id, last_timestamp: 0.0 },
         state: BehaviourState::Initial,
     };
 }
@@ -141,10 +138,7 @@ fn enter_mine(game: &mut DemoGameData, pawn_index: usize) {
     let index = mine_data.miners_count as usize;
     mine_data.miners_ids[index] = pawn_index as u32;
     mine_data.miners_count += 1;
-
-    if mine_data.miners_count == 1 {
-        mine_data.last_drop_timestamp = game.global.time;
-    }
+    params_set_last_timestamp(&mut behaviour.ty, game.global.time);
 
     mine.sprite = game.assets.structures.gold_mine.aabb;
 
@@ -169,16 +163,13 @@ fn mining(game: &mut DemoGameData, pawn_index: usize) {
         return;
     }
 
-    let timer = 5000.0 - (300.0 * mine_data.miners_count as f64);
+    let total_animation_time = 5000.0;  // One gold mined every 5 sec
     let mut spawn_gold = false;
 
-    if elapsed(game.global.time, mine_data.last_drop_timestamp, timer) {
-        if mine_data.remaining_gold > 0 {
-            mine_data.remaining_gold -= 1;
-            spawn_gold = true;
-        }
-
-        mine_data.last_drop_timestamp = game.global.time;
+    if elapsed(game.global.time, params_last_timestamp(behaviour.ty), total_animation_time) {
+        params_set_last_timestamp(&mut behaviour.ty, game.global.time);
+        mine_data.remaining_gold -= 1;
+        spawn_gold = true;
     }
     
     if mine_data.remaining_gold == 0 {
@@ -232,7 +223,23 @@ fn disable_mine(game: &mut DemoGameData, pawn_index: usize) {
 #[inline(always)]
 fn params(value: PawnBehaviourType) -> usize {
     match value {
-        PawnBehaviourType::HarvestGold { structure_id } => structure_id as usize,
+        PawnBehaviourType::HarvestGold { structure_id, .. } => structure_id as usize,
         _ => unsafe { ::std::hint::unreachable_unchecked()}
+    }
+}
+
+#[inline(always)]
+fn params_last_timestamp(value: PawnBehaviourType) -> f64 {
+    match value {
+        PawnBehaviourType::HarvestGold { last_timestamp, .. } => last_timestamp as f64,
+        _ => unsafe { ::std::hint::unreachable_unchecked() }
+    }
+}
+
+#[inline(always)]
+fn params_set_last_timestamp(value: &mut PawnBehaviourType, time: f64) {
+    match value {
+        PawnBehaviourType::HarvestGold { last_timestamp, .. } => *last_timestamp = time as f32,
+        _ => unsafe { ::std::hint::unreachable_unchecked() }
     }
 }

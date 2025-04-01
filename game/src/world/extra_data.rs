@@ -3,9 +3,14 @@
 use crate::shared::Position;
 use crate::store::SaveAndLoad;
 
+pub const MAX_CASTLE_HP: u8 = 200;
+pub const MAX_TOWER_HP: u8 = 80;
+pub const MAX_HOUSE_HP: u8 = 50;
+pub const MAX_GOLD_MINE_AMOUNT: u8 = 10;
+pub const MAX_TREE_LIFE: u8 = 15;
+
 #[derive(Copy, Clone)]
 pub struct TreeData {
-    pub last_drop_timestamp: f64,
     pub life: u8,
     pub being_harvested: bool,
 }
@@ -13,8 +18,7 @@ pub struct TreeData {
 impl Default for TreeData {
     fn default() -> Self {
         TreeData {
-            last_drop_timestamp: 0.0,
-            life: 10,
+            life: MAX_TREE_LIFE,
             being_harvested: false,
         }
     }
@@ -22,17 +26,14 @@ impl Default for TreeData {
 
 impl SaveAndLoad for TreeData {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        writer.write_f64(self.last_drop_timestamp);
         writer.write_u32(self.life as u32);
         writer.write_u32(self.being_harvested as u32);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let last_drop_timestamp = reader.read_f64();
         let life = reader.read_u32() as u8;
         let being_harvested = reader.read_u32() == 1;
         TreeData {
-            last_drop_timestamp,
             life,
             being_harvested,
         }
@@ -112,7 +113,6 @@ impl SaveAndLoad for SheepData {
 
 #[derive(Copy, Clone)]
 pub struct StructureGoldMineData {
-    pub last_drop_timestamp: f64,
     pub miners_ids: [u32; 3],
     pub miners_count: u8,
     pub remaining_gold: u8,
@@ -125,15 +125,39 @@ impl StructureGoldMineData {
 }
 
 #[derive(Copy, Clone)]
+pub struct StructureCastleData {
+    pub hp: u8,
+    pub building: bool,
+    pub destroyed: bool,
+}
+
+#[derive(Copy, Clone)]
+pub struct StructureTowerData {
+    pub hp: u8,
+    pub building: bool,
+    pub destroyed: bool,
+}
+
+#[derive(Copy, Clone)]
+pub struct StructureHouseData {
+    pub hp: u8,
+    pub building: bool,
+    pub destroyed: bool,
+}
+
+#[derive(Copy, Clone)]
 pub enum StructureData {
-    GoldMine(StructureGoldMineData)
+    GoldMine(StructureGoldMineData),
+    Castle(StructureCastleData),
+    Tower(StructureTowerData),
+    House(StructureHouseData),
 }
 
 impl StructureData {
     pub fn gold_mine_mut(&mut self) -> &mut StructureGoldMineData {
         match self {
             StructureData::GoldMine(data) => data,
-            //_ => panic!()
+            _ => panic!("Structure data is not gold mine")
         }
     }
 }
@@ -141,10 +165,9 @@ impl StructureData {
 impl Default for StructureGoldMineData {
     fn default() -> Self {
         StructureGoldMineData {
-            last_drop_timestamp: 0.0,
             miners_ids: [u32::MAX; 3],
             miners_count: 0,
-            remaining_gold: 5,
+            remaining_gold: MAX_GOLD_MINE_AMOUNT,
         }
     }
 }
@@ -154,11 +177,28 @@ impl SaveAndLoad for StructureData {
         match self {
             Self::GoldMine(value) => {
                 writer.write_u32(1);
-                writer.write_f64(value.last_drop_timestamp);
                 writer.write(&value.miners_ids);
                 writer.write_u32(value.miners_count as u32);
                 writer.write_u32(value.remaining_gold as u32);
-            }
+            },
+            Self::Castle(value) => {
+                writer.write_u32(2);
+                writer.write_u32(value.hp as u32);
+                writer.write_u32(value.building as u32);
+                writer.write_u32(value.destroyed as u32);
+            },
+            Self::Tower(value) => {
+                writer.write_u32(3);
+                writer.write_u32(value.hp as u32);
+                writer.write_u32(value.building as u32);
+                writer.write_u32(value.destroyed as u32);
+            },
+            Self::House(value) => {
+                writer.write_u32(4);
+                writer.write_u32(value.hp as u32);
+                writer.write_u32(value.building as u32);
+                writer.write_u32(value.destroyed as u32);
+            },
         }
     }
 
@@ -167,12 +207,32 @@ impl SaveAndLoad for StructureData {
         match data_id {
             1 => {
                 Self::GoldMine(StructureGoldMineData {
-                    last_drop_timestamp: reader.read_f64(),
                     miners_ids: reader.read(),
                     miners_count: reader.read_u32() as u8,
                     remaining_gold: reader.read_u32() as u8,
                 })
             },
+            2 => {
+                Self::Castle(StructureCastleData { 
+                    hp: reader.read_u32() as u8,
+                    building:  reader.read_u32() == 1,
+                    destroyed:  reader.read_u32() == 1
+                })
+            },
+            3 => {
+                Self::Tower(StructureTowerData {
+                    hp: reader.read_u32() as u8,
+                    building:  reader.read_u32() == 1,
+                    destroyed:  reader.read_u32() == 1
+                })
+            },
+            4 => {
+                Self::House(StructureHouseData {
+                    hp: reader.read_u32() as u8,
+                    building:  reader.read_u32() == 1,
+                    destroyed:  reader.read_u32() == 1
+                })
+            }
             _ => panic!("Malformed data")
         }
     }

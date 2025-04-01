@@ -69,8 +69,12 @@ fn init_pawn_tests(data: &mut DemoGameData) {
     world.create_tree(pos(300.0, 220.0), &assets.resources.tree_idle);
     world.create_tree(pos(380.0, 300.0), &assets.resources.tree_idle);
     world.create_tree(pos(230.0, 330.0), &assets.resources.tree_idle);
-    
+
     world.create_gold_mine(pos(200.0, 500.0), assets.structures.gold_mine_inactive);
+
+    world.create_castle(pos(200.0, 760.0), assets.structures.knights_castle_construction);
+    world.create_tower(pos(500.0, 760.0), assets.structures.knights_tower_construction);
+    world.create_house(pos(700.0, 760.0), assets.structures.knights_house_construction);
 
     create_sheeps(data);
 }
@@ -162,6 +166,16 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
         WorldObjectType::Structure => {
             match game.world.structures_data[target_object.id as usize] {
                 StructureData::GoldMine(_) => behaviour::pawn::harvest_gold::new(game, pawn, target_object),
+                StructureData::Castle(data) if data.building => {
+                    behaviour::pawn::build_structure::new(game, pawn, target_object);
+                },
+                StructureData::House(data) if data.building => {
+                    behaviour::pawn::build_structure::new(game, pawn, target_object);
+                },
+                StructureData::Tower(data) if data.building => {
+                    behaviour::pawn::build_structure::new(game, pawn, target_object);
+                }
+                _ => {},
             } 
         },
         _ => {},

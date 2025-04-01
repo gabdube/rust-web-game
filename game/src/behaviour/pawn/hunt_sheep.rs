@@ -19,11 +19,7 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, sheep: WorldObject) {
         return;
     }
 
-    PawnBehaviour::cancel(game, pawn.id);
-
-    if game.world.pawns_data[pawn_index].grabbed_resource().is_some() {
-        super::drop_resource(game, pawn_index);
-    }
+    PawnBehaviour::cancel(game, pawn.id, true);
 
     game.world.pawns_behaviour[pawn_index] = PawnBehaviour {
         ty: PawnBehaviourType::HuntSheep { sheep_id: sheep.id },

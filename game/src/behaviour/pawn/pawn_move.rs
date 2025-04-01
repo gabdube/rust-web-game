@@ -13,7 +13,7 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, target_position: Position
         return;
     }
 
-    PawnBehaviour::cancel(game, pawn.id);
+    PawnBehaviour::cancel(game, pawn.id, false);
 
     game.world.pawns_behaviour[pawn_index] = PawnBehaviour {
         ty: PawnBehaviourType::MoveTo { target_position },

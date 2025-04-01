@@ -238,6 +238,24 @@ impl World {
         self.structures_data.push(StructureData::GoldMine(Default::default()));
     }
 
+    pub fn create_castle(&mut self, position: Position<f32>, sprite: StructureBase) {
+        self.total_sprite_count += 1;
+        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
+        self.structures_data.push(StructureData::Castle(StructureCastleData { hp: 0, building: true, destroyed: false }));
+    }
+
+    pub fn create_tower(&mut self, position: Position<f32>, sprite: StructureBase) {
+        self.total_sprite_count += 1;
+        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
+        self.structures_data.push(StructureData::Tower(StructureTowerData { hp: 0, building: true, destroyed: false }));
+    }
+
+    pub fn create_house(&mut self, position: Position<f32>, sprite: StructureBase) {
+        self.total_sprite_count += 1;
+        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
+        self.structures_data.push(StructureData::House(StructureHouseData { hp: 0, building: true, destroyed: false }));
+    }
+
     pub fn create_resource_spawn(&mut self, position: Position<f32>, animation: &AnimationBase, resource_type: ResourceType) -> usize {
         self.total_sprite_count += 1;
         self.resources_spawn_behaviour.push(behaviour::spawn_resources::SpawnResourceBehaviour::spawn(resource_type));
@@ -341,24 +359,6 @@ impl World {
         };
 
         objects.get_mut(obj.id as usize)
-    }
-
-    #[allow(dead_code)]
-    pub fn position_of(&self, obj: WorldObject) -> Position<f32> {
-        let index = obj.id as usize;
-        match obj.ty {
-            WorldObjectType::Pawn => self.pawns[index].position,
-            WorldObjectType::Warrior => self.warriors[index].position,
-            WorldObjectType::Archer => self.archers[index].position,
-            WorldObjectType::TorchGoblin => self.torch_goblins[index].position,
-            WorldObjectType::DynamiteGoblin => self.tnt_goblins[index].position,
-            WorldObjectType::Sheep => self.sheeps[index].position,
-            WorldObjectType::Structure => self.structures[index].position,
-            WorldObjectType::Decoration => self.decorations[index].position,
-            WorldObjectType::Resource => self.resources[index].position,
-            WorldObjectType::Tree => self.trees[index].position,
-            _ => Position::default()
-        }
     }
 
     pub fn set_object_selected(&mut self, obj: WorldObject, selected: bool) {

@@ -26,14 +26,10 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, tree: WorldObject) {
         return;
     }
 
-    PawnBehaviour::cancel(game, pawn.id);
-
-    if game.world.pawns_data[pawn_index].grabbed_resource().is_some() {
-        super::drop_resource(game, pawn_index);
-    }
+    PawnBehaviour::cancel(game, pawn.id, true);
 
     game.world.pawns_behaviour[pawn_index] = PawnBehaviour {
-        ty: PawnBehaviourType::HarvestWood { tree_id: tree.id },
+        ty: PawnBehaviourType::HarvestWood { tree_id: tree.id, last_timestamp: 0.0 },
         state: BehaviourState::Initial,
     };
 }
@@ -128,7 +124,8 @@ fn begin_cut_tree(game: &mut DemoGameData, pawn_index: usize) {
     tree.current_frame = 0;
 
     tree_data.being_harvested = true;
-    tree_data.last_drop_timestamp = game.global.time;
+    
+    params_set_last_timestamp(&mut behaviour.ty, game.global.time);
 
     behaviour.state = BehaviourState::Running(CUT_TREE);
 
@@ -139,7 +136,6 @@ fn cut_tree(game: &mut DemoGameData, pawn_index: usize) {
     use crate::behaviour::behaviour_shared::elapsed;
 
     let world = &mut game.world;
-    let pawn = &mut world.pawns[pawn_index];
     let behaviour = &mut world.pawns_behaviour[pawn_index];
 
     let tree_index = params(behaviour.ty);
@@ -147,9 +143,9 @@ fn cut_tree(game: &mut DemoGameData, pawn_index: usize) {
 
     let total_animation_time = crate::ANIMATION_INTERVAL * 6.0;
     
-    if pawn.current_frame == 5 && elapsed(game.global.time, tree_data.last_drop_timestamp, total_animation_time) {
+    if elapsed(game.global.time, params_last_timestamp(behaviour.ty), total_animation_time) {
+        params_set_last_timestamp(&mut behaviour.ty, game.global.time);
         tree_data.life -= u8::min(tree_data.life, 1);
-        tree_data.last_drop_timestamp = game.global.time;
     }
 
     if tree_data.life == 0 {
@@ -187,7 +183,23 @@ fn spawn_wood(game: &mut DemoGameData, pawn_index: usize) {
 #[inline(always)]
 fn params(value: PawnBehaviourType) -> usize {
     match value {
-        PawnBehaviourType::HarvestWood { tree_id } => tree_id as usize,
+        PawnBehaviourType::HarvestWood { tree_id, .. } => tree_id as usize,
         _ => unsafe { ::std::hint::unreachable_unchecked()}
+    }
+}
+
+#[inline(always)]
+fn params_last_timestamp(value: PawnBehaviourType) -> f64 {
+    match value {
+        PawnBehaviourType::HarvestWood { last_timestamp, .. } => last_timestamp as f64,
+        _ => unsafe { ::std::hint::unreachable_unchecked() }
+    }
+}
+
+#[inline(always)]
+fn params_set_last_timestamp(value: &mut PawnBehaviourType, time: f64) {
+    match value {
+        PawnBehaviourType::HarvestWood { last_timestamp, .. } => *last_timestamp = time as f32,
+        _ => unsafe { ::std::hint::unreachable_unchecked() }
     }
 }
