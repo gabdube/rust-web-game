@@ -163,7 +163,7 @@ impl GameplayGuiState {
 
     fn select_tree(&mut self, data: &mut DemoGameData, new_selected: WorldObject) {
         let tree_data = data.world.trees_data[new_selected.id as usize];
-        let text = data.assets.fonts.roboto.compute_text_metrics(&format!("  {:?}", tree_data.life), 28.0);
+        let text = data.assets.fonts.roboto.compute_text_metrics(&format!("  {} / {}", tree_data.life, crate::world::MAX_TREE_LIFE), 28.0);
 
         data.gui.set_image(self.bindings.details_icon1, data.assets.gui.life_icon);
         data.gui.set_text(self.bindings.details_text1, text);
@@ -172,7 +172,7 @@ impl GameplayGuiState {
 
     fn select_sheep(&mut self, data: &mut DemoGameData, new_selected: WorldObject) {
         let sheep_data = data.world.sheeps_data[new_selected.id as usize];
-        let text = data.assets.fonts.roboto.compute_text_metrics(&format!("  {:?}", sheep_data.life), 28.0);
+        let text = data.assets.fonts.roboto.compute_text_metrics(&format!("  {} / {}", sheep_data.life, crate::world::MAX_SHEEP_LIFE), 28.0);
 
         data.gui.set_image(self.bindings.details_icon1, data.assets.gui.life_icon);
         data.gui.set_text(self.bindings.details_text1, text);

@@ -8,6 +8,7 @@ pub const MAX_TOWER_HP: u8 = 80;
 pub const MAX_HOUSE_HP: u8 = 50;
 pub const MAX_GOLD_MINE_AMOUNT: u8 = 10;
 pub const MAX_TREE_LIFE: u8 = 15;
+pub const MAX_SHEEP_LIFE: u8 = 10;
 
 #[derive(Copy, Clone)]
 pub struct TreeData {

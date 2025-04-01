@@ -238,22 +238,25 @@ impl World {
         self.structures_data.push(StructureData::GoldMine(Default::default()));
     }
 
-    pub fn create_castle(&mut self, position: Position<f32>, sprite: StructureBase) {
+    pub fn create_castle(&mut self, position: Position<f32>, sprite: StructureBase) -> usize {
         self.total_sprite_count += 1;
         self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
         self.structures_data.push(StructureData::Castle(StructureCastleData { hp: 0, building: true, destroyed: false }));
+        self.structures.len() - 1
     }
 
-    pub fn create_tower(&mut self, position: Position<f32>, sprite: StructureBase) {
+    pub fn create_tower(&mut self, position: Position<f32>, sprite: StructureBase) -> usize {
         self.total_sprite_count += 1;
         self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
         self.structures_data.push(StructureData::Tower(StructureTowerData { hp: 0, building: true, destroyed: false }));
+        self.structures.len() - 1
     }
 
-    pub fn create_house(&mut self, position: Position<f32>, sprite: StructureBase) {
+    pub fn create_house(&mut self, position: Position<f32>, sprite: StructureBase) -> usize {
         self.total_sprite_count += 1;
         self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
         self.structures_data.push(StructureData::House(StructureHouseData { hp: 0, building: true, destroyed: false }));
+        self.structures.len() - 1
     }
 
     pub fn create_resource_spawn(&mut self, position: Position<f32>, animation: &AnimationBase, resource_type: ResourceType) -> usize {
@@ -269,70 +272,88 @@ impl World {
         self.resources.len() - 1
     }
 
-    pub fn animated_at(&self, position: Position<f32>) -> Option<WorldObject> {
-        let types = [
-            WorldObjectType::Pawn,
-            WorldObjectType::Warrior,
-            WorldObjectType::Archer,
-            WorldObjectType::TorchGoblin,
-            WorldObjectType::DynamiteGoblin,
-            WorldObjectType::Sheep,
-            WorldObjectType::ResourceSpawn,
-            WorldObjectType::Tree,
-        ];
-        let groups: [&[BaseAnimated]; 8] = [
-            &self.pawns,
-            &self.warriors,
-            &self.archers,
-            &self.torch_goblins,
-            &self.tnt_goblins,
-            &self.sheeps,
-            &self.resources_spawn,
-            &self.trees,
-        ];
-
-        for (group, ty) in groups.into_iter().zip(types) {
-            for (id, actor) in group.iter().enumerate() {
-                if actor.aabb().point_inside(position) {
-                    return Some(WorldObject { id: id as u32, ty })
-                }
-            }
-        }
-
-        None
-    }
-
-    pub fn other_at(&self, position: Position<f32>) -> Option<WorldObject> {
-        let types = [
-            WorldObjectType::Structure,
-            WorldObjectType::Resource,
-        ];
-        let groups = [
-            &self.structures,
-            &self.resources,
-        ];
-
-        for (group, ty) in groups.into_iter().zip(types) {
-            for (id, resource) in group.iter().enumerate() {
-                if resource.aabb().point_inside(position) {
-                    return Some(WorldObject { id: id as u32, ty })
-                }
-            }
-        }
-
-        None
-    }
-
     pub fn object_at(&self, position: Position<f32>) -> Option<WorldObject> {
-        if let Some(animated) = self.animated_at(position) {
-            return Some(animated);
+        fn animated_at(world: &World, position: Position<f32>, out: &mut Option<WorldObject>, y_out: &mut f32) {
+            let types = [
+                WorldObjectType::Pawn,
+                WorldObjectType::Warrior,
+                WorldObjectType::Archer,
+                WorldObjectType::TorchGoblin,
+                WorldObjectType::DynamiteGoblin,
+                WorldObjectType::Sheep,
+                WorldObjectType::ResourceSpawn,
+                WorldObjectType::Tree,
+            ];
+            let groups: [&[BaseAnimated]; 8] = [
+                &world.pawns,
+                &world.warriors,
+                &world.archers,
+                &world.torch_goblins,
+                &world.tnt_goblins,
+                &world.sheeps,
+                &world.resources_spawn,
+                &world.trees,
+            ];
+    
+            let mut obj = None;
+            let mut y = *y_out;
+    
+            for (group, ty) in groups.into_iter().zip(types) {
+                for (id, actor) in group.iter().enumerate() {
+                    let aabb = actor.aabb();
+                    if aabb.point_inside(position) {
+                        if aabb.bottom > y {
+                            obj = Some(WorldObject { id: id as u32, ty });
+                            y = aabb.bottom;
+                        }
+                    }
+                }
+            }
+    
+            if obj.is_some() {
+                *out = obj;
+                *y_out = y;
+            }
         }
-
-        if let Some(resource) = self.other_at(position) {
-            return Some(resource);
+    
+        fn other_at(world: &World, position: Position<f32>, out: &mut Option<WorldObject>, y_out: &mut f32) {
+            let types = [
+                WorldObjectType::Structure,
+                WorldObjectType::Resource,
+            ];
+            let groups = [
+                &world.structures,
+                &world.resources,
+            ];
+    
+            let mut obj = None;
+            let mut y = *y_out;
+    
+            for (group, ty) in groups.into_iter().zip(types) {
+                for (id, resource) in group.iter().enumerate() {
+                    let aabb = resource.aabb();
+                    if aabb.point_inside(position) {
+                        if aabb.bottom > y {
+                            obj = Some(WorldObject { id: id as u32, ty });
+                            y = aabb.bottom;
+                        }
+                    }
+                }
+            }
+    
+            if obj.is_some() {
+                *out = obj;
+                *y_out = y;
+            }
         }
+        
+        let mut obj = None;
+        let mut y = -10000.0;
 
-        None
+        animated_at(self, position, &mut obj, &mut y);
+        other_at(self, position, &mut obj, &mut y);
+
+        obj
     }
 
     pub fn get_actor_mut<'a>(&'a mut self, obj: WorldObject) -> Option<&'a mut BaseAnimated> {

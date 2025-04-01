@@ -84,6 +84,9 @@ fn drop_resource(game: &mut DemoGameData, pawn_index: usize) {
     let resource = &mut game.world.resources[resource_index];
 
     resource.position = pawn_position;
+    resource.position.x = f32::ceil(resource.position.x);
+    resource.position.y = f32::ceil(resource.position.y);
+
     resource.sprite = match resource_data.resource_type {
         ResourceType::Wood => game.assets.resources.wood.aabb,
         ResourceType::Food => game.assets.resources.meat.aabb,

@@ -37,6 +37,7 @@ impl SaveFileWriter {
         value.save(self);
     }
 
+    #[allow(dead_code)]
     pub fn save_option<T: super::SaveAndLoad>(&mut self, value: &Option<T>) {
         match value.as_ref() {
             Some(value) => {

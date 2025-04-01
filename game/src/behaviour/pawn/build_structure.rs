@@ -165,9 +165,9 @@ fn finalize_structure(game: &mut DemoGameData, pawn_index: usize) {
 fn early_exit(data: StructureData) -> bool {
     match data {
         StructureData::GoldMine(..) => true,
-        StructureData::Castle(data) => data.destroyed || data.hp == MAX_CASTLE_HP,
-        StructureData::Tower(data) => data.destroyed || data.hp == MAX_TOWER_HP,
-        StructureData::House(data) => data.destroyed || data.hp == MAX_HOUSE_HP,
+        StructureData::Castle(data) => data.hp == MAX_CASTLE_HP,
+        StructureData::Tower(data) => data.hp == MAX_TOWER_HP,
+        StructureData::House(data) => data.hp == MAX_HOUSE_HP,
     }
 }
 

@@ -53,6 +53,7 @@ impl<'a> SaveFileReader<'a> {
         T::load(self)
     }
 
+    #[allow(dead_code)]
     pub fn load_option<T: super::SaveAndLoad>(&mut self) -> Option<T> {
         let option = self.read_u32();
         match option == 1 {

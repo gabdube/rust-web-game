@@ -100,6 +100,11 @@ impl Gui {
 
     pub fn resize(&mut self, view_size: Size<f32>) {
         self.view_size = view_size;
+
+        for node in self.components_nodes.iter_mut() {
+            node.dirty = true;
+        }
+
         if self.components.len() > 0 {
             layout_compute::layout_compute(self);
             generate_sprites::generate_sprites(self);

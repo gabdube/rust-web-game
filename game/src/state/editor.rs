@@ -42,7 +42,7 @@ pub fn init(game: &mut DemoGame, test: TestId) -> Result<(), Error> {
         current_test: test,
     };
 
-    game.data.init_terrain(16, 16);
+    game.data.init_terrain(32, 32);
 
     match test {
         TestId::None => {},
@@ -76,6 +76,25 @@ fn init_pawn_tests(data: &mut DemoGameData) {
     world.create_tower(pos(500.0, 760.0), assets.structures.knights_tower_construction);
     world.create_house(pos(700.0, 760.0), assets.structures.knights_house_construction);
 
+    // Destroyed
+    let mut id = world.create_castle(pos(200.0, 960.0), assets.structures.knights_castle_destroyed);
+    if let StructureData::Castle(data) = &mut world.structures_data[id] {
+        data.building = false;
+        data.destroyed = true;
+    }
+
+    id = world.create_tower(pos(500.0, 960.0), assets.structures.knights_tower_destroyed);
+    if let StructureData::Tower(data) = &mut world.structures_data[id] {
+        data.building = false;
+        data.destroyed = true;
+    }
+
+    id = world.create_house(pos(700.0, 960.0), assets.structures.knights_house_destroyed);
+    if let StructureData::House(data) = &mut world.structures_data[id] {
+        data.building = false;
+        data.destroyed = true;
+    }
+
     create_sheeps(data);
 }
 
@@ -102,10 +121,11 @@ fn create_sheeps(data: &mut DemoGameData) {
     let world = &mut data.world;
     let assets = &data.assets;
 
-    world.create_sheep(pos(550.0, 170.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(590.0, 210.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(520.0, 240.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(490.0, 190.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(650.0, 170.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(690.0, 210.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(620.0, 240.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(590.0, 190.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(700.0, 250.0), &assets.animations.sheep.idle);
 }
 
 //
@@ -166,16 +186,9 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
         WorldObjectType::Structure => {
             match game.world.structures_data[target_object.id as usize] {
                 StructureData::GoldMine(_) => behaviour::pawn::harvest_gold::new(game, pawn, target_object),
-                StructureData::Castle(data) if data.building => {
+                StructureData::Castle(_) | StructureData::House(_) | StructureData::Tower(_) => {
                     behaviour::pawn::build_structure::new(game, pawn, target_object);
                 },
-                StructureData::House(data) if data.building => {
-                    behaviour::pawn::build_structure::new(game, pawn, target_object);
-                },
-                StructureData::Tower(data) if data.building => {
-                    behaviour::pawn::build_structure::new(game, pawn, target_object);
-                }
-                _ => {},
             } 
         },
         _ => {},
