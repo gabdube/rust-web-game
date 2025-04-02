@@ -6,8 +6,8 @@ use crate::DemoGameData;
 use super::{ArcherBehaviour, ArcherBehaviourType};
 
 const MOVING: u8 = 0;
-const AIM: u8 = 1;
 const SHOOTING: u8 = 2;
+const PAUSE: u8 = 3;
 
 const MAX_SHOOTING_DISTANCE: f32 = 64.0 * 6.0;
 
@@ -35,8 +35,8 @@ pub fn process(game: &mut DemoGameData, archer_index: usize) {
     match state {
         BehaviourState::Initial => init(game, archer_index),
         BehaviourState::Running(MOVING) => moving(game, archer_index),
-        BehaviourState::Running(AIM) => aim(game, archer_index),
         BehaviourState::Running(SHOOTING) => shooting(game, archer_index),
+        BehaviourState::Running(PAUSE) => pause(game, archer_index),
         _ => {},
     }
 }
@@ -52,7 +52,7 @@ fn init(game: &mut DemoGameData, archer_index: usize) {
         archer.current_frame = 0;
         behaviour.state = BehaviourState::Running(MOVING);
     } else {
-        behaviour.state = BehaviourState::Running(AIM);
+        behaviour.state = BehaviourState::Running(SHOOTING);
     }
 }
 
@@ -69,41 +69,67 @@ fn moving(game: &mut DemoGameData, archer_index: usize) {
     archer.flipped = archer.position.x > target_position.x;
 
     if archer.position.distance(target_position) < MAX_SHOOTING_DISTANCE {
-        behaviour.state = BehaviourState::Running(AIM);
+        archer.current_frame = 0;
+        behaviour.state = BehaviourState::Running(SHOOTING);
     }
-}
-
-fn aim(game: &mut DemoGameData, archer_index: usize) {
-    let target_position = target_position(game, archer_index);
-    let animation = select_animation(game, archer_index);
-    let archer = &mut game.world.archers[archer_index];
-    let behaviour = &mut game.world.archers_behaviour[archer_index];
-
-    archer.current_frame = 0;
-    archer.animation = animation;
-    archer.flipped = archer.position.x > target_position.x;
-    behaviour.state = BehaviourState::Running(SHOOTING);
-    params_set_last_timestamp(&mut behaviour.ty, game.global.time);
 }
 
 fn shooting(game: &mut DemoGameData, archer_index: usize) {
     use crate::behaviour::behaviour_shared::elapsed;
 
-    let target_position = target_position(game, archer_index);
-    let archer = &mut game.world.archers[archer_index];
-    let behaviour = &mut game.world.archers_behaviour[archer_index];
+    if !aim_position(game, archer_index) {
+        let archer = &mut game.world.archers[archer_index];
+        archer.animation = game.assets.animations.archer.idle;
+        archer.current_frame = 0;
 
-    if archer.position.distance(target_position) > MAX_SHOOTING_DISTANCE {
-        behaviour.state = BehaviourState::Running(MOVING);
+        let behaviour = &mut game.world.archers_behaviour[archer_index];
+        behaviour.state = BehaviourState::Running(PAUSE);
+        params_set_last_timestamp(&mut behaviour.ty, game.global.time);
+
         return;
     }
 
+    aim_animation(game, archer_index);
+
+    let archer = &mut game.world.archers[archer_index];
+    let behaviour = &mut game.world.archers_behaviour[archer_index];
     let timestamp = params_timestamp(behaviour.ty);
     let animation_time = crate::ANIMATION_INTERVAL * 7.0;
-
     if archer.current_frame == 7 && elapsed(game.global.time, timestamp, animation_time) {
         params_set_last_timestamp(&mut behaviour.ty, game.global.time);
     }
+}
+
+fn pause(game: &mut DemoGameData, archer_index: usize) {
+    use crate::behaviour::behaviour_shared::elapsed;
+
+    let archer = &mut game.world.archers[archer_index];
+    let behaviour = &mut game.world.archers_behaviour[archer_index];
+    let timestamp = params_timestamp(behaviour.ty);
+    if elapsed(game.global.time, timestamp, 500.0) {
+        archer.animation = game.assets.animations.archer.walk;
+        archer.current_frame = 0;
+        behaviour.state = BehaviourState::Running(MOVING);
+    }
+}
+
+fn aim_position(game: &mut DemoGameData, archer_index: usize) -> bool {
+    let target_position = target_position(game, archer_index);
+    let archer = &mut game.world.archers[archer_index];
+
+    archer.position.distance(target_position) < MAX_SHOOTING_DISTANCE
+}
+
+fn aim_animation(game: &mut DemoGameData, archer_index: usize) {
+    let target_position = target_position(game, archer_index);
+    let animation = select_animation(game, archer_index);
+    let archer = &mut game.world.archers[archer_index];
+    let behaviour = &mut game.world.archers_behaviour[archer_index];
+
+    archer.animation = animation;
+    archer.flipped = archer.position.x > target_position.x;
+    behaviour.state = BehaviourState::Running(SHOOTING);
+    params_set_last_timestamp(&mut behaviour.ty, game.global.time);
 }
 
 fn target_position(game: &mut DemoGameData, archer_index: usize) -> Position<f32> {

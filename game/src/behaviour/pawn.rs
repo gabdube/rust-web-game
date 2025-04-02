@@ -18,7 +18,7 @@ pub enum PawnBehaviourType {
     HarvestWood { tree_id: u32, last_timestamp: f32 },
     HarvestGold { structure_id: u32, last_timestamp: f32 },
     GrabResource { resource_id: u32 },
-    HuntSheep { sheep_id: u32 },
+    HuntSheep { sheep_id: u32, pause_timestamp: f32 },
     BuildStructure { structure_id: u32, last_timestamp: f32 },
 }
 
