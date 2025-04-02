@@ -129,6 +129,9 @@ export class WebGL2Backend {
     sprite_draw_count: number;
     sprite_draw: DrawCommand[];
 
+    projectile_draw_count: number;
+    projectile_draw: DrawCommand[];
+
     view_x: number;
     view_y: number;
 
@@ -332,6 +335,16 @@ export class WebGL2Backend {
         );
     }
 
+    private update_projectile_sprites(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) {
+        const ctx = this.ctx;
+        
+        let texture = this.textures[draw_update.texture_id];
+        if (!texture) {
+            texture = this.create_renderer_texture(draw_update.texture_id);
+        }
+
+    }
+
     private create_terrain_chunk_buffer(): TerrainChunkData {
         const ctx = this.ctx;
 
@@ -439,6 +452,7 @@ export class WebGL2Backend {
 
     private clear_drawing() {
         this.sprite_draw_count = 0;
+        this.projectile_draw_count = 0;
         this.terrain_chunk_draw_count = 0;
         this.buffers.sprites_attributes_len = 0;
         this.buffers.sprite_vao_len = 0;
@@ -463,6 +477,10 @@ export class WebGL2Backend {
                 }
                 case DrawUpdateType.DrawSprites: {
                     this.update_sprites(game_updates, draw_update);
+                    break;
+                }
+                case DrawUpdateType.DrawProjectileSprites: {
+                    this.update_projectile_sprites(game_updates, draw_update);
                     break;
                 }
                 case DrawUpdateType.UpdateGui: {

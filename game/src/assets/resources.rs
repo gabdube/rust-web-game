@@ -1,24 +1,21 @@
 use crate::assets::animations::AnimationBase;
 use crate::shared::AABB;
 
-
-#[derive(Copy, Clone, Default)]
-pub struct ResourceBase {
-    pub aabb: AABB
-}
-
 #[allow(dead_code)]
 #[derive(Copy, Clone, Default)]
 pub struct ResourcesBundle {
-    pub explosive_barrel: ResourceBase,
-    pub gold: ResourceBase,
-    pub gold_shadowless: ResourceBase,
-    pub meat: ResourceBase,
-    pub meat_shadowless: ResourceBase,
-    pub wood: ResourceBase,
-    pub wood_shadowless: ResourceBase,
+    pub explosive_barrel: AABB,
+    pub gold: AABB,
+    pub gold_shadowless: AABB,
+    pub meat: AABB,
+    pub meat_shadowless: AABB,
+    pub wood: AABB,
+    pub wood_shadowless: AABB,
 
-    pub tree_stump: ResourceBase,
+    pub arrow: AABB,
+    pub arrow_stuck: AABB,
+
+    pub tree_stump: AABB,
     pub tree_idle: AnimationBase,
     pub tree_cut: AnimationBase,
 
@@ -44,7 +41,7 @@ impl ResourcesBundle {
 
             if frame_count == 1 {
                 if let Some(base) = self.match_static_name(name) {
-                    base.aabb = AABB { left, top, right, bottom };
+                    *base = AABB { left, top, right, bottom };
                 }
             } else {
                 if let Some(base) = self.match_animated_name(name) {
@@ -62,7 +59,7 @@ impl ResourcesBundle {
         });
     }
 
-    fn match_static_name(&mut self, name: &str) -> Option<&mut ResourceBase> {
+    fn match_static_name(&mut self, name: &str) -> Option<&mut AABB> {
         match name {
             "explosive_barrel" => Some(&mut self.explosive_barrel),
             "gold" => Some(&mut self.gold),
@@ -72,6 +69,8 @@ impl ResourcesBundle {
             "wood" => Some(&mut self.wood),
             "wood_noshadow" => Some(&mut self.wood_shadowless),
             "tree_stump" => Some(&mut self.tree_stump),
+            "arrow" => Some(&mut self.arrow),
+            "arrow_stuck" => Some(&mut self.arrow_stuck),
             _ => None,
         }
     }

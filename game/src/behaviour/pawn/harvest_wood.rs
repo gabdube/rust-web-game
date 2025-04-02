@@ -161,7 +161,7 @@ fn spawn_wood(game: &mut DemoGameData, pawn_index: usize) {
     let tree = &mut world.trees[tree_index];
     let tree_data = &mut world.trees_data[tree_index];
 
-    tree.animation = AnimationBase::from_aabb(game.assets.resources.tree_stump.aabb);
+    tree.animation = AnimationBase::from_aabb(game.assets.resources.tree_stump);
     tree_data.being_harvested = false;
 
     *behaviour = PawnBehaviour::idle();

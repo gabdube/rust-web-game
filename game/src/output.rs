@@ -2,7 +2,7 @@
 /// Data with `repr(C)` will be directly read from memory by the engine
 
 use crate::shared::{aabb, Position};
-use crate::world::BaseAnimated;
+use crate::world::{BaseAnimated, BaseProjectile};
 use crate::DemoGame;
 
 /// Tells the engine which "module" to use to process a draw update
@@ -17,6 +17,7 @@ pub enum DrawUpdateType {
     DrawTerrainChunk = 3,
     UpdateViewOffset = 4,
     UpdateGui = 5,
+    DrawProjectileSprites = 6,
 }
 
 #[repr(C)]
@@ -67,9 +68,9 @@ pub struct DrawUpdate {
     params: DrawUpdateParams,
 }
 
-/// Information on how to render a sprites on the GPU
+/// Information on how to render a sprite on the GPU
 /// Memory layout must match `in_instance_position`, `in_instance_texcoord`, `in_instance_data` in `sprites.vert.glsl`
-/// If this struct size change, it must also be updatedin `game_interface.ts`
+/// If this struct size change, it must also be updated in `game_interface.ts`
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
 pub struct SpriteData {
@@ -78,6 +79,19 @@ pub struct SpriteData {
     pub texcoord_offset: [f32; 2],
     pub texcoord_size: [f32; 2],
     pub data: i32,
+}
+
+/// Information on how to render a projectile sprite on the GPU
+/// Memory layout must match `in_instance_position`, `in_instance_texcoord`, `in_instance_data` in `proj_sprites.vert.glsl`
+/// If this struct size change, it must also be updated in `game_interface.ts`
+#[repr(C)]
+#[derive(Copy, Clone, Default)]
+pub struct ProjectileSpriteData {
+    pub position: [f32; 2],
+    pub size: [f32; 2],
+    pub texcoord_offset: [f32; 2],
+    pub texcoord_size: [f32; 2],
+    pub rotation: f32,
 }
 
 /// Texture coordinates for the 4 vertex of a sprite the terrain data buffer
@@ -114,6 +128,8 @@ pub struct OutputIndex {
     pub commands_count: usize,
     pub sprites_data_ptr: *const SpriteData,
     pub sprites_data_count: usize,
+    pub projectile_sprites_data_ptr: *const ProjectileSpriteData,
+    pub projectile_sprites_data_count: usize,
     pub terrain_data_ptr: *const TerrainChunkTexcoord,
     pub terrain_data_count: usize,
     pub gui_indices_ptr: *const u16,
@@ -128,10 +144,13 @@ pub struct GameOutput {
     /// This is a leaked box because we return the pointer to the client in `output` and `Box::as_ptr` is a nightly-only experimental API
     pub output_index: &'static mut OutputIndex,
 
-    /// Buffers of generated sprites. Shared with the renderer
+    /// Buffers of generated sprites
     pub sprite_data_buffer: Vec<SpriteData>,
 
-    /// Buffers of generated terrain sprites. Shared with the renderer.
+    /// Buffer of generated projectile sprites
+    pub projectile_sprites_buffer: Vec<ProjectileSpriteData>,
+
+    /// Buffers of generated terrain sprites
     pub terrain_data: Vec<TerrainChunkTexcoord>,
 
     /// Buffer holding the indices of the gui mesh
@@ -140,7 +159,7 @@ pub struct GameOutput {
     /// Buffer holding the vertex of the gui mesh
     pub gui_vertex: Vec<GuiVertex>,
 
-    /// Buffers of the generated draw update for the current frame. Shared with the renderer.
+    /// Buffers of the generated draw update for the current frame.
     pub commands: Vec<DrawUpdate>,
 
     /// Temporary storage used when generating and optimizing sprites draw calls
@@ -152,6 +171,7 @@ impl GameOutput {
     pub fn clear(&mut self) {
         self.commands.clear();
         self.sprites_builder.clear();
+        self.projectile_sprites_buffer.clear();
         self.sprite_data_buffer.clear();
         self.terrain_data.clear();
     }
@@ -162,6 +182,8 @@ impl GameOutput {
         index.commands_count = self.commands.len();
         index.sprites_data_ptr = self.sprite_data_buffer.as_ptr();
         index.sprites_data_count = self.sprite_data_buffer.len();
+        index.projectile_sprites_data_ptr = self.projectile_sprites_buffer.as_ptr();
+        index.projectile_sprites_data_count = self.projectile_sprites_buffer.len();
         index.terrain_data_ptr = self.terrain_data.as_ptr();
         index.terrain_data_count = self.terrain_data.len();
         index.gui_indices_ptr = self.gui_indices.as_ptr();
@@ -178,6 +200,7 @@ pub fn update(game: &mut DemoGame) {
     update_terrain(game);
     render_terrain(game);
     render_sprites(game);
+    render_projectiles(game);
     render_gui(game);
     game.output.write_index();
 }
@@ -406,7 +429,7 @@ fn order_sprites(output: &mut GameOutput) {
 
 fn gen_commands(output: &mut GameOutput) {
     let texture_id = output.sprites_builder.first().map(|v| v.texture_id ).unwrap_or(0);
-    let mut params = DrawSpriteParams {
+    let mut draw_sprites = DrawSpriteParams {
         instance_base: 0,
         instance_count: 0,
         texture_id,
@@ -415,24 +438,24 @@ fn gen_commands(output: &mut GameOutput) {
     let sprites_data = &mut output.sprite_data_buffer;
 
     for build_sprite in output.sprites_builder.iter() {
-        if build_sprite.texture_id != params.texture_id {
+        if build_sprite.texture_id != draw_sprites.texture_id {
             output.commands.push(DrawUpdate {
                 graphics: DrawUpdateType::DrawSprites,
-                params: DrawUpdateParams { draw_sprites: params },
+                params: DrawUpdateParams { draw_sprites },
             });
 
-            params.instance_base = sprites_data.len() as u32;
-            params.instance_count = 0;
-            params.texture_id = build_sprite.texture_id;
+            draw_sprites.instance_base = sprites_data.len() as u32;
+            draw_sprites.instance_count = 0;
+            draw_sprites.texture_id = build_sprite.texture_id;
         };
 
         sprites_data.push(build_sprite.sprite);
-        params.instance_count += 1; 
+        draw_sprites.instance_count += 1; 
     }
 
     output.commands.push(DrawUpdate {
         graphics: DrawUpdateType::DrawSprites,
-        params: DrawUpdateParams { draw_sprites: params },
+        params: DrawUpdateParams { draw_sprites },
     });
 }
 
@@ -460,10 +483,11 @@ fn build_static_sprite(base: &crate::world::BaseStatic) -> SpriteData {
         let mut sprite = SpriteData::default();
         let position = base.position;
         let aabb = base.sprite;
-        sprite.position[0] = position.x - (aabb.width() * 0.5);
-        sprite.position[1] = position.y - aabb.height();
+
         sprite.size[0] = aabb.width();
         sprite.size[1] = aabb.height();
+        sprite.position[0] = position.x - (sprite.size[0] * 0.5);
+        sprite.position[1] = position.y - sprite.size[1];
         sprite.texcoord_offset[0] = aabb.left;
         sprite.texcoord_offset[1] = aabb.top;
         sprite.texcoord_size[0] = sprite.size[0];
@@ -471,6 +495,55 @@ fn build_static_sprite(base: &crate::world::BaseStatic) -> SpriteData {
         sprite.data = 1 * (base.selected as i32);
         sprite
     }
+
+/**
+    Unlike normal sprites, projectile sprites can be rotated and cannot be selected. So they have their own pipeline.
+    Also projectile sprites don't need to be y-ordered, all share the same texture (so far), and are always rendered on top of the other sprites.
+*/
+fn render_projectiles(game: &mut DemoGame) {
+    let world = &mut game.data.world;
+    let output = &mut game.output;
+
+    let total_sprites = world.total_projectile_sprites();
+    if total_sprites == 0 {
+        return;
+    }
+
+    let projectile_groups: [&[BaseProjectile]; 1] = [
+        &world.arrows,
+    ];
+
+    for projectile_group in projectile_groups {
+        for projectile in projectile_group {
+            let position = projectile.position;
+            let aabb = projectile.sprite;
+            let mut sprite = ProjectileSpriteData::default();
+
+            sprite.size[0] = aabb.width();
+            sprite.size[1] = aabb.height();
+            sprite.position[0] = position.x - (sprite.size[0] * 0.5);
+            sprite.position[1] = position.y - (sprite.size[1] * 0.5);
+            sprite.texcoord_offset[0] = aabb.left;
+            sprite.texcoord_offset[1] = aabb.top;
+            sprite.texcoord_size[0] = sprite.size[0];
+            sprite.texcoord_size[1] = sprite.size[1];
+            sprite.rotation = projectile.rotation;
+            
+            output.projectile_sprites_buffer.push(sprite);
+        }
+    }
+
+    let draw_sprites = DrawSpriteParams {
+        instance_base: 0,
+        instance_count: total_sprites as u32,
+        texture_id: world.static_resources_texture.id,
+    };
+
+    output.commands.push(DrawUpdate {
+        graphics: DrawUpdateType::DrawProjectileSprites,
+        params: DrawUpdateParams { draw_sprites },
+    });
+}
 
 /**
     Generate the gui sprites. If the gui wasn't updated since the last frame, this doesn't do anything
@@ -528,6 +601,7 @@ impl Default for GameOutput {
         GameOutput {
             output_index: Box::leak(output_index),
             sprite_data_buffer: Vec::with_capacity(64),
+            projectile_sprites_buffer: Vec::with_capacity(32),
             terrain_data: Vec::with_capacity(1024),
             gui_indices: Vec::with_capacity(1500),
             gui_vertex: Vec::with_capacity(1000),
@@ -546,6 +620,8 @@ impl Default for OutputIndex {
             commands_count: 0,
             sprites_data_ptr: ::std::ptr::null(),
             sprites_data_count: 0,
+            projectile_sprites_data_ptr: ::std::ptr::null(),
+            projectile_sprites_data_count: 0,
             terrain_data_ptr: ::std::ptr::null(),
             terrain_data_count: 0,
             gui_indices_ptr: ::std::ptr::null(),

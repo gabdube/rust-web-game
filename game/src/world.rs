@@ -4,7 +4,7 @@ use terrain::Terrain;
 mod extra_data;
 pub use extra_data::*;
 
-use crate::assets::{AnimationBase, ResourceBase, StructureBase, Texture};
+use crate::assets::{AnimationBase, StructureBase, Texture};
 use crate::behaviour;
 use crate::shared::{AABB, aabb, size, pos};
 use crate::store::SaveAndLoad;
@@ -50,7 +50,7 @@ pub struct WorldObject {
     pub ty: WorldObjectType,
 }
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default)]
 pub struct BaseAnimated {
     pub position: Position<f32>,
     pub animation: AnimationBase,
@@ -79,7 +79,7 @@ impl BaseAnimated {
     }
 }
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default)]
 pub struct BaseStatic {
     pub position: Position<f32>,
     pub sprite: AABB,
@@ -103,6 +103,13 @@ impl BaseStatic {
     //     self.selected = false;
     //     self.deleted = true;
     // }
+}
+
+#[derive(Copy, Clone)]
+pub struct BaseProjectile {
+    pub position: Position<f32>,
+    pub sprite: AABB,
+    pub rotation: f32,
 }
 
 
@@ -144,6 +151,8 @@ pub struct World {
     pub trees: Vec<BaseAnimated>,
     pub trees_data: Vec<TreeData>,
 
+    pub arrows: Vec<BaseProjectile>,
+
     pub decorations: Vec<BaseStatic>,
 
     pub selected: Vec<WorldObject>
@@ -153,8 +162,14 @@ impl World {
 
     /// The total number of sprites in the world
     /// Used to preallocate the sprite buffer in output
-    pub fn total_sprites(&mut self) -> usize {
+    pub fn total_sprites(&self) -> usize {
         self.total_sprite_count as usize
+    }
+
+    /// The total number of projectile sprites in the world
+    /// Used to preallocate the sprite buffer in output
+    pub fn total_projectile_sprites(&self) -> usize {
+        self.arrows.len()
     }
 
     pub fn reset(&mut self) {
@@ -265,9 +280,9 @@ impl World {
         Self::create_inner_actor(&mut self.resources_spawn, position, animation)
     }
 
-    pub fn create_resource(&mut self, position: Position<f32>, sprite: ResourceBase, resource_data: ResourceData) -> usize {
+    pub fn create_resource(&mut self, position: Position<f32>, sprite: AABB, resource_data: ResourceData) -> usize {
         self.total_sprite_count += 1;
-        self.resources.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
+        self.resources.push(BaseStatic { position, sprite, selected: false });
         self.resources_data.push(resource_data);
         self.resources.len() - 1
     }
@@ -450,6 +465,8 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.trees);
         writer.save_slice(&self.trees_data);
 
+        writer.write_slice(&self.arrows);
+
         writer.write_slice(&self.selected);
 
         writer.write(&self.static_resources_texture);
@@ -489,6 +506,8 @@ impl SaveAndLoad for World {
 
         let trees = reader.read_vec();
         let trees_data = reader.load_vec();
+
+        let arrows = reader.read_vec();
 
         let selected = reader.read_vec();
 
@@ -532,6 +551,8 @@ impl SaveAndLoad for World {
 
             trees,
             trees_data,
+
+            arrows,
 
             decorations,
 
@@ -577,6 +598,8 @@ impl Default for World {
 
             trees: Vec::with_capacity(16),
             trees_data: Vec::with_capacity(16),
+
+            arrows: Vec::with_capacity(16),
 
             decorations: Vec::with_capacity(16),
 

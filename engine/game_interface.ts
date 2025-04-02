@@ -2,7 +2,7 @@
 
 import { DemoGame } from "../build/game/game";
 
-const OUTPUT_INDEX_SIZE: number = 48;  // size_of(OutputIndex)
+const OUTPUT_INDEX_SIZE: number = 56;  // size_of(OutputIndex)
 const DRAW_UPDATE_SIZE: number = 16;   // size_of(DrawUpdate)
 export const SPRITE_DATA_SIZE: number = 36;       // size_of(SpriteData)
 const TERRAIN_CHUNK_TEXT_COORD_SIZE: number = 32; // size_of(TerrainChunkTexcoord)
@@ -14,16 +14,19 @@ const OUTPUT_INDEX_DRAW_UPDATES_COUNT_OFFSET: number = 8;
 const OUTPUT_INDEX_SPRITE_DATA_OFFSET: number = 12;
 const OUTPUT_INDEX_SPRITE_DATA_COUNT_OFFSET: number = 16;
 
-const OUTPUT_INDEX_TERRAIN_DATA_OFFSET: number = 20;
-const OUTPUT_INDEX_TERRAIN_DATA_COUNT_OFFSET: number = 24;
+const OUTPUT_INDEX_PROJ_SPRITE_DATA_OFFSET: number = 20;
+const OUTPUT_INDEX_PROJ_SPRITE_DATA_COUNT_OFFSET: number = 24;
 
-const OUTPUT_INDEX_GUI_INDICES_OFFSET: number = 28;
-const OUTPUT_INDEX_GUI_INDICES_COUNT_OFFSET: number = 32;
+const OUTPUT_INDEX_TERRAIN_DATA_OFFSET: number = 28;
+const OUTPUT_INDEX_TERRAIN_DATA_COUNT_OFFSET: number = 32;
 
-const OUTPUT_INDEX_GUI_VERTEX_OFFSET: number = 36;
-const OUTPUT_INDEX_GUI_VERTEX_COUNT_OFFSET: number = 40;
+const OUTPUT_INDEX_GUI_INDICES_OFFSET: number = 36;
+const OUTPUT_INDEX_GUI_INDICES_COUNT_OFFSET: number = 40;
 
-const OUTPUT_INDEX_VALIDATION_INDEX: number = 44;
+const OUTPUT_INDEX_GUI_VERTEX_OFFSET: number = 44;
+const OUTPUT_INDEX_GUI_VERTEX_COUNT_OFFSET: number = 48;
+
+const OUTPUT_INDEX_VALIDATION_INDEX: number = 52;
 
 const DRAW_UPDATE_GRAPHICS_MODULE_OFFSET: number = 0;
 
@@ -38,6 +41,7 @@ export enum DrawUpdateType {
     DrawTerrainChunk = 3,
     UpdateViewOffset = 4,
     UpdateGui = 5,
+    DrawProjectileSprites = 6,
 }
 
 export class EngineGameDrawUpdate {
@@ -51,7 +55,7 @@ export class EngineGameDrawUpdate {
     // UpdateTerrainChunk params
     chunk_data_offset: number;
 
-    // DrawSprites parameters
+    // DrawSprites / DrawProjectileSprites parameters
     instance_base: number;
     instance_count: number;
     texture_id: number;
@@ -122,6 +126,12 @@ export class EngineGameInstanceUpdates {
             case DrawUpdateType.UpdateGui: {
                 draw.gui_indices_count = draw_update_view.getUint32(4, true);
                 draw.gui_vertex_count = draw_update_view.getUint32(8, true);
+                break;
+            }
+            case DrawUpdateType.DrawProjectileSprites: {
+                draw.instance_base = draw_update_view.getUint32(4, true);
+                draw.instance_count = draw_update_view.getUint32(8, true);
+                draw.texture_id = draw_update_view.getUint32(12, true);
                 break;
             }
             default: {

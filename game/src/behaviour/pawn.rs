@@ -88,9 +88,9 @@ fn drop_resource(game: &mut DemoGameData, pawn_index: usize) {
     resource.position.y = f32::ceil(resource.position.y);
 
     resource.sprite = match resource_data.resource_type {
-        ResourceType::Wood => game.assets.resources.wood.aabb,
-        ResourceType::Food => game.assets.resources.meat.aabb,
-        ResourceType::Gold => game.assets.resources.gold.aabb,
+        ResourceType::Wood => game.assets.resources.wood,
+        ResourceType::Food => game.assets.resources.meat,
+        ResourceType::Gold => game.assets.resources.gold,
     };
 
     pawn_data.grabbed_resource = u32::MAX;

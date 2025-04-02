@@ -1,7 +1,6 @@
-use crate::assets::AnimationBase;
 use crate::behaviour::BehaviourState;
 use crate::shared::Position;
-use crate::world::{WorldObject, WorldObjectType};
+use crate::world::{WorldObject, WorldObjectType, BaseProjectile};
 use crate::DemoGameData;
 use super::{ArcherBehaviour, ArcherBehaviourType};
 
@@ -10,6 +9,17 @@ const SHOOTING: u8 = 2;
 const PAUSE: u8 = 3;
 
 const MAX_SHOOTING_DISTANCE: f32 = 64.0 * 6.0;
+
+enum ShootingAnimation {
+    Top,
+    TopLeft,
+    TopRight,
+    Left,
+    Right,
+    BottomLeft,
+    BottomRight,
+    Bottom,
+}
 
 pub fn new(game: &mut DemoGameData, archer: WorldObject, target: WorldObject) {
     let archer_index;
@@ -89,7 +99,7 @@ fn shooting(game: &mut DemoGameData, archer_index: usize) {
         return;
     }
 
-    aim_animation(game, archer_index);
+    let animation = aim_animation(game, archer_index);
 
     let archer = &mut game.world.archers[archer_index];
     let behaviour = &mut game.world.archers_behaviour[archer_index];
@@ -97,6 +107,7 @@ fn shooting(game: &mut DemoGameData, archer_index: usize) {
     let animation_time = crate::ANIMATION_INTERVAL * 7.0;
     if archer.current_frame == 7 && elapsed(game.global.time, timestamp, animation_time) {
         params_set_last_timestamp(&mut behaviour.ty, game.global.time);
+        spawn_arrow(game, archer_index, animation);
     }
 }
 
@@ -120,16 +131,34 @@ fn aim_position(game: &mut DemoGameData, archer_index: usize) -> bool {
     archer.position.distance(target_position) < MAX_SHOOTING_DISTANCE
 }
 
-fn aim_animation(game: &mut DemoGameData, archer_index: usize) {
+fn aim_animation(game: &mut DemoGameData, archer_index: usize) -> ShootingAnimation {
     let target_position = target_position(game, archer_index);
     let animation = select_animation(game, archer_index);
     let archer = &mut game.world.archers[archer_index];
-    let behaviour = &mut game.world.archers_behaviour[archer_index];
 
-    archer.animation = animation;
+    let animations = &game.assets.animations.archer;
+    archer.animation = match animation {
+        ShootingAnimation::Top => animations.fire_top,
+        ShootingAnimation::Bottom => animations.fire_bottom,
+        ShootingAnimation::BottomLeft | ShootingAnimation::BottomRight => animations.fire_bottom_h,
+        ShootingAnimation::TopLeft | ShootingAnimation::TopRight => animations.fire_top_h,
+        ShootingAnimation::Left | ShootingAnimation::Right => animations.fire_h,
+    };
+
     archer.flipped = archer.position.x > target_position.x;
-    behaviour.state = BehaviourState::Running(SHOOTING);
-    params_set_last_timestamp(&mut behaviour.ty, game.global.time);
+
+    animation
+}
+
+fn spawn_arrow(game: &mut DemoGameData, archer_index: usize, animation: ShootingAnimation) {
+    let archer = &mut game.world.archers[archer_index];
+    let sprite = game.assets.resources.arrow;
+
+    game.world.arrows.push(BaseProjectile {
+        position: archer.position,
+        sprite,
+        rotation: 0.0,
+    });
 }
 
 fn target_position(game: &mut DemoGameData, archer_index: usize) -> Position<f32> {
@@ -140,37 +169,35 @@ fn target_position(game: &mut DemoGameData, archer_index: usize) -> Position<f32
     }
 }
 
-fn select_animation(game: &mut DemoGameData, archer_index: usize) -> AnimationBase {
+fn select_animation(game: &mut DemoGameData, archer_index: usize) -> ShootingAnimation {
     let target_position = target_position(game, archer_index);
     let position = game.world.archers[archer_index].position;
     let angle = f32::atan2(target_position.y - position.y, target_position.x - position.x);
-
-    let animation = &game.assets.animations.archer;
     if angle < 0.0 {
         let frac = -std::f32::consts::FRAC_PI_8;
         if angle > frac {
-            animation.fire_h
+            ShootingAnimation::Right
         } else if angle > (frac * 3.0) {
-            animation.fire_top_h
+            ShootingAnimation::TopRight
         } else if angle > (frac * 5.0) {
-            animation.fire_top
+            ShootingAnimation::Top
         } else if angle > (frac * 7.0) {
-            animation.fire_top_h
+            ShootingAnimation::TopLeft
         } else {
-            animation.fire_h
+            ShootingAnimation::Left
         }
     } else {
         let frac = std::f32::consts::FRAC_PI_8;
         if angle < frac {
-            animation.fire_h
+            ShootingAnimation::Left
         } else if angle < (frac * 3.0) {
-            animation.fire_bottom_h
+            ShootingAnimation::BottomRight
         } else if angle < (frac * 5.0) {
-            animation.fire_bottom
+            ShootingAnimation::Bottom
         } else if angle < (frac * 7.0) {
-            animation.fire_bottom_h
+            ShootingAnimation::BottomLeft
         } else {
-            animation.fire_h
+            ShootingAnimation::Right
         }
     }
 }

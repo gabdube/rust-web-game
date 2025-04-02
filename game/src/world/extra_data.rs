@@ -1,6 +1,6 @@
 //! REgroups all the world structure data into a single file
 
-use crate::shared::Position;
+use crate::shared::{Position, AABB};
 use crate::store::SaveAndLoad;
 
 pub const MAX_CASTLE_HP: u8 = 200;
@@ -109,7 +109,6 @@ impl SaveAndLoad for SheepData {
         }
     }
 }
-
 
 
 #[derive(Copy, Clone)]

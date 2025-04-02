@@ -96,9 +96,9 @@ fn grab_resource(game: &mut DemoGameData, pawn_index: usize) {
     resource.position.y -= 60.0;
 
     resource.sprite = match resource_data.resource_type {
-        ResourceType::Gold => game.assets.resources.gold_shadowless.aabb,
-        ResourceType::Food => game.assets.resources.meat_shadowless.aabb,
-        ResourceType::Wood => game.assets.resources.wood_shadowless.aabb,
+        ResourceType::Gold => game.assets.resources.gold_shadowless,
+        ResourceType::Food => game.assets.resources.meat_shadowless,
+        ResourceType::Wood => game.assets.resources.wood_shadowless,
     };
 
     *behaviour = PawnBehaviour::idle();
