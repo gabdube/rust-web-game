@@ -74,6 +74,7 @@ fn run_archers_behaviour(game: &mut DemoGame) {
         match behaviour_type {
             ArcherBehaviourType::Idle { .. } => archer::idle(data, index),
             ArcherBehaviourType::MoveTo { .. } => archer::archer_move::process(data, index),
+            ArcherBehaviourType::Shoot { .. } => archer::shoot::process(data, index),
         }
         index += 1;
     }

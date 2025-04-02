@@ -6,7 +6,7 @@ pub struct SaveFileWriter {
 impl SaveFileWriter {
     pub fn new() -> Self {
         let mut writer = SaveFileWriter {
-            data: vec![0; 3000],
+            data: vec![0; 20_000],
             data_offset: 0,
         };
 

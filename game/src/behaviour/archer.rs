@@ -1,13 +1,16 @@
 pub mod archer_move;
+pub mod shoot;
 
 use crate::behaviour::BehaviourState;
 use crate::shared::Position;
+use crate::world::WorldObject;
 use crate::DemoGameData;
 
 #[derive(Copy, Clone)]
 pub enum ArcherBehaviourType {
     Idle,
-    MoveTo { target_position: Position<f32> }
+    MoveTo { target_position: Position<f32> },
+    Shoot { target: WorldObject, last_timestamp: f32 }
 }
 
 

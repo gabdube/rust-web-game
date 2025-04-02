@@ -211,6 +211,12 @@ fn archer_actions(game: &mut DemoGameData, archer: WorldObject, target_object: O
         behaviour::archer::archer_move::new(game, archer, cursor_world_position);
         return;
     }
+
+    let target_object = target_object.unwrap();
+    match target_object.ty {
+        WorldObjectType::Sheep => behaviour::archer::shoot::new(game, archer, target_object),
+        _ => {}
+    }
 }
 
 fn get_state(state: &mut GameState) -> &mut EditorState {

@@ -96,7 +96,7 @@ impl DemoGame {
         }
 
         #[cfg(feature="editor")]
-        if let Err(e) = state::editor::init(&mut demo_app, crate::state::TestId::PawnAi) {
+        if let Err(e) = state::editor::init(&mut demo_app, crate::state::TestId::ArcherAi) {
             set_last_error(e);
             return None;
         }
@@ -111,7 +111,7 @@ impl DemoGame {
 
     pub fn on_reload(&mut self) -> bool {
         #[cfg(feature="editor")]
-        if let Err(e) = state::editor::init(self, crate::state::TestId::PawnAi) {
+        if let Err(e) = state::editor::init(self, crate::state::TestId::ArcherAi) {
             set_last_error(e);
             return false;
         }
@@ -224,7 +224,12 @@ impl store::SaveAndLoad for DemoGame {
 pub fn save(client: DemoGame) -> Box<[u8]> {
     let mut writer = store::SaveFileWriter::new();
     writer.save(&client);
-    writer.finalize().into_boxed_slice()
+    
+    let data = writer.finalize().into_boxed_slice();
+
+    // dbg!("Marshalled game size {:?}", data.len());
+
+    data
 }
 
 /// Load the game client from an array of bytes
