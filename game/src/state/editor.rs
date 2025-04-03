@@ -30,6 +30,7 @@ impl TestId {
 pub struct EditorState {
     gui: GameplayGuiState,
     current_test: TestId,
+    dragging_view: bool,
 }
 
 //
@@ -40,6 +41,7 @@ pub fn init(game: &mut DemoGame, test: TestId) -> Result<(), Error> {
     let mut inner_state = EditorState {
         gui: Default::default(),
         current_test: test,
+        dragging_view: false,
     };
 
     game.data.init_terrain(32, 32);
@@ -129,7 +131,29 @@ fn create_sheeps(data: &mut DemoGameData) {
 }
 
 //
-// On state events
+// General updates
+//
+
+pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
+    use crate::inputs::{MouseButton, ButtonState};
+    
+    let state = get_state(state);
+
+    match data.inputs.mouse_button_state(MouseButton::Center) {
+        ButtonState::JustPressed => { state.dragging_view = true; },
+        ButtonState::JustReleased => { state.dragging_view = false; },
+        _ => {}
+    }
+
+    if state.dragging_view {
+        if let Some(delta) = data.inputs.mouse_delta() {
+            data.set_view_offset(data.global.view_offset - delta);
+        }
+    }
+}
+
+//
+// Input events
 //
 
 pub fn on_left_mouse(state: &mut GameState, data: &mut DemoGameData) {
@@ -219,6 +243,11 @@ fn archer_actions(game: &mut DemoGameData, archer: WorldObject, target_object: O
     }
 }
 
+
+//
+// Other
+//
+
 fn get_state(state: &mut GameState) -> &mut EditorState {
     match state {
         GameState::Editor(inner) => inner,
@@ -226,23 +255,22 @@ fn get_state(state: &mut GameState) -> &mut EditorState {
     }
 }
 
-//
-// Other
-//
-
 impl crate::store::SaveAndLoad for EditorState {
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.write(&self.gui);
         writer.write_u32(self.current_test as u32);
+        writer.write_u32(self.dragging_view as u32);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let gui = reader.read();
         let current_test = TestId::from_u32(reader.read_u32());
+        let dragging_view = reader.read_u32() == 1;
         
         EditorState {
             gui,
             current_test,
+            dragging_view
         }
     }
 }

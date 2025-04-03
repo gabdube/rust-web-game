@@ -348,7 +348,6 @@ export class WebGL2Backend {
         return vao;
     }
 
-    /// Updates the sprites data and queue a drawing command to render them
     private update_sprites(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) {
         const ctx = this.ctx;
 
@@ -358,8 +357,8 @@ export class WebGL2Backend {
         }
 
         if (this.buffers.sprites_attributes_len + draw_update.instance_count > this.buffers.sprites_attributes_capacity) {
-            console.log("TODO: realloc sprites attributes")
-            return;
+            const overflow = (this.buffers.sprites_attributes_len + draw_update.instance_count) - this.buffers.sprites_attributes_capacity;
+            this.realloc_sprites_attributes(overflow);
         }
 
         const attributes_offset = SPRITE_DATA_SIZE * this.buffers.sprites_attributes_len;
@@ -398,8 +397,8 @@ export class WebGL2Backend {
         }
 
         if (this.buffers.sprites_attributes_len + draw_update.instance_count > this.buffers.sprites_attributes_capacity) {
-            console.log("TODO: realloc sprites attributes")
-            return;
+            const overflow = (this.buffers.sprites_attributes_len + draw_update.instance_count) - this.buffers.sprites_attributes_capacity;
+            this.realloc_sprites_attributes(overflow);
         }
 
         const attributes_offset = SPRITE_DATA_SIZE * this.buffers.sprites_attributes_len;
@@ -1002,8 +1001,9 @@ export class WebGL2Backend {
     private setup_sprites_attributes() {
         const ctx = this.ctx;
 
-        // Base sprites buffer can hold 512 sprites
-        const base_capacity = 512;
+        // Base sprites buffer can hold 128 sprites (totalling ~4kb)
+        // If the number of sprites exceed that limits, the buffer will be resized with `realloc_sprites_attributes`
+        const base_capacity = 128;
         this.buffers.sprites_attributes = ctx.createBuffer();
         ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_attributes);
         ctx.bufferData(ctx.ARRAY_BUFFER, SPRITE_DATA_SIZE * base_capacity, ctx.DYNAMIC_DRAW);
@@ -1015,6 +1015,28 @@ export class WebGL2Backend {
         for (let i = 0; i < 16; i+=1) {
             this.buffers.sprites_vao.push(ctx.createVertexArray());
         }
+    }
+
+    private realloc_sprites_attributes(overflow: number) {
+        const ctx = this.ctx;
+
+        const new_capacity = this.buffers.sprites_attributes_capacity + overflow + 256;
+        const new_buffer = ctx.createBuffer();
+        const old_buffer = this.buffers.sprites_attributes;
+
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, new_buffer);
+        ctx.bufferData(ctx.ARRAY_BUFFER, SPRITE_DATA_SIZE * new_capacity, ctx.DYNAMIC_DRAW);
+
+        ctx.bindBuffer(ctx.COPY_READ_BUFFER, old_buffer);
+        ctx.bindBuffer(ctx.COPY_WRITE_BUFFER, new_buffer);
+        ctx.copyBufferSubData(ctx.COPY_READ_BUFFER, ctx.COPY_WRITE_BUFFER, 0, 0, SPRITE_DATA_SIZE * this.buffers.sprites_attributes_capacity);
+
+        ctx.bindBuffer(ctx.COPY_READ_BUFFER, null);
+        ctx.bindBuffer(ctx.COPY_WRITE_BUFFER, null);
+        ctx.deleteBuffer(old_buffer);
+
+        this.buffers.sprites_attributes = new_buffer;
+        this.buffers.sprites_attributes_capacity = new_capacity;
     }
 
     private setup_terrain_chunk_vertex() {

@@ -39,7 +39,8 @@ impl ButtonState {
 #[derive(Copy, Clone)]
 pub enum MouseButton {
     Left  = 0,
-    Right = 1
+    Right = 1,
+    Center = 2,
 }
 
 #[derive(Copy, Clone)]
@@ -48,22 +49,22 @@ pub struct InputState {
     pub view_size: Size<f32>,
     pub last_mouse_position: Position<f32>,
     pub mouse_position: Position<f32>,
-    pub mouse_buttons: [ButtonState; 2],
+    pub mouse_buttons: [ButtonState; 3],
     pub left_shift: ButtonState,
 }
 
 impl InputState {
 
-    pub fn right_mouse_clicked(&self) -> bool {
-        self.mouse_buttons[MouseButton::Right as usize] == ButtonState::JustPressed
+    pub fn mouse_button_state(&self, button: MouseButton) -> ButtonState {
+        self.mouse_buttons[button as usize]
     }
 
-    pub fn right_mouse_released(&self) -> bool {
-        self.mouse_buttons[MouseButton::Right as usize] == ButtonState::JustReleased
+    pub fn right_mouse_clicked(&self) -> bool {
+        self.mouse_button_state(MouseButton::Right) == ButtonState::JustPressed
     }
 
     pub fn left_mouse_clicked(&self) -> bool {
-        self.mouse_buttons[MouseButton::Left as usize] == ButtonState::JustPressed
+        self.mouse_button_state(MouseButton::Left) == ButtonState::JustPressed
     }
 
     pub fn mouse_delta(&self) -> Option<Position<f32>> {
@@ -113,7 +114,7 @@ impl Default for InputState {
             view_size: size(0.0, 0.0),
             last_mouse_position: pos(0.0, 0.0),
             mouse_position: pos(0.0, 0.0),
-            mouse_buttons: [ButtonState::Released; 2],
+            mouse_buttons: [ButtonState::Released; 3],
             left_shift: ButtonState::Released,
         }
     }
@@ -125,6 +126,7 @@ impl TryFrom<u8> for MouseButton {
         match value {
             0 => Ok(MouseButton::Left),
             1 => Ok(MouseButton::Right),
+            2 => Ok(MouseButton::Center),
             _ => { Err(undefined_err!("{value} is not a valid mouse button identifier"))}
         }
     }

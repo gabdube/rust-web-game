@@ -11,9 +11,10 @@ const UPDATE_MOUSE_POSITION = 0b001;
 const UPDATE_MOUSE_BUTTONS  = 0b010;
 const UPDATE_KEYS           = 0b100;
 
-// Matches `MouseButton`
+// Matches `MouseButton` in `game\src\inputs.rs`
 const MOUSE_BUTTON_LEFT = 0;
 const MOUSE_BUTTON_RIGHT = 1;
+const MOUSE_BUTTON_CENTER = 2;
 
 class InputState {
     updates: number = 0;
@@ -22,6 +23,7 @@ class InputState {
     // true: button was pressed, false: button was released, null: button state wasn't changed
     left_mouse_button: boolean|null = null;    
     right_mouse_button: boolean|null = null;
+    center_mouse_button: boolean|null = null;
 
     keys: Map<string, boolean> = new Map();
 }
@@ -122,6 +124,7 @@ function init_handlers(engine: Engine) {
         input_state.updates |= UPDATE_MOUSE_BUTTONS;
 
         if (event.button === 0) { input_state.left_mouse_button = true; }
+        else if (event.button === 1) { input_state.center_mouse_button = true; }
         else if (event.button === 2) { input_state.right_mouse_button = true; }
     })
 
@@ -131,6 +134,7 @@ function init_handlers(engine: Engine) {
         input_state.updates |= UPDATE_MOUSE_BUTTONS;
 
         if (event.button === 0) { input_state.left_mouse_button = false; }
+        else if (event.button === 1) { input_state.center_mouse_button = false; }
         else if (event.button === 2) { input_state.right_mouse_button = false; }
     })
 
@@ -263,8 +267,13 @@ function game_input_updates(engine: Engine) {
             game.update_mouse_buttons(MOUSE_BUTTON_RIGHT, inputs.right_mouse_button);
         }
 
+        if (inputs.center_mouse_button !== null) {
+            game.update_mouse_buttons(MOUSE_BUTTON_CENTER, inputs.center_mouse_button);
+        }
+
         inputs.left_mouse_button = null;
         inputs.right_mouse_button = null;
+        inputs.center_mouse_button = null;
     }
 
     if ((inputs.updates & UPDATE_KEYS) > 0) {

@@ -46,6 +46,8 @@ pub fn update(game: &mut DemoGame) {
             if data.inputs.right_mouse_clicked() {
                 crate::state::editor::on_right_mouse(state, data);
             }
+
+            crate::state::editor::on_update(state, data);
         },
         GameState::Startup => {
         }

@@ -1,8 +1,8 @@
 ## Project Structure
 
-* engine - Typescript graphics engine
+* engine - Typescript game engine
 * server - Simple rust web server for development
-* game - Rust game client. Compiles to wasm
+* game - Rust game client
 * build - Build folder for `game`
 * tools - Build utilities to preprocess assets
 
@@ -10,25 +10,26 @@
 
 Requires Rust, wasm-pack (https://github.com/rustwasm/wasm-pack), and node
 
-### Server
 
-```
-cargo run -p server --release
-```
-
-### Webdemo typescript client
+### Typescript engine
 
 ```
 npm install
 npx rollup --config rollup.config.mjs  --watch
 ```
 
-### Webdemo wasm application
+### WASM game client
 
 ```
 cd game
 
 wasm-pack build --out-dir ../build/game --target web
+```
+
+### Dev Server
+
+```
+cargo run -p server --release
 ```
 
 ### Tools

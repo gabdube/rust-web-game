@@ -20,7 +20,7 @@ impl GuiLabel {
 
 #[derive(Copy, Clone)]
 
-pub(super) enum GuiImageSize {
+pub enum GuiImageSize {
     Auto,
     ScaledWidth(f32)
 }

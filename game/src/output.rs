@@ -498,7 +498,7 @@ fn build_static_sprite(base: &crate::world::BaseStatic) -> SpriteData {
 
 /**
     Unlike normal sprites, projectile sprites can be rotated and cannot be selected. So they have their own pipeline.
-    Also projectile sprites don't need to be y-ordered, all share the same texture (so far), and are always rendered on top of the other sprites.
+    Also projectile sprites don't need to be y-ordered, they all share the same texture (so far), and are always rendered on top of the other sprites.
 */
 fn render_projectiles(game: &mut DemoGame) {
     let world = &mut game.data.world;

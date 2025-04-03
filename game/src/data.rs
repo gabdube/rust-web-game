@@ -58,6 +58,11 @@ impl DemoGameData {
         self.global.flags.set_sync_terrain();
     }
 
+    pub fn set_view_offset(&mut self, offset: Position<f32>) {
+        self.global.view_offset = offset;
+        self.global.flags.set_sync_view();
+    }
+
 }
 
 impl Default for DemoGameData {
