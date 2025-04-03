@@ -5,6 +5,7 @@ pub mod warrior;
 pub mod archer;
 pub mod sheep;
 pub mod spawn_resources;
+pub mod arrow;
 
 use crate::DemoGame;
 
@@ -19,6 +20,8 @@ pub fn update(game: &mut DemoGame) {
     run_warrior_behaviour(game);
     run_archers_behaviour(game);
     run_sheep_behaviour(game);
+
+    arrow::update_arrow(game);
 
     if game.data.world.resources_spawn.len() > 0 {
         run_resource_spawn_behaviour(game);
@@ -89,7 +92,7 @@ fn run_sheep_behaviour(game: &mut DemoGame) {
     while index < data.world.sheeps.len() {
         let behaviour_type = data.world.sheep_behaviour[index].ty;
         match behaviour_type {
-            SheepBehaviourType::Dead => sheep::dead(data, index),
+            SheepBehaviourType::Dead => sheep::dead(&mut data.world, index),
             SheepBehaviourType::Idle { .. } => sheep::idle::process(data, index),
             SheepBehaviourType::Escaping { .. } => sheep::escaping::process(data, index),
             SheepBehaviourType::Moving { .. } => sheep::sheep_move::process(data, index),

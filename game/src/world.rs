@@ -110,6 +110,7 @@ pub struct BaseProjectile {
     pub position: Position<f32>,
     pub sprite: AABB,
     pub rotation: f32,
+    pub deleted: bool,
 }
 
 
@@ -152,6 +153,7 @@ pub struct World {
     pub trees_data: Vec<TreeData>,
 
     pub arrows: Vec<BaseProjectile>,
+    pub arrows_data: Vec<ArrowData>,
 
     pub decorations: Vec<BaseStatic>,
 
@@ -203,6 +205,9 @@ impl World {
 
         self.trees.clear();
         self.trees_data.clear();
+
+        self.arrows.clear();
+        self.arrows_data.clear();
 
         self.selected.clear();
         self.terrain.reset();
@@ -449,13 +454,13 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.tnt_goblins);
 
         writer.write_slice(&self.sheeps);
-        writer.save_slice(&self.sheeps_data);
+        writer.write_slice(&self.sheeps_data);
         writer.save_slice(&self.sheep_behaviour);
 
         writer.write_slice(&self.decorations);
 
         writer.write_slice(&self.structures);
-        writer.save_slice(&self.structures_data);
+        writer.write_slice(&self.structures_data);
         
         writer.write_slice(&self.resources);
         writer.write_slice(&self.resources_data);
@@ -466,6 +471,7 @@ impl SaveAndLoad for World {
         writer.save_slice(&self.trees_data);
 
         writer.write_slice(&self.arrows);
+        writer.write_slice(&self.arrows_data);
 
         writer.write_slice(&self.selected);
 
@@ -491,13 +497,13 @@ impl SaveAndLoad for World {
         let tnt_goblins = reader.read_vec();
 
         let sheeps = reader.read_vec();
-        let sheeps_data = reader.load_vec();
+        let sheeps_data = reader.read_vec();
         let sheep_behaviour = reader.load_vec();
 
         let decorations = reader.read_vec();
 
         let structures = reader.read_vec();
-        let structures_data = reader.load_vec();
+        let structures_data = reader.read_vec();
         
         let resources = reader.read_vec();
         let resources_data = reader.read_vec();
@@ -508,6 +514,7 @@ impl SaveAndLoad for World {
         let trees_data = reader.load_vec();
 
         let arrows = reader.read_vec();
+        let arrows_data = reader.read_vec();
 
         let selected = reader.read_vec();
 
@@ -553,6 +560,7 @@ impl SaveAndLoad for World {
             trees_data,
 
             arrows,
+            arrows_data,
 
             decorations,
 
@@ -600,6 +608,7 @@ impl Default for World {
             trees_data: Vec::with_capacity(16),
 
             arrows: Vec::with_capacity(16),
+            arrows_data: Vec::with_capacity(16),
 
             decorations: Vec::with_capacity(16),
 

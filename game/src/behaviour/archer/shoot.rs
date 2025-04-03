@@ -1,6 +1,6 @@
 use crate::behaviour::BehaviourState;
-use crate::shared::Position;
-use crate::world::{WorldObject, WorldObjectType, BaseProjectile};
+use crate::shared::{Position, pos};
+use crate::world::{WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{ArcherBehaviour, ArcherBehaviourType};
 
@@ -87,8 +87,16 @@ fn moving(game: &mut DemoGameData, archer_index: usize) {
 fn shooting(game: &mut DemoGameData, archer_index: usize) {
     use crate::behaviour::behaviour_shared::elapsed;
 
-    if !aim_position(game, archer_index) {
-        let archer = &mut game.world.archers[archer_index];
+    let target_position = target_position(game, archer_index);
+    let target_life = target_life(game, archer_index);
+    
+    if target_life == 0 {
+        game.world.archers_behaviour[archer_index] = ArcherBehaviour::idle();
+        return;
+    }
+    
+    let archer = &mut game.world.archers[archer_index];
+    if archer.position.distance(target_position) > MAX_SHOOTING_DISTANCE {
         archer.animation = game.assets.animations.archer.idle;
         archer.current_frame = 0;
 
@@ -99,7 +107,7 @@ fn shooting(game: &mut DemoGameData, archer_index: usize) {
         return;
     }
 
-    let animation = aim_animation(game, archer_index);
+    set_aim_animation(game, archer_index);
 
     let archer = &mut game.world.archers[archer_index];
     let behaviour = &mut game.world.archers_behaviour[archer_index];
@@ -107,7 +115,7 @@ fn shooting(game: &mut DemoGameData, archer_index: usize) {
     let animation_time = crate::ANIMATION_INTERVAL * 7.0;
     if archer.current_frame == 7 && elapsed(game.global.time, timestamp, animation_time) {
         params_set_last_timestamp(&mut behaviour.ty, game.global.time);
-        spawn_arrow(game, archer_index, animation);
+        spawn_arrow(game, archer_index);
     }
 }
 
@@ -124,14 +132,40 @@ fn pause(game: &mut DemoGameData, archer_index: usize) {
     }
 }
 
-fn aim_position(game: &mut DemoGameData, archer_index: usize) -> bool {
-    let target_position = target_position(game, archer_index);
-    let archer = &mut game.world.archers[archer_index];
-
-    archer.position.distance(target_position) < MAX_SHOOTING_DISTANCE
-}
-
-fn aim_animation(game: &mut DemoGameData, archer_index: usize) -> ShootingAnimation {
+fn set_aim_animation(game: &mut DemoGameData, archer_index: usize) -> ShootingAnimation {
+    fn select_animation(game: &mut DemoGameData, archer_index: usize) -> ShootingAnimation {
+        let target_position = target_position(game, archer_index);
+        let position = game.world.archers[archer_index].position;
+        let angle = f32::atan2(target_position.y - position.y, target_position.x - position.x);
+        if angle < 0.0 {
+            let frac = -std::f32::consts::FRAC_PI_8;
+            if angle > frac {
+                ShootingAnimation::Right
+            } else if angle > (frac * 3.0) {
+                ShootingAnimation::TopRight
+            } else if angle > (frac * 5.0) {
+                ShootingAnimation::Top
+            } else if angle > (frac * 7.0) {
+                ShootingAnimation::TopLeft
+            } else {
+                ShootingAnimation::Left
+            }
+        } else {
+            let frac = std::f32::consts::FRAC_PI_8;
+            if angle < frac {
+                ShootingAnimation::Right
+            } else if angle < (frac * 3.0) {
+                ShootingAnimation::BottomRight
+            } else if angle < (frac * 5.0) {
+                ShootingAnimation::Bottom
+            } else if angle < (frac * 7.0) {
+                ShootingAnimation::BottomLeft
+            } else {
+                ShootingAnimation::Left
+            }
+        }
+    }
+    
     let target_position = target_position(game, archer_index);
     let animation = select_animation(game, archer_index);
     let archer = &mut game.world.archers[archer_index];
@@ -150,55 +184,66 @@ fn aim_animation(game: &mut DemoGameData, archer_index: usize) -> ShootingAnimat
     animation
 }
 
-fn spawn_arrow(game: &mut DemoGameData, archer_index: usize, animation: ShootingAnimation) {
-    let archer = &mut game.world.archers[archer_index];
+fn spawn_arrow(
+    game: &mut DemoGameData,
+    archer_index: usize,
+) {
+    use crate::world::{BaseProjectile, ArrowData};
+
+    let target_position = target_position(game, archer_index);
+    let target = params(game.world.archers_behaviour[archer_index].ty);
+    let archer = game.world.archers[archer_index];
+
+    let mut position = archer.position;
+    position.y -= archer.aabb().height() / 2.0;
+
+    let rotation = f32::atan2(target_position.y - position.y, target_position.x - position.x);
+    let velocity = pos(f32::cos(rotation) * 5.0, f32::sin(rotation) * 5.0);
+
     let sprite = game.assets.resources.arrow;
 
     game.world.arrows.push(BaseProjectile {
-        position: archer.position,
+        position,
         sprite,
-        rotation: 0.0,
+        rotation,
+        deleted: false,
+    });
+
+    game.world.arrows_data.push(ArrowData {
+        velocity,
+        target_position,
+        target_entity: target,
     });
 }
 
 fn target_position(game: &mut DemoGameData, archer_index: usize) -> Position<f32> {
     let target = params(game.world.archers_behaviour[archer_index].ty);
+    let target_index = target.id as usize;
+
+    let mut base;
+    let height;
     match target.ty {
-        WorldObjectType::Sheep => { game.world.sheeps[target.id as usize].position },
+        WorldObjectType::Sheep => { 
+            let sheep = game.world.sheeps[target_index];
+            base = sheep.position;
+            height = sheep.aabb().height();
+         },
         _ => unsafe { ::std::hint::unreachable_unchecked() }
     }
+
+    base.y -= height * 0.5;
+
+    base
 }
 
-fn select_animation(game: &mut DemoGameData, archer_index: usize) -> ShootingAnimation {
-    let target_position = target_position(game, archer_index);
-    let position = game.world.archers[archer_index].position;
-    let angle = f32::atan2(target_position.y - position.y, target_position.x - position.x);
-    if angle < 0.0 {
-        let frac = -std::f32::consts::FRAC_PI_8;
-        if angle > frac {
-            ShootingAnimation::Right
-        } else if angle > (frac * 3.0) {
-            ShootingAnimation::TopRight
-        } else if angle > (frac * 5.0) {
-            ShootingAnimation::Top
-        } else if angle > (frac * 7.0) {
-            ShootingAnimation::TopLeft
-        } else {
-            ShootingAnimation::Left
-        }
-    } else {
-        let frac = std::f32::consts::FRAC_PI_8;
-        if angle < frac {
-            ShootingAnimation::Left
-        } else if angle < (frac * 3.0) {
-            ShootingAnimation::BottomRight
-        } else if angle < (frac * 5.0) {
-            ShootingAnimation::Bottom
-        } else if angle < (frac * 7.0) {
-            ShootingAnimation::BottomLeft
-        } else {
-            ShootingAnimation::Right
-        }
+fn target_life(game: &mut DemoGameData, archer_index: usize) -> u8 {
+    let target = params(game.world.archers_behaviour[archer_index].ty);
+    let target_index = target.id as usize;
+    match target.ty {
+        WorldObjectType::Sheep => { 
+            game.world.sheeps_data[target_index].life
+         },
+        _ => unsafe { ::std::hint::unreachable_unchecked() }
     }
 }
 

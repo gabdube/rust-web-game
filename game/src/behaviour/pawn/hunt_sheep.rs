@@ -23,7 +23,7 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, sheep: WorldObject) {
     PawnBehaviour::cancel(game, pawn.id, true);
 
     game.world.pawns_behaviour[pawn_index] = PawnBehaviour {
-        ty: PawnBehaviourType::HuntSheep { sheep_id: sheep.id, pause_timestamp: 0.0 },
+        ty: PawnBehaviourType::HuntSheep { sheep_id: sheep.id, last_timestamp: 0.0 },
         state: BehaviourState::Initial,
     };
 }
@@ -76,6 +76,7 @@ fn move_to_sheep(game: &mut DemoGameData, pawn_index: usize) {
         pawn.animation = game.assets.animations.pawn.axe;
         pawn.current_frame = 0;
         behaviour.state = BehaviourState::Running(ATTACK_SHEEP);
+        params_set_last_timestamp(&mut behaviour.ty, game.global.time);
     }
 
     pawn.position = updated_position;
@@ -106,19 +107,11 @@ fn attack_sheep(game: &mut DemoGameData, pawn_index: usize) {
     }
 
     let total_animation_time = crate::ANIMATION_INTERVAL * 6.0;
+    let last_timestamp = params_timestamp(behaviour.ty);
 
-    if pawn.current_frame == 5 && elapsed(game.global.time, sheep_data.last_hit_timestamp, total_animation_time) {
-        sheep_data.life -= u8::min(sheep_data.life, 3);
-        sheep_data.last_hit_timestamp = game.global.time;
-
-        if sheep_data.life == 0 {
-            behaviour.state = BehaviourState::Running(SPAWN_MEAT);
-        } else {
-            world.sheep_behaviour[sheep_index] = SheepBehaviour::escape(WorldObject {
-                id: pawn_index as u32,
-                ty: WorldObjectType::Pawn
-            });
-        }
+    if pawn.current_frame == 5 && elapsed(game.global.time, last_timestamp, total_animation_time) {
+        params_set_last_timestamp(&mut behaviour.ty, game.global.time);
+        crate::behaviour::sheep::strike(&mut game.world, sheep_index, 4);
     }
 }
 
@@ -170,7 +163,7 @@ fn params(value: PawnBehaviourType) -> usize {
 #[inline(always)]
 fn params_timestamp(value: PawnBehaviourType) -> f64 {
     match value {
-        PawnBehaviourType::HuntSheep { pause_timestamp, .. } => pause_timestamp as f64,
+        PawnBehaviourType::HuntSheep { last_timestamp, .. } => last_timestamp as f64,
         _ => unsafe { ::std::hint::unreachable_unchecked()}
     }
 }
@@ -178,7 +171,7 @@ fn params_timestamp(value: PawnBehaviourType) -> f64 {
 #[inline(always)]
 fn params_set_last_timestamp(value: &mut PawnBehaviourType, time: f64) {
     match value {
-        PawnBehaviourType::HuntSheep { pause_timestamp, .. } => *pause_timestamp = time as f32,
+        PawnBehaviourType::HuntSheep { last_timestamp, .. } => *last_timestamp = time as f32,
         _ => unsafe { ::std::hint::unreachable_unchecked() }
     }
 }

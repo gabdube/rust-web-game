@@ -521,14 +521,14 @@ fn render_projectiles(game: &mut DemoGame) {
 
             sprite.size[0] = aabb.width();
             sprite.size[1] = aabb.height();
-            sprite.position[0] = position.x - (sprite.size[0] * 0.5);
-            sprite.position[1] = position.y - (sprite.size[1] * 0.5);
+            sprite.position[0] = position.x;
+            sprite.position[1] = position.y;
             sprite.texcoord_offset[0] = aabb.left;
             sprite.texcoord_offset[1] = aabb.top;
             sprite.texcoord_size[0] = sprite.size[0];
             sprite.texcoord_size[1] = sprite.size[1];
-            sprite.rotation = 0.0; //projectile.rotation;
-            
+            sprite.rotation = projectile.rotation;
+
             output.projectile_sprites_buffer.push(sprite);
         }
     }

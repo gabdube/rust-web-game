@@ -2,6 +2,7 @@
 
 use crate::shared::Position;
 use crate::store::SaveAndLoad;
+use super::WorldObject;
 
 pub const MAX_CASTLE_HP: u8 = 200;
 pub const MAX_TOWER_HP: u8 = 80;
@@ -80,36 +81,15 @@ impl Default for PawnData {
 
 #[derive(Copy, Clone)]
 pub struct SheepData {
-    pub last_hit_timestamp: f64,
     pub anchor_position: Position<f32>,
     pub life: u8,
 }
 
 impl Default for SheepData {
     fn default() -> Self {
-        SheepData { last_hit_timestamp: 0.0, anchor_position: Position::default(), life: 10 }
+        SheepData { anchor_position: Position::default(), life: 10 }
     }
 }
-
-impl SaveAndLoad for SheepData {
-    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        writer.write_f64(self.last_hit_timestamp);
-        writer.write(&self.anchor_position);
-        writer.write_u32(self.life as u32);
-    }
-
-    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let last_hit_timestamp = reader.read_f64();
-        let anchor_position = reader.read();
-        let life = reader.read_u32() as u8;
-        SheepData {
-            last_hit_timestamp,
-            anchor_position,
-            life,
-        }
-    }
-}
-
 
 #[derive(Copy, Clone)]
 pub struct StructureGoldMineData {
@@ -172,68 +152,9 @@ impl Default for StructureGoldMineData {
     }
 }
 
-impl SaveAndLoad for StructureData {
-    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        match self {
-            Self::GoldMine(value) => {
-                writer.write_u32(1);
-                writer.write(&value.miners_ids);
-                writer.write_u32(value.miners_count as u32);
-                writer.write_u32(value.remaining_gold as u32);
-            },
-            Self::Castle(value) => {
-                writer.write_u32(2);
-                writer.write_u32(value.hp as u32);
-                writer.write_u32(value.building as u32);
-                writer.write_u32(value.destroyed as u32);
-            },
-            Self::Tower(value) => {
-                writer.write_u32(3);
-                writer.write_u32(value.hp as u32);
-                writer.write_u32(value.building as u32);
-                writer.write_u32(value.destroyed as u32);
-            },
-            Self::House(value) => {
-                writer.write_u32(4);
-                writer.write_u32(value.hp as u32);
-                writer.write_u32(value.building as u32);
-                writer.write_u32(value.destroyed as u32);
-            },
-        }
-    }
-
-    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let data_id = reader.read_u32();
-        match data_id {
-            1 => {
-                Self::GoldMine(StructureGoldMineData {
-                    miners_ids: reader.read(),
-                    miners_count: reader.read_u32() as u8,
-                    remaining_gold: reader.read_u32() as u8,
-                })
-            },
-            2 => {
-                Self::Castle(StructureCastleData { 
-                    hp: reader.read_u32() as u8,
-                    building:  reader.read_u32() == 1,
-                    destroyed:  reader.read_u32() == 1
-                })
-            },
-            3 => {
-                Self::Tower(StructureTowerData {
-                    hp: reader.read_u32() as u8,
-                    building:  reader.read_u32() == 1,
-                    destroyed:  reader.read_u32() == 1
-                })
-            },
-            4 => {
-                Self::House(StructureHouseData {
-                    hp: reader.read_u32() as u8,
-                    building:  reader.read_u32() == 1,
-                    destroyed:  reader.read_u32() == 1
-                })
-            }
-            _ => panic!("Malformed data")
-        }
-    }
+#[derive(Copy, Clone)]
+pub struct ArrowData {
+    pub velocity: Position<f32>,
+    pub target_position: Position<f32>,
+    pub target_entity: WorldObject
 }

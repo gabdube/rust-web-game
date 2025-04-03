@@ -24,7 +24,10 @@ pub fn init(game: &mut DemoGameData, sheep_index: usize) {
     behaviour.state = BehaviourState::Running(ESCAPING);
 
     match &mut behaviour.ty {
-        SheepBehaviourType::Escaping { angle, .. } => { *angle = f32::to_radians(fastrand::u32(0..360) as f32); },
+        SheepBehaviourType::Escaping { timestamp, angle } => { 
+            *angle = f32::to_radians(fastrand::u32(0..360) as f32);
+            *timestamp = game.global.time;
+        },
         _ => unsafe { ::std::hint::unreachable_unchecked()}
     }
 
@@ -45,7 +48,7 @@ pub fn escaping(game: &mut DemoGameData, sheep_index: usize) {
         return;
     }
 
-    if elapsed(game.global.time, sheep_data.last_hit_timestamp, 500.0) {
+    if elapsed(game.global.time, params_timestamp(behaviour.ty), 500.0) {
         *behaviour = SheepBehaviour::idle();
         return;
     }
@@ -69,6 +72,14 @@ pub fn escaping(game: &mut DemoGameData, sheep_index: usize) {
 fn params_angle(value: SheepBehaviourType) -> f32 {
     match value {
         SheepBehaviourType::Escaping { angle, .. } => angle,
+        _ => unsafe { ::std::hint::unreachable_unchecked()}
+    }
+}
+
+#[inline(always)]
+fn params_timestamp(value: SheepBehaviourType) -> f64 {
+    match value {
+        SheepBehaviourType::Escaping { timestamp, .. } => timestamp,
         _ => unsafe { ::std::hint::unreachable_unchecked()}
     }
 }

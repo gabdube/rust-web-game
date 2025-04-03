@@ -123,11 +123,13 @@ fn create_sheeps(data: &mut DemoGameData) {
     let world = &mut data.world;
     let assets = &data.assets;
 
-    world.create_sheep(pos(650.0, 170.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(690.0, 210.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(620.0, 240.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(590.0, 190.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(700.0, 250.0), &assets.animations.sheep.idle);
+    let y = 200.0;
+
+    world.create_sheep(pos(650.0, y+170.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(690.0, y+210.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(620.0, y+240.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(590.0, y+190.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(700.0, y+250.0), &assets.animations.sheep.idle);
 }
 
 //

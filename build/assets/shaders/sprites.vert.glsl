@@ -33,10 +33,12 @@ void main() {
         in_instance_texcoord.y + in_instance_texcoord.w
     );
 
-    vec4 positions = vec4(view_position, 0.0, 0.0) + in_instance_position;
+    vec2 pos = vec2(
+        view_position.x + (in_instance_position.x + (in_position.x * in_instance_position.z)),
+        view_position.y + (in_instance_position.y + (in_position.y * in_instance_position.w))
+    );
 
-    positions = (positions / vec4(view_size, view_size)) * 2.0;
-    float x = (positions.x - 1.0) + (in_position.x * positions.z);
-    float y = (positions.y - 1.0) + (in_position.y * positions.w);
-    gl_Position = vec4(x, -y, 0.0, 1.0);
+    pos = ((pos / view_size) * 2.0) - 1.0;
+
+    gl_Position = vec4(pos.x, -pos.y, 0.0, 1.0);
 }
