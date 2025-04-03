@@ -85,7 +85,7 @@ pub struct SpriteData {
 /// Memory layout must match `in_instance_position`, `in_instance_texcoord`, `in_instance_data` in `proj_sprites.vert.glsl`
 /// If this struct size change, it must also be updated in `game_interface.ts`
 #[repr(C)]
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct ProjectileSpriteData {
     pub position: [f32; 2],
     pub size: [f32; 2],
@@ -527,7 +527,7 @@ fn render_projectiles(game: &mut DemoGame) {
             sprite.texcoord_offset[1] = aabb.top;
             sprite.texcoord_size[0] = sprite.size[0];
             sprite.texcoord_size[1] = sprite.size[1];
-            sprite.rotation = projectile.rotation;
+            sprite.rotation = 0.0; //projectile.rotation;
             
             output.projectile_sprites_buffer.push(sprite);
         }

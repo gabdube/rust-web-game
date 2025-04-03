@@ -4,7 +4,7 @@ import { DemoGame } from "../build/game/game";
 
 const OUTPUT_INDEX_SIZE: number = 56;  // size_of(OutputIndex)
 const DRAW_UPDATE_SIZE: number = 16;   // size_of(DrawUpdate)
-export const SPRITE_DATA_SIZE: number = 36;       // size_of(SpriteData)
+export const SPRITE_DATA_SIZE: number = 36;       // size_of(SpriteData) && size_of(ProjectileSpriteData)
 const TERRAIN_CHUNK_TEXT_COORD_SIZE: number = 32; // size_of(TerrainChunkTexcoord)
 export const GUI_VERTEX_SIZE: number = 20;        // size_of(GuiVertex)
 
@@ -148,6 +148,13 @@ export class EngineGameInstanceUpdates {
         const sprites_data_end = sprites_data_begin + (SPRITE_DATA_SIZE * instance_count);
         return this.buffer.slice(sprites_data_begin, sprites_data_end);
     } 
+
+    get_projectile_sprites_data(instance_base: number, instance_count: number): ArrayBuffer {
+        const sprites_data_base = this.index.getUint32(OUTPUT_INDEX_PROJ_SPRITE_DATA_OFFSET, true);
+        const sprites_data_begin = sprites_data_base + (SPRITE_DATA_SIZE * instance_base);
+        const sprites_data_end = sprites_data_begin + (SPRITE_DATA_SIZE * instance_count);
+        return this.buffer.slice(sprites_data_begin, sprites_data_end);
+    }
 
     get_terrain_data(chunk_data_offset: number): ArrayBuffer {
         const terrain_data_base = this.index.getUint32(OUTPUT_INDEX_TERRAIN_DATA_OFFSET, true);

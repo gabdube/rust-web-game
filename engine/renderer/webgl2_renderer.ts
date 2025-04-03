@@ -50,6 +50,14 @@ class RendererShaders {
     draw_sprites_view_size: WebGLUniformLocation;
     draw_sprites: WebGLProgram;
 
+    draw_proj_sprites_position_attrloc: number;
+    draw_proj_sprites_instance_position_attrloc: number;
+    draw_proj_sprites_instance_texcoord_attrloc: number;
+    draw_proj_sprites_instance_rotation_attrloc: number;
+    draw_proj_sprites_view_position: WebGLUniformLocation;
+    draw_proj_sprites_view_size: WebGLUniformLocation;
+    draw_proj_sprites: WebGLProgram;
+
     draw_terrain_position_attrloc: number;
     draw_terrain_uv_attrloc: number;
     draw_terrain_view_position: WebGLUniformLocation;
@@ -144,9 +152,6 @@ export class WebGL2Backend {
         ctx.disable(ctx.CULL_FACE);
         ctx.enable(ctx.BLEND);
 
-        // ctx.enable(ctx.DEPTH_TEST)
-        // ctx.depthFunc(ctx.GREATER);
-
         ctx.blendFuncSeparate(ctx.ONE, ctx.ONE_MINUS_SRC_ALPHA, ctx.ONE, ctx.ONE_MINUS_DST_ALPHA);
         ctx.blendEquationSeparate(ctx.FUNC_ADD, ctx.FUNC_ADD);
 
@@ -155,6 +160,9 @@ export class WebGL2Backend {
 
         this.sprite_draw_count = 0;
         this.sprite_draw = [];
+
+        this.projectile_draw_count = 0;
+        this.projectile_draw = [];
 
         this.terrain_chunk_draw_count = 0;
         this.terrain_chunk_draw = [];
@@ -218,6 +226,9 @@ export class WebGL2Backend {
         // Screen size uniforms
         ctx.useProgram(this.shaders.draw_sprites);
         ctx.uniform2f(this.shaders.draw_sprites_view_size, this.canvas.width, this.canvas.height);
+
+        ctx.useProgram(this.shaders.draw_proj_sprites);
+        ctx.uniform2f(this.shaders.draw_proj_sprites_view_size, this.canvas.width, this.canvas.height);
 
         ctx.useProgram(this.shaders.draw_terrain);
         ctx.uniform2f(this.shaders.draw_terrain_view_size, this.canvas.width, this.canvas.height);
@@ -294,10 +305,53 @@ export class WebGL2Backend {
         return vao;
     }
 
+    private create_projectile_sprites_vao(attributes_offset: number): WebGLVertexArrayObject {
+        const ctx = this.ctx;
+        let location: number;
+
+        let vao = this.buffers.sprites_vao[this.buffers.sprite_vao_len];
+        if (!vao) {
+            vao = ctx.createVertexArray();
+            this.buffers.sprites_vao.push(vao);
+        }
+        
+        ctx.bindVertexArray(vao);
+
+        // Vertex data
+        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, this.buffers.sprites_indices);
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_vertex);
+
+        location = this.shaders.draw_proj_sprites_position_attrloc;
+        ctx.enableVertexAttribArray(location);
+        ctx.vertexAttribPointer(location, 2, ctx.FLOAT, false, 8, 0);
+
+        // Instance Data
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_attributes);
+
+        location = this.shaders.draw_proj_sprites_instance_position_attrloc;
+        ctx.enableVertexAttribArray(location);
+        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 36, attributes_offset);
+        ctx.vertexAttribDivisor(location, 1);
+
+        location = this.shaders.draw_proj_sprites_instance_texcoord_attrloc;
+        ctx.enableVertexAttribArray(location);
+        ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 36, attributes_offset+16);
+        ctx.vertexAttribDivisor(location, 1);
+
+        location = this.shaders.draw_proj_sprites_instance_rotation_attrloc;
+        ctx.enableVertexAttribArray(location);
+        ctx.vertexAttribPointer(location, 1, ctx.FLOAT, false, 36, attributes_offset+32);
+        ctx.vertexAttribDivisor(location, 1);
+
+        ctx.bindVertexArray(null);
+
+        return vao;
+    }
+
     /// Updates the sprites data and queue a drawing command to render them
     private update_sprites(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) {
         const ctx = this.ctx;
-        
+
         let texture = this.textures[draw_update.texture_id];
         if (!texture) {
             texture = this.create_renderer_texture(draw_update.texture_id);
@@ -317,7 +371,7 @@ export class WebGL2Backend {
 
         this.buffers.sprites_attributes_len += draw_update.instance_count;
         this.buffers.sprite_vao_len += 1;
-        
+
         const count = this.sprite_draw_count;
         this.sprite_draw_count += 1;
 
@@ -337,12 +391,42 @@ export class WebGL2Backend {
 
     private update_projectile_sprites(updates: EngineGameInstanceUpdates, draw_update: EngineGameDrawUpdate) {
         const ctx = this.ctx;
-        
+
         let texture = this.textures[draw_update.texture_id];
         if (!texture) {
             texture = this.create_renderer_texture(draw_update.texture_id);
         }
 
+        if (this.buffers.sprites_attributes_len + draw_update.instance_count > this.buffers.sprites_attributes_capacity) {
+            console.log("TODO: realloc sprites attributes")
+            return;
+        }
+
+        const attributes_offset = SPRITE_DATA_SIZE * this.buffers.sprites_attributes_len;
+        const vao = this.create_projectile_sprites_vao(attributes_offset);
+        const buffer_data = updates.get_projectile_sprites_data(draw_update.instance_base, draw_update.instance_count);
+
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_attributes);
+        ctx.bufferSubData(ctx.ARRAY_BUFFER, attributes_offset, buffer_data);
+
+        this.buffers.sprites_attributes_len += draw_update.instance_count;
+        this.buffers.sprite_vao_len += 1;
+
+        const count = this.projectile_draw_count;
+        this.projectile_draw_count += 1;
+
+        let draw: DrawCommand = this.projectile_draw[count];
+        if (!draw) {
+            draw = new DrawCommand();
+            this.projectile_draw[count] = draw;
+        }
+
+        DrawCommand.draw_sprites(
+            draw,
+            vao,
+            draw_update.instance_count,
+            texture.handle
+        );
     }
 
     private create_terrain_chunk_buffer(): TerrainChunkData {
@@ -446,6 +530,9 @@ export class WebGL2Backend {
         ctx.useProgram(this.shaders.draw_sprites);
         ctx.uniform2f(this.shaders.draw_sprites_view_position, x, y);
 
+        ctx.useProgram(this.shaders.draw_proj_sprites);
+        ctx.uniform2f(this.shaders.draw_proj_sprites_view_position, x, y);
+
         ctx.useProgram(this.shaders.draw_terrain);
         ctx.uniform2f(this.shaders.draw_terrain_view_position, x, y);
     }
@@ -523,6 +610,27 @@ export class WebGL2Backend {
         }
     }
 
+    private render_projectiles() {
+        const SPRITE_INDEX_COUNT: number = 6;
+        const ctx = this.ctx;
+
+        ctx.useProgram(this.shaders.draw_proj_sprites);
+
+        for (let i = 0; i < this.projectile_draw_count; i += 1) {
+            const draw = this.projectile_draw[i];
+            const vao = draw.resource0 as WebGLVertexArrayObject;
+            const instance_count = draw.resource1 as number;
+            const texture = draw.resource2 as WebGLTexture;
+
+            ctx.activeTexture(ctx.TEXTURE0);
+            ctx.bindTexture(ctx.TEXTURE_2D, texture);
+    
+            ctx.bindVertexArray(vao);
+    
+            ctx.drawElementsInstanced(ctx.TRIANGLES, SPRITE_INDEX_COUNT, ctx.UNSIGNED_SHORT, 0, instance_count);
+        }
+    }
+
     private render_terrain_chunks() {
         const ctx = this.ctx;
 
@@ -572,6 +680,7 @@ export class WebGL2Backend {
 
         this.render_terrain_chunks();
         this.render_sprites();
+        this.render_projectiles();
         this.render_gui();
 
         ctx.bindFramebuffer(ctx.READ_FRAMEBUFFER, this.framebuffer);
@@ -681,31 +790,31 @@ export class WebGL2Backend {
             return false;
         }
 
-        // const depth = ctx.createRenderbuffer();
-        // if (!depth) {
-        //     set_last_error("Failed to create the renderer depth render buffer");
-        //     return false;
-        // }
-
         ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, framebuffer);
 
         ctx.bindRenderbuffer(ctx.RENDERBUFFER, color);
         ctx.renderbufferStorageMultisample(ctx.RENDERBUFFER, this.get_samples(), ctx.RGBA8, canvas.width, canvas.height); 
         ctx.framebufferRenderbuffer(ctx.DRAW_FRAMEBUFFER, ctx.COLOR_ATTACHMENT0, ctx.RENDERBUFFER, color);
 
-        // ctx.bindRenderbuffer(ctx.RENDERBUFFER, depth);
-        // ctx.renderbufferStorageMultisample(ctx.RENDERBUFFER, this.get_samples(), ctx.DEPTH24_STENCIL8, canvas.width, canvas.height);
-        // ctx.framebufferRenderbuffer(ctx.DRAW_FRAMEBUFFER, ctx.DEPTH_STENCIL_ATTACHMENT, ctx.RENDERBUFFER, depth);
-
         this.framebuffer = framebuffer;
         this.color = color;
-        //this.depth = depth;
 
         return true;
     }
 
     private get_samples(): number {
         let max_samples = this.ctx.getParameter(this.ctx.MAX_SAMPLES);
+
+        function is_mobile() {
+            let check = false;
+            (function(a){if(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0,4))) check = true;})(navigator.userAgent||navigator.vendor||(window as any).opera);
+            return check;
+        }
+
+        // Don't use msaa on a mobile device
+        if (is_mobile()) {
+            max_samples = 1;
+        }
 
         // We don't need more than 4x msaa
         if (max_samples > 4) {
@@ -747,6 +856,34 @@ export class WebGL2Backend {
         shaders.draw_sprites_view_position = ctx.getUniformLocation(sprites_program, "view_position") as any;
         shaders.draw_sprites_view_size = ctx.getUniformLocation(sprites_program, "view_size") as any;
         shaders.draw_sprites = sprites_program;
+
+        // Projectile sprites
+        const proj_sprites_shader_source = assets.shaders.get("projectile_sprites");
+        if (!proj_sprites_shader_source) {
+            set_last_error("Failed to find projectile sprites shader source in assets");
+            return false;
+        }
+
+        const proj_sprites_vert = create_shader(ctx, ctx.VERTEX_SHADER, proj_sprites_shader_source.vertex);
+        const proj_sprites_frag = create_shader(ctx, ctx.FRAGMENT_SHADER, proj_sprites_shader_source.fragment);
+        if (!proj_sprites_vert || !proj_sprites_frag) {
+            set_last_error("Failed to create projectile sprites shaders");
+            return false;
+        }
+
+        const proj_sprites_program = create_program(ctx, proj_sprites_vert, proj_sprites_frag);
+        if (!proj_sprites_program) {
+            set_last_error("Failed to compile projectile sprites shaders");
+            return false;
+        }
+
+        shaders.draw_proj_sprites_position_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_position");
+        shaders.draw_proj_sprites_instance_position_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_instance_position");
+        shaders.draw_proj_sprites_instance_texcoord_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_instance_texcoord");
+        shaders.draw_proj_sprites_instance_rotation_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_instance_rotation");
+        shaders.draw_proj_sprites_view_position = ctx.getUniformLocation(proj_sprites_program, "view_position") as any;
+        shaders.draw_proj_sprites_view_size = ctx.getUniformLocation(proj_sprites_program, "view_size") as any;
+        shaders.draw_proj_sprites = proj_sprites_program;
 
         // Terrain
         const terrain_shader_source = assets.shaders.get("terrain");
@@ -806,6 +943,8 @@ export class WebGL2Backend {
         // Cleanup
         ctx.deleteShader(sprites_vert);
         ctx.deleteShader(sprites_frag);
+        ctx.deleteShader(proj_sprites_vert);
+        ctx.deleteShader(proj_sprites_frag);
         ctx.deleteShader(terrain_vert);
         ctx.deleteShader(terrain_frag);
         ctx.deleteShader(gui_vert);
@@ -994,9 +1133,14 @@ export class WebGL2Backend {
 
     private setup_uniforms() {
         const ctx = this.ctx;
+
         ctx.useProgram(this.shaders.draw_sprites);
         ctx.uniform2f(this.shaders.draw_sprites_view_position, 0.0, 0.0);
         ctx.uniform2f(this.shaders.draw_sprites_view_size, this.canvas.width, this.canvas.height);
+
+        ctx.useProgram(this.shaders.draw_proj_sprites);
+        ctx.uniform2f(this.shaders.draw_proj_sprites_view_position, 0.0, 0.0);
+        ctx.uniform2f(this.shaders.draw_proj_sprites_view_size, this.canvas.width, this.canvas.height);
 
         ctx.useProgram(this.shaders.draw_terrain);
         ctx.uniform2f(this.shaders.draw_terrain_view_position, 0.0, 0.0);
