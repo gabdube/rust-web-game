@@ -1,4 +1,4 @@
-use crate::shared::AABB;
+use crate::shared::{Position, AABB};
 use crate::world::{World, WorldObject, WorldObjectType};
 use crate::DemoGame;
 
@@ -15,15 +15,17 @@ pub(super) fn update_arrow(game: &mut DemoGame) {
             continue;
         }
 
-        let position = world.arrows[i].position;
         let data = world.arrows_data[i];
+        let position = world.arrows[i].position;
 
-        let d1 = position.distance(data.target_position);
-        if d1 < 30.0 {
-            arrow_strike(world, data.target_entity);
-            world.arrows[i].sprite = AABB::default();
-            world.arrows[i].deleted = true;
-        } 
+        let tip_position = position + data.arrow_tip_offset;
+        let d = tip_position.distance(data.target_position);
+        if d < 10.0 || d > 500.0 {
+            if arrow_strike(world, tip_position, data.target_entity) || d > 500.0 {
+                world.arrows[i].sprite = AABB::default();
+                world.arrows[i].deleted = true;
+            }
+        }
 
         world.arrows[i].position = position + data.velocity;
 
@@ -35,14 +37,22 @@ pub(super) fn update_arrow(game: &mut DemoGame) {
     }
 }
 
-fn arrow_strike(world: &mut World, target: WorldObject) {
+fn arrow_strike(world: &mut World, arrow_position: Position<f32>, target: WorldObject) -> bool {
+    let mut touched = false;
     let index = target.id as usize;
+
     match target.ty {
         WorldObjectType::Sheep => {
-            super::sheep::strike(world, index, 5);
+            let aabb = world.sheeps[index].aabb();
+            if aabb.point_inside(arrow_position) {
+                super::sheep::strike(world, index, 5);
+                touched = true;
+            }
         }
         _ => {},
     }
+
+    touched
 }
 
 fn clean_arrow(game: &mut DemoGame) {

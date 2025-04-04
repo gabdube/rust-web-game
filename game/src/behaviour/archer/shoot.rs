@@ -1,5 +1,5 @@
 use crate::behaviour::BehaviourState;
-use crate::shared::{Position, pos};
+use crate::shared::{Position, AABB, pos};
 use crate::world::{WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{ArcherBehaviour, ArcherBehaviourType};
@@ -190,6 +190,16 @@ fn spawn_arrow(
 ) {
     use crate::world::{BaseProjectile, ArrowData};
 
+    fn compute_arrow_tip_offset(sprite: &AABB, rotation: f32) -> Position<f32> {
+        let x = sprite.width() / 2.0;
+        let y = sprite.height() / 2.0;
+
+        pos(
+            (x * f32::cos(rotation)) - (y * f32::sin(rotation)),
+            (x * f32::sin(rotation)) - (y * f32::cos(rotation)),
+        )
+    }
+
     let target_position = target_position(game, archer_index);
     let target = params(game.world.archers_behaviour[archer_index].ty);
     let archer = game.world.archers[archer_index];
@@ -201,6 +211,7 @@ fn spawn_arrow(
     let velocity = pos(f32::cos(rotation) * 5.0, f32::sin(rotation) * 5.0);
 
     let sprite = game.assets.resources.arrow;
+    let arrow_tip_offset = compute_arrow_tip_offset(&sprite, rotation);
 
     game.world.arrows.push(BaseProjectile {
         position,
@@ -213,6 +224,7 @@ fn spawn_arrow(
         velocity,
         target_position,
         target_entity: target,
+        arrow_tip_offset,
     });
 }
 

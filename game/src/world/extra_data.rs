@@ -156,5 +156,6 @@ impl Default for StructureGoldMineData {
 pub struct ArrowData {
     pub velocity: Position<f32>,
     pub target_position: Position<f32>,
-    pub target_entity: WorldObject
+    pub target_entity: WorldObject,
+    pub arrow_tip_offset: Position<f32>,
 }
