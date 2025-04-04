@@ -1,14 +1,21 @@
 use crate::behaviour::BehaviourState;
 use crate::shared::Position;
-use crate::world::{WorldObject, WorldObjectType};
+use crate::world::{BaseAnimated, PawnData, WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{PawnBehaviour, PawnBehaviourType};
 
 const MOVING: u8 = 0;
 
+struct PawnMoveParams {
+    pawn: BaseAnimated,
+    pawn_data: PawnData,
+    target_position: Position<f32>,
+    new_behaviour: Option<PawnBehaviour>,
+    state: BehaviourState,
+}
+
 pub fn new(game: &mut DemoGameData, pawn: WorldObject, target_position: Position<f32>) {
     let pawn_index = pawn.id as usize;
-
     if pawn.ty != WorldObjectType::Pawn || pawn_index >= game.world.pawns.len() {
         return;
     }
@@ -22,57 +29,89 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, target_position: Position
 }
 
 pub fn process(game: &mut DemoGameData, pawn_index: usize) {
-    let state = game.world.pawns_behaviour[pawn_index].state;
-    match state {
-        BehaviourState::Initial => init(game, pawn_index),
-        BehaviourState::Running(MOVING) => moving(game, pawn_index),
+    let mut params = read_params(game, pawn_index);
+    match params.state {
+        BehaviourState::Initial => init(game, &mut params),
+        BehaviourState::Running(MOVING) => moving(game, &mut params),
         _ => {},
     }
+
+    write_params(game, pawn_index, params);
 }
 
-fn init(game: &mut DemoGameData, pawn_index: usize) {
-    let pawn = &mut game.world.pawns[pawn_index];
-    let pawn_data = &game.world.pawns_data[pawn_index];
-    let behaviour = &mut game.world.pawns_behaviour[pawn_index];
-
-    pawn.animation = match pawn_data.grabbed_resource() {
+fn init(game: &mut DemoGameData, params: &mut PawnMoveParams) {
+    params.state = BehaviourState::Running(MOVING);
+    params.pawn.animation = match params.pawn_data.grabbed_resource() {
         Some(_) => game.assets.animations.pawn.walk_hold,
         None => game.assets.animations.pawn.walk
     };
-
-    behaviour.state = BehaviourState::Running(MOVING);
 }
 
-fn moving(game: &mut DemoGameData, pawn_index: usize) {
+fn moving(game: &mut DemoGameData, params: &mut PawnMoveParams) {
     use crate::behaviour::behaviour_shared::move_to;
-    
-    let behaviour = &mut game.world.pawns_behaviour[pawn_index];
-    let pawn = &mut game.world.pawns[pawn_index];
-    let pawn_data = &mut game.world.pawns_data[pawn_index];
-    let target_position = params(behaviour.ty);
-   
-    let current_position = pawn.position;
-    let updated_position = move_to(current_position, target_position, game.global.frame_delta);
-    if updated_position == target_position {
-        *behaviour = PawnBehaviour::idle();
+    let updated_position = move_to(params.pawn.position, params.target_position, game.global.frame_delta);
+    if updated_position == params.target_position {
+        params.new_behaviour = Some(PawnBehaviour::idle());
     } else {
-        pawn.flipped = current_position.x > target_position.x;
+        params.pawn.flipped = params.pawn.position.x > params.target_position.x;
     }
 
-    if let Some(resource_index) = pawn_data.grabbed_resource() {
+    if let Some(resource_index) = params.pawn_data.grabbed_resource() {
         let resource = &mut game.world.resources[resource_index];
-        resource.position = pawn.position;
+        resource.position = params.pawn.position;
         resource.position.y -= 60.0;
     }
 
-    pawn.position = updated_position;
+    params.pawn.position = updated_position;
 }
 
+fn read_params(game: &mut DemoGameData, pawn_index: usize) -> PawnMoveParams {
+    let pawn = game.world.pawns.get(pawn_index);
+    let pawn_data = game.world.pawns_data.get(pawn_index);
+    let behaviour = game.world.pawns_behaviour.get(pawn_index);
 
-#[inline(always)]
-fn params(value: PawnBehaviourType) -> Position<f32> {
-    match value {
-        PawnBehaviourType::MoveTo { target_position } => target_position,
-        _ => unsafe { ::std::hint::unreachable_unchecked()}
+    match (pawn, pawn_data, behaviour) {
+        (Some(pawn), Some(pawn_data), Some(behaviour)) => {
+            let target_position = match behaviour.ty {
+                PawnBehaviourType::MoveTo { target_position } => target_position,
+                _ => unsafe { ::std::hint::unreachable_unchecked()}
+            };
+
+            PawnMoveParams {
+                pawn: *pawn,
+                pawn_data: *pawn_data,
+                target_position,
+                new_behaviour: None,
+                state: behaviour.state
+            }
+        },
+        _  => {
+            unsafe { ::std::hint::unreachable_unchecked(); }
+        }
+    }
+}
+
+fn write_params(game: &mut DemoGameData, pawn_index: usize, params: PawnMoveParams) {
+    let pawn = game.world.pawns.get_mut(pawn_index);
+    let pawn_data = game.world.pawns_data.get_mut(pawn_index);
+    let behaviour = game.world.pawns_behaviour.get_mut(pawn_index);
+
+    match (pawn, pawn_data, behaviour) {
+        (Some(pawn), Some(pawn_data), Some(behaviour)) => {
+            *pawn = params.pawn;
+            *pawn_data = params.pawn_data;
+
+            match params.new_behaviour {
+                Some(new_behaviour) => {
+                    *behaviour = new_behaviour;
+                },
+                None => {
+                    behaviour.state = params.state;
+                }
+            }
+        },
+        _ => {
+            unsafe { ::std::hint::unreachable_unchecked(); }
+        }
     }
 }

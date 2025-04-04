@@ -4,7 +4,7 @@ pub mod escaping;
 
 use crate::behaviour::BehaviourState;
 use crate::shared::Position;
-use crate::world::World;
+use crate::DemoGameData;
 
 
 #[derive(Copy, Clone)]
@@ -46,23 +46,37 @@ impl SheepBehaviour {
 
 }
 
-pub fn strike(world: &mut World, sheep_index: usize, damage: u8) {
-    let sheep_data = &mut world.sheeps_data[sheep_index];
+pub fn strike(data: &mut DemoGameData, sheep_index: usize, damage: u8) {
+    let sheep_data = &mut data.world.sheeps_data[sheep_index];
     sheep_data.life -= u8::min(sheep_data.life, damage);
 
     if sheep_data.life == 0 {
-        world.sheep_behaviour[sheep_index] = SheepBehaviour::dead();
-        // TODO: Spawn meat
+        data.world.sheep_behaviour[sheep_index] = SheepBehaviour::dead();
+        spawn_meat(data, sheep_index);
     } else {
-        world.sheep_behaviour[sheep_index] = SheepBehaviour::escaping();
+        data.world.sheep_behaviour[sheep_index] = SheepBehaviour::escaping();
     }
 }
 
-pub fn dead(world: &mut World, sheep_index: usize) {
-    let behaviour = &mut world.sheep_behaviour[sheep_index];
+fn spawn_meat(data: &mut DemoGameData, sheep_index: usize) {
+    // Spawns three food resources around the sheep
+    let spawn_pos = data.world.sheeps[sheep_index].position;
+    let mut position = spawn_pos;
+    let mut angle = 0.0;
+    for _ in 0..3 {
+        angle += f32::to_radians(fastrand::u8(120..180) as f32);
+        position.x = f32::ceil(spawn_pos.x + f32::cos(angle) * 64.0);
+        position.y = f32::ceil(spawn_pos.y + f32::sin(angle) * 64.0);
+        crate::behaviour::spawn_resources::spawn_food(data, position);
+    }
+}
+
+
+pub fn dead(data: &mut DemoGameData, sheep_index: usize) {
+    let behaviour = &mut data.world.sheep_behaviour[sheep_index];
     if let BehaviourState::Initial = behaviour.state {
-        world.sheeps_data[sheep_index].life = 0;
-        world.sheeps[sheep_index].delete();
+        data.world.sheeps_data[sheep_index].life = 0;
+        data.world.sheeps[sheep_index].delete();
         behaviour.state = BehaviourState::Running(0);
     }
 }

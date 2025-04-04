@@ -1,11 +1,10 @@
-use crate::behaviour::{BehaviourState, sheep::SheepBehaviour};
+use crate::behaviour::BehaviourState;
 use crate::world::{WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{PawnBehaviour, PawnBehaviourType};
 
 const MOVE_TO_SHEEP: u8 = 0;
 const ATTACK_SHEEP: u8 = 1;
-const SPAWN_MEAT: u8 = 2;
 const PAUSE: u8 = 3;
 
 pub fn new(game: &mut DemoGameData, pawn: WorldObject, sheep: WorldObject) {
@@ -35,7 +34,6 @@ pub fn process(game: &mut DemoGameData, pawn_index: usize) {
         BehaviourState::Initial => init(game, pawn_index),
         BehaviourState::Running(MOVE_TO_SHEEP) => move_to_sheep(game, pawn_index),
         BehaviourState::Running(ATTACK_SHEEP) => attack_sheep(game, pawn_index),
-        BehaviourState::Running(SPAWN_MEAT) => spawn_meat(game, pawn_index),
         BehaviourState::Running(PAUSE) => pause(game, pawn_index),
         _ => {}
     }
@@ -83,10 +81,10 @@ fn move_to_sheep(game: &mut DemoGameData, pawn_index: usize) {
     pawn.flipped = pawn.position.x > sheep.position.x;
 }
 
-fn attack_sheep(game: &mut DemoGameData, pawn_index: usize) {
+fn attack_sheep(data: &mut DemoGameData, pawn_index: usize) {
     use crate::behaviour::behaviour_shared::elapsed;
 
-    let world = &mut game.world;
+    let world = &mut data.world;
     let pawn = &mut world.pawns[pawn_index];
     let behaviour = &mut world.pawns_behaviour[pawn_index];
 
@@ -100,42 +98,17 @@ fn attack_sheep(game: &mut DemoGameData, pawn_index: usize) {
     }
 
     if sheep.position.distance(pawn.position) > 65.0 {
-        pawn.animation = game.assets.animations.pawn.idle;
-        params_set_last_timestamp(&mut behaviour.ty, game.global.time);
+        pawn.animation = data.assets.animations.pawn.idle;
+        params_set_last_timestamp(&mut behaviour.ty, data.global.time);
         behaviour.state = BehaviourState::Running(PAUSE);
         return;
     }
 
-    let total_animation_time = crate::ANIMATION_INTERVAL * 6.0;
     let last_timestamp = params_timestamp(behaviour.ty);
 
-    if pawn.current_frame == 5 && elapsed(game.global.time, last_timestamp, total_animation_time) {
-        params_set_last_timestamp(&mut behaviour.ty, game.global.time);
-        crate::behaviour::sheep::strike(&mut game.world, sheep_index, 4);
-    }
-}
-
-fn spawn_meat(game: &mut DemoGameData, pawn_index: usize) {
-    let world = &mut game.world;
-    let behaviour = &mut world.pawns_behaviour[pawn_index];
-
-    let sheep_index = params(behaviour.ty);
-    let sheep = &mut world.sheeps[sheep_index];
-    let sheep_behaviour = &mut world.sheep_behaviour[sheep_index];
- 
-    *sheep_behaviour = SheepBehaviour::dead();
-    *behaviour = PawnBehaviour::idle();
-
-    // Spawns three food resources around the sheep
-    let spawn_pos = sheep.position;
-    let mut position = spawn_pos;
-    let mut angle = 0.0;
-    for _ in 0..3 {
-        angle += f32::to_radians(fastrand::u8(120..180) as f32);
-        position.x = f32::ceil(spawn_pos.x + f32::cos(angle) * 64.0);
-        position.y = f32::ceil(spawn_pos.y + f32::sin(angle) * 64.0);
-
-        crate::behaviour::spawn_resources::spawn_food(game, position);
+    if pawn.current_frame == 5 && elapsed(data.global.time, last_timestamp, 300.0) {
+        params_set_last_timestamp(&mut behaviour.ty, data.global.time);
+        crate::behaviour::sheep::strike(data, sheep_index, 4);
     }
 }
 

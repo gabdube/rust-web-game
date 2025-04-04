@@ -92,7 +92,7 @@ fn run_sheep_behaviour(game: &mut DemoGame) {
     while index < data.world.sheeps.len() {
         let behaviour_type = data.world.sheep_behaviour[index].ty;
         match behaviour_type {
-            SheepBehaviourType::Dead => sheep::dead(&mut data.world, index),
+            SheepBehaviourType::Dead => sheep::dead(data, index),
             SheepBehaviourType::Idle { .. } => sheep::idle::process(data, index),
             SheepBehaviourType::Escaping { .. } => sheep::escaping::process(data, index),
             SheepBehaviourType::Moving { .. } => sheep::sheep_move::process(data, index),
