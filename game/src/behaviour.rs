@@ -95,7 +95,7 @@ fn run_sheep_behaviour(game: &mut DemoGame) {
             SheepBehaviourType::Dead => sheep::dead(data, index),
             SheepBehaviourType::Idle { .. } => sheep::idle::process(data, index),
             SheepBehaviourType::Escaping { .. } => sheep::escaping::process(data, index),
-            SheepBehaviourType::Moving { .. } => sheep::sheep_move::process(data, index),
+            SheepBehaviourType::MoveTo { .. } => sheep::sheep_move::process(data, index),
         }
 
         index += 1;

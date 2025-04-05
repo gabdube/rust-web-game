@@ -210,13 +210,15 @@ fn write_tilemap_image(state: &mut AssetsState) -> Result<(), Box<dyn ::std::err
 fn write_tilemap_csv(state: &mut AssetsState) -> Result<(), Box<dyn ::std::error::Error>> {
     use std::io::Write;
 
+    const PADDING: u32 = 1;
+
     let default_buffer_size = 2000;
     let mut csv_out = String::with_capacity(default_buffer_size);
 
     for (i, name) in state.sprite_names.iter().enumerate() {
         let [left, top, right, bottom] = state.sprites_dst[i].splat();
         let sprite_count = state.sprites_data[i].sprite_count();
-        csv_out.push_str(&format!("{};{};{};{};{};{};\n", name, sprite_count, left, top, right, bottom));
+        csv_out.push_str(&format!("{};{};{};{};{};{};\n", name, sprite_count, left+PADDING, top+PADDING, right-PADDING, bottom-PADDING));
     }
 
     let out_path = format!("{DST_ROOT}{DST_NAME_CSV}");

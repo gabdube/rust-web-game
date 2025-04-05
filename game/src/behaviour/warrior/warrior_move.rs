@@ -1,10 +1,17 @@
 use crate::behaviour::BehaviourState;
 use crate::shared::Position;
-use crate::world::{WorldObject, WorldObjectType};
+use crate::world::{BaseAnimated, WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{WarriorBehaviour, WarriorBehaviourType};
 
 const MOVING: u8 = 0;
+
+pub struct WarriorMoveParams {
+    warrior: BaseAnimated,
+    target_position: Position<f32>,
+    new_behaviour: Option<WarriorBehaviour>,
+    state: BehaviourState,
+}
 
 pub fn new(game: &mut DemoGameData, warrior: WorldObject, target_position: Position<f32>) {
     let warrior_index = warrior.id as usize;
@@ -20,43 +27,58 @@ pub fn new(game: &mut DemoGameData, warrior: WorldObject, target_position: Posit
 }
 
 pub fn process(game: &mut DemoGameData, warrior_index: usize) {
-    let state = game.world.warriors_behaviour[warrior_index].state;
-    match state {
-        BehaviourState::Initial => init(game, warrior_index),
-        BehaviourState::Running(MOVING) => moving(game, warrior_index),
+    let mut params = read_params(game, warrior_index);
+    match params.state {
+        BehaviourState::Initial => init(game, &mut params),
+        BehaviourState::Running(MOVING) => moving(game, &mut params),
         _ => {},
     }
+
+    write_params(game, warrior_index, &params);
 }
 
-fn init(game: &mut DemoGameData, warrior_index: usize) {
-    let warrior = &mut game.world.warriors[warrior_index];
-    let behaviour = &mut game.world.warriors_behaviour[warrior_index];
-    warrior.animation = game.assets.animations.warrior.walk;
-    behaviour.state = BehaviourState::Running(MOVING);
+fn init(game: &DemoGameData, params: &mut WarriorMoveParams) {
+    params.warrior.animation = game.assets.animations.warrior.walk;
+    params.state = BehaviourState::Running(MOVING);
 }
 
-fn moving(game: &mut DemoGameData, warrior_index: usize) {
+fn moving(game: &DemoGameData, params: &mut WarriorMoveParams) {
     use crate::behaviour::behaviour_shared::move_to;
-    
-    let behaviour = &mut game.world.warriors_behaviour[warrior_index];
-    let warrior = &mut game.world.warriors[warrior_index];
-    let target_position = params(behaviour.ty);
-   
-    let current_position = warrior.position;
-    let updated_position = move_to(current_position, target_position, game.global.frame_delta);
-    if updated_position == target_position {
-        *behaviour = WarriorBehaviour::idle();
+
+    let updated_position = move_to(params.warrior.position, params.target_position, game.global.frame_delta);
+    if updated_position == params.target_position {
+        params.new_behaviour = Some(WarriorBehaviour::idle());
     } else {
-        warrior.flipped = current_position.x > target_position.x;
+        params.warrior.flipped = params.warrior.position.x > params.target_position.x;
     }
 
-    warrior.position = updated_position;
+    params.warrior.position = updated_position;
 }
 
-#[inline(always)]
-fn params(value: WarriorBehaviourType) -> Position<f32> {
-    match value {
+fn read_params(game: &DemoGameData, warrior_index: usize) -> WarriorMoveParams {
+    let warrior = unsafe { game.world.warriors.get_unchecked(warrior_index) };
+    let warrior_behaviour = unsafe { game.world.warriors_behaviour.get_unchecked(warrior_index) };
+    let target_position = match warrior_behaviour.ty {
         WarriorBehaviourType::MoveTo { target_position } => target_position,
-        _ => unsafe { ::std::hint::unreachable_unchecked()}
+        _ => unsafe { ::std::hint::unreachable_unchecked(); }
+    };
+
+    WarriorMoveParams {
+        warrior: *warrior,
+        target_position,
+        new_behaviour: None,
+        state: warrior_behaviour.state
+    }
+}
+
+fn write_params(game: &mut DemoGameData, warrior_index: usize, params: &WarriorMoveParams) {
+    let warrior = unsafe { game.world.warriors.get_unchecked_mut(warrior_index) };
+    let warrior_behaviour = unsafe { game.world.warriors_behaviour.get_unchecked_mut(warrior_index) };
+
+    *warrior = params.warrior;
+
+    match params.new_behaviour {
+        Some(new_behaviour) => { *warrior_behaviour = new_behaviour; }
+        None => { warrior_behaviour.state = params.state; }
     }
 }

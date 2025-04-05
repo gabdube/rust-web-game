@@ -11,7 +11,7 @@ use crate::DemoGameData;
 pub enum SheepBehaviourType {
     Dead,
     Idle { time: f64 },
-    Moving { target_position: Position<f32> },
+    MoveTo { target_position: Position<f32> },
     Escaping { target_position: Position<f32> },
 }
 
@@ -105,7 +105,7 @@ impl crate::store::SaveAndLoad for SheepBehaviourType {
                 writer.write_u32(1);
                 writer.write_f64(*time);
             },
-            Self::Moving { target_position } => {
+            Self::MoveTo { target_position } => {
                 writer.write_u32(2);
                 writer.write(target_position);
             },
@@ -120,7 +120,7 @@ impl crate::store::SaveAndLoad for SheepBehaviourType {
         let id = reader.read_u32();
         match id {
             1 => Self::Idle { time: reader.read_f64() },
-            2 => Self::Moving { target_position: reader.read() },
+            2 => Self::MoveTo { target_position: reader.read() },
             3 => Self::Escaping { target_position: reader.read() },
             _ => Self::Dead
         }

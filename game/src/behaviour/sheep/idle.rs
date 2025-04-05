@@ -57,58 +57,44 @@ fn idle(game: &DemoGameData, params: &mut SheepIdleParams) {
         target_position.x += fastrand::i16(-100..100) as f32;
         target_position.y += fastrand::i16(-100..100) as f32;
         params.new_behaviour = Some(SheepBehaviour {
-            ty: SheepBehaviourType::Moving { target_position },
+            ty: SheepBehaviourType::MoveTo { target_position },
             state: BehaviourState::Initial
         });
     }
 }
 
 fn read_params(game: &DemoGameData, sheep_index: usize) -> SheepIdleParams {
-    let sheep = game.world.sheeps.get(sheep_index);
-    let sheep_data = game.world.sheeps_data.get(sheep_index);
-    let sheep_behaviour = game.world.sheep_behaviour.get(sheep_index);
+    let sheep = unsafe { game.world.sheeps.get_unchecked(sheep_index) };
+    let sheep_data = unsafe { game.world.sheeps_data.get_unchecked(sheep_index) };
+    let sheep_behaviour = unsafe { game.world.sheep_behaviour.get_unchecked(sheep_index) };
 
-    match (sheep, sheep_data, sheep_behaviour) {
-        (Some(sheep), Some(sheep_data), Some(sheep_behaviour)) => {
-            let time = match sheep_behaviour.ty {
-                SheepBehaviourType::Idle { time } => time,
-                _ => unsafe { ::std::hint::unreachable_unchecked(); }
-            };
+    let time = match sheep_behaviour.ty {
+        SheepBehaviourType::Idle { time } => time,
+        _ => unsafe { ::std::hint::unreachable_unchecked(); }
+    };
 
-            SheepIdleParams {
-                sheep: *sheep,
-                sheep_data: *sheep_data,
-                time,
-                new_behaviour: None,
-                state: sheep_behaviour.state
-            }
-        },
-        _ => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
-        }
+    SheepIdleParams {
+        sheep: *sheep,
+        sheep_data: *sheep_data,
+        time,
+        new_behaviour: None,
+        state: sheep_behaviour.state
     }
 }
 
 fn write_params(game: &mut DemoGameData, sheep_index: usize, params: &SheepIdleParams) {
-    let sheep = game.world.sheeps.get_mut(sheep_index);
-    let sheep_data = game.world.sheeps_data.get_mut(sheep_index);
-    let sheep_behaviour = game.world.sheep_behaviour.get_mut(sheep_index);
+    let sheep = unsafe { game.world.sheeps.get_unchecked_mut(sheep_index) };
+    let sheep_data = unsafe { game.world.sheeps_data.get_unchecked_mut(sheep_index) };
+    let sheep_behaviour = unsafe { game.world.sheep_behaviour.get_unchecked_mut(sheep_index) };
 
-    match (sheep, sheep_data, sheep_behaviour) {
-        (Some(sheep), Some(sheep_data), Some(sheep_behaviour)) => {
-            *sheep = params.sheep;
-            *sheep_data = params.sheep_data;
+    *sheep = params.sheep;
+    *sheep_data = params.sheep_data;
 
-            match params.new_behaviour {
-                Some(new_behaviour) => { *sheep_behaviour = new_behaviour; },
-                None => {
-                    sheep_behaviour.ty = SheepBehaviourType::Idle { time: params.time };
-                    sheep_behaviour.state = params.state;
-                }
-            }
-        }
-        _ => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
+    match params.new_behaviour {
+        Some(new_behaviour) => { *sheep_behaviour = new_behaviour; },
+        None => {
+            sheep_behaviour.ty = SheepBehaviourType::Idle { time: params.time };
+            sheep_behaviour.state = params.state;
         }
     }
 }

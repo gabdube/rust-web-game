@@ -6,7 +6,7 @@ use std::fs::File;
 use crate::shared::{Rect, IRect, Size, rect, size, irect};
 
 pub const PIXEL_SIZE: usize = 4; // Size of rgba u8
-const PADDING: i32 = 2; // Value added when scanning sprites
+pub const PADDING: i32 = 2; // Value added when scanning sprites
 
 pub struct AnimationInfo {
     /// Total area of an animation
