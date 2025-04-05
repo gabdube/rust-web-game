@@ -1,6 +1,6 @@
 use crate::behaviour::BehaviourState;
 use crate::shared::pos;
-use crate::world::{StructureData, WorldObject, WorldObjectType};
+use crate::world::{BaseAnimated, BaseStatic, StructureData, WorldObject, WorldObjectType};
 use crate::world::{MAX_CASTLE_HP, MAX_TOWER_HP, MAX_HOUSE_HP};
 use crate::DemoGameData;
 use super::{PawnBehaviour, PawnBehaviourType};
@@ -8,6 +8,16 @@ use super::{PawnBehaviour, PawnBehaviourType};
 const MOVE_TO_STRUCTURE: u8 = 0;
 const BUILD_STRUCTURE: u8 = 1;
 const FINALIZE_STRUCTURE: u8 = 2;
+
+struct PawnBuildStructureParams {
+    pawn: BaseAnimated,
+    structure: BaseStatic,
+    structure_data: StructureData,
+    last_timestamp: f32,
+    structure_id: u32,
+    new_behaviour: Option<PawnBehaviour>,
+    state: BehaviourState,
+}
 
 pub fn new(game: &mut DemoGameData, pawn: WorldObject, structure: WorldObject) {
     match (pawn.ty, structure.ty) {
@@ -41,75 +51,61 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, structure: WorldObject) {
 }
 
 pub fn process(game: &mut DemoGameData, pawn_index: usize) {
-    let state = game.world.pawns_behaviour[pawn_index].state;
-
-    match state {
-        BehaviourState::Initial => init(game, pawn_index),
-        BehaviourState::Running(MOVE_TO_STRUCTURE) => move_to_structure(game, pawn_index),
-        BehaviourState::Running(BUILD_STRUCTURE) => build_structure(game, pawn_index),
-        BehaviourState::Running(FINALIZE_STRUCTURE) => finalize_structure(game, pawn_index),
+    let mut params = read_params(game, pawn_index);
+    match params.state {
+        BehaviourState::Initial => init(game, &mut params),
+        BehaviourState::Running(MOVE_TO_STRUCTURE) => move_to_structure(game, &mut params),
+        BehaviourState::Running(BUILD_STRUCTURE) => build_structure(game, &mut params),
+        BehaviourState::Running(FINALIZE_STRUCTURE) => finalize_structure(game, &mut params),
         _ => {}
     }
+
+    write_params(game, pawn_index, &params);
 }
 
-fn init(game: &mut DemoGameData, pawn_index: usize) {
-    game.world.pawns[pawn_index].animation = game.assets.animations.pawn.walk;
-    game.world.pawns_behaviour[pawn_index].state = BehaviourState::Running(MOVE_TO_STRUCTURE);
-    move_to_structure(game, pawn_index);
+fn init(game: &DemoGameData, params: &mut PawnBuildStructureParams) {
+    params.pawn.animation = game.assets.animations.pawn.walk;
+    params.state = BehaviourState::Running(MOVE_TO_STRUCTURE);
+    move_to_structure(game, params);
 }
 
-fn move_to_structure(game: &mut DemoGameData, pawn_index: usize) {
+fn move_to_structure(game: &DemoGameData, params: &mut PawnBuildStructureParams) {
     use crate::behaviour::behaviour_shared::move_to;
 
-    let world = &mut game.world;
-    let pawn = &mut world.pawns[pawn_index];
-    let behaviour = &mut world.pawns_behaviour[pawn_index];
-
-    let structure_index = params(behaviour.ty);
-    let structure = &mut world.structures[structure_index];
-
-    if early_exit(world.structures_data[structure_index]) {
-        *behaviour = PawnBehaviour::idle();
+    if early_exit(params.structure_data) {
+        params.new_behaviour = Some(PawnBehaviour::idle());
         return;
     }
 
     // Find the nearest point to the structure base
-    let aabb = structure.aabb();
-    let target_position = pos(f32::max(f32::min(pawn.position.x, aabb.right), aabb.left), aabb.bottom + 5.0);
-    let updated_position = move_to(pawn.position, target_position, game.global.frame_delta);
+    let aabb = params.structure.aabb();
+    let target_position = pos(f32::max(f32::min(params.pawn.position.x, aabb.right), aabb.left), aabb.bottom + 5.0);
+    let updated_position = move_to(params.pawn.position, target_position, game.global.frame_delta);
     if updated_position == target_position {
-        pawn.animation = game.assets.animations.pawn.hammer;
-        pawn.current_frame = 0;
-        behaviour.state = BehaviourState::Running(BUILD_STRUCTURE);
+        params.pawn.animation = game.assets.animations.pawn.hammer;
+        params.pawn.current_frame = 0;
+        params.state = BehaviourState::Running(BUILD_STRUCTURE);
     }
 
-    pawn.position = updated_position;
-    pawn.flipped = pawn.position.x > structure.position.x;
+    params.pawn.position = updated_position;
+    params.pawn.flipped = params.pawn.position.x > params.structure.position.x;
 }
 
-fn build_structure(game: &mut DemoGameData, pawn_index: usize) {
+fn build_structure(game: &DemoGameData, params: &mut PawnBuildStructureParams) {
     use crate::behaviour::behaviour_shared::elapsed;
 
-    let world = &mut game.world;
-    let behaviour = &mut world.pawns_behaviour[pawn_index];
-    let structure_index = params(behaviour.ty);
-    let structure_data = &mut world.structures_data[structure_index];
-
-    if early_exit(*structure_data) {
-        *behaviour = PawnBehaviour::idle();
+    if early_exit(params.structure_data) {
+        params.new_behaviour = Some(PawnBehaviour::idle());
         return;
     }
 
     // Every 2 hammer strike adds 5 hp to the structure
     let total_animation_time = crate::ANIMATION_INTERVAL * 6.0 * 2.0;
-    let timestamp = params_last_timestamp(behaviour.ty);
-    if !elapsed(game.global.time, timestamp, total_animation_time) {
+    if !elapsed(game.global.time, params.last_timestamp as f64, total_animation_time) {
         return;
     }
 
-    params_set_last_timestamp(&mut behaviour.ty, game.global.time);
-
-    let finalize = match structure_data {
+    let finalize = match &mut params.structure_data {
         StructureData::Castle(data) => {
             data.hp = u8::min(data.hp + 5, MAX_CASTLE_HP);
             data.hp == MAX_CASTLE_HP
@@ -126,40 +122,36 @@ fn build_structure(game: &mut DemoGameData, pawn_index: usize) {
     };
 
     if finalize {
-        behaviour.state = BehaviourState::Running(FINALIZE_STRUCTURE);
+        params.state = BehaviourState::Running(FINALIZE_STRUCTURE);
     }
+
+    params.last_timestamp = game.global.time as f32;
 }
 
-fn finalize_structure(game: &mut DemoGameData, pawn_index: usize) {
-    let world = &mut game.world;
-    let behaviour = &mut world.pawns_behaviour[pawn_index];
-    let structure_index = params(behaviour.ty);
-    let structure = &mut world.structures[structure_index];
-    let structure_data = &mut world.structures_data[structure_index];
-
-    match structure_data {
+fn finalize_structure(game: &DemoGameData, params: &mut PawnBuildStructureParams) {
+    match &mut params.structure_data {
         StructureData::Castle(data) => {
             if !data.destroyed {
-                structure.sprite = game.assets.structures.knights_castle.aabb;
+                params.structure.sprite = game.assets.structures.knights_castle.aabb;
                 data.building = false;
             }
         },
         StructureData::Tower(data) => {
             if !data.destroyed {
-                structure.sprite = game.assets.structures.knights_tower.aabb;
+                params.structure.sprite = game.assets.structures.knights_tower.aabb;
                 data.building = false;
             }
         },
         StructureData::House(data) => {
             if !data.destroyed {
-                structure.sprite = game.assets.structures.knights_house.aabb;
+                params.structure.sprite = game.assets.structures.knights_house.aabb;
                 data.building = false;
             }
         },
         StructureData::GoldMine(..) => {},
     }
 
-    *behaviour = PawnBehaviour::idle();
+    params.new_behaviour = Some(PawnBehaviour::idle());
 }
 
 fn early_exit(data: StructureData) -> bool {
@@ -171,26 +163,68 @@ fn early_exit(data: StructureData) -> bool {
     }
 }
 
-#[inline(always)]
-fn params(value: PawnBehaviourType) -> usize {
-    match value {
-        PawnBehaviourType::BuildStructure { structure_id, .. } => structure_id as usize,
-        _ => unsafe { ::std::hint::unreachable_unchecked() }
+fn read_params(game: &DemoGameData, pawn_index: usize) -> PawnBuildStructureParams {
+    let pawn = game.world.pawns.get(pawn_index);
+    let behaviour = game.world.pawns_behaviour.get(pawn_index);
+
+    match (pawn, behaviour) {
+        (Some(pawn), Some(behaviour)) => {
+            let (structure_index, last_timestamp) = match behaviour.ty {
+                PawnBehaviourType::BuildStructure { structure_id, last_timestamp } => (structure_id as usize, last_timestamp),
+                _ => unsafe { ::std::hint::unreachable_unchecked()}
+            };
+
+            let (structure, structure_data) = match (game.world.structures.get(structure_index), game.world.structures_data.get(structure_index)) {
+               ( Some(structure), Some(structure_data)) => { (structure, structure_data) },
+               _ => unsafe { ::std::hint::unreachable_unchecked()}
+            };
+
+            PawnBuildStructureParams {
+                pawn: *pawn,
+                structure: *structure,
+                structure_data: *structure_data,
+                last_timestamp,
+                structure_id: structure_index as u32,
+                new_behaviour: None,
+                state: behaviour.state
+            }
+        },
+        _  => {
+            unsafe { ::std::hint::unreachable_unchecked(); }
+        }
     }
 }
 
-#[inline(always)]
-fn params_last_timestamp(value: PawnBehaviourType) -> f64 {
-    match value {
-        PawnBehaviourType::BuildStructure { last_timestamp, .. } => last_timestamp as f64,
-        _ => unsafe { ::std::hint::unreachable_unchecked() }
-    }
-}
+fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnBuildStructureParams) {
+    let structure_index = params.structure_id as usize;
 
-#[inline(always)]
-fn params_set_last_timestamp(value: &mut PawnBehaviourType, time: f64) {
-    match value {
-        PawnBehaviourType::BuildStructure { last_timestamp, .. } => *last_timestamp = time as f32,
-        _ => unsafe { ::std::hint::unreachable_unchecked() }
+    let pawn = game.world.pawns.get_mut(pawn_index);
+    let behaviour = game.world.pawns_behaviour.get_mut(pawn_index);
+    let structure = game.world.structures.get_mut(structure_index);
+    let structure_data = game.world.structures_data.get_mut(structure_index);
+
+    match (pawn, behaviour, structure, structure_data) {
+        (Some(pawn), Some(behaviour), Some(structure), Some(structure_data)) => {
+            *pawn = params.pawn;
+            *structure = params.structure;
+            *structure_data = params.structure_data;
+
+            match params.new_behaviour {
+                Some(new_behaviour) => {
+                    *behaviour = new_behaviour;
+                },
+                None => {
+                    behaviour.ty = PawnBehaviourType::BuildStructure { 
+                        structure_id: params.structure_id,
+                        last_timestamp: params.last_timestamp
+                    };
+
+                    behaviour.state = params.state;
+                }
+            }
+        },
+        _ => {
+            unsafe { ::std::hint::unreachable_unchecked(); }
+        }
     }
 }

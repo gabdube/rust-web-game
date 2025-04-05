@@ -36,10 +36,10 @@ pub fn process(game: &mut DemoGameData, pawn_index: usize) {
         _ => {},
     }
 
-    write_params(game, pawn_index, params);
+    write_params(game, pawn_index, &params);
 }
 
-fn init(game: &mut DemoGameData, params: &mut PawnMoveParams) {
+fn init(game: &DemoGameData, params: &mut PawnMoveParams) {
     params.state = BehaviourState::Running(MOVING);
     params.pawn.animation = match params.pawn_data.grabbed_resource() {
         Some(_) => game.assets.animations.pawn.walk_hold,
@@ -65,7 +65,7 @@ fn moving(game: &mut DemoGameData, params: &mut PawnMoveParams) {
     params.pawn.position = updated_position;
 }
 
-fn read_params(game: &mut DemoGameData, pawn_index: usize) -> PawnMoveParams {
+fn read_params(game: &DemoGameData, pawn_index: usize) -> PawnMoveParams {
     let pawn = game.world.pawns.get(pawn_index);
     let pawn_data = game.world.pawns_data.get(pawn_index);
     let behaviour = game.world.pawns_behaviour.get(pawn_index);
@@ -91,7 +91,7 @@ fn read_params(game: &mut DemoGameData, pawn_index: usize) -> PawnMoveParams {
     }
 }
 
-fn write_params(game: &mut DemoGameData, pawn_index: usize, params: PawnMoveParams) {
+fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnMoveParams) {
     let pawn = game.world.pawns.get_mut(pawn_index);
     let pawn_data = game.world.pawns_data.get_mut(pawn_index);
     let behaviour = game.world.pawns_behaviour.get_mut(pawn_index);

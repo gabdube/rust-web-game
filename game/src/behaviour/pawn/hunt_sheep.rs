@@ -1,11 +1,22 @@
 use crate::behaviour::BehaviourState;
-use crate::world::{WorldObject, WorldObjectType};
+use crate::shared::Position;
+use crate::world::{BaseAnimated, WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{PawnBehaviour, PawnBehaviourType};
 
 const MOVE_TO_SHEEP: u8 = 0;
 const ATTACK_SHEEP: u8 = 1;
 const PAUSE: u8 = 3;
+
+struct PawnHuntSheepParams {
+    pawn: BaseAnimated,
+    sheep_position: Position<f32>, 
+    sheep_life: u8,
+    last_timestamp: f32,
+    sheep_id: u32,
+    new_behaviour: Option<PawnBehaviour>,
+    state: BehaviourState,
+}
 
 pub fn new(game: &mut DemoGameData, pawn: WorldObject, sheep: WorldObject) {
     match (pawn.ty, sheep.ty) {
@@ -28,123 +39,134 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, sheep: WorldObject) {
 }
 
 pub fn process(game: &mut DemoGameData, pawn_index: usize) {
-    let state = game.world.pawns_behaviour[pawn_index].state;
-
-    match state {
-        BehaviourState::Initial => init(game, pawn_index),
-        BehaviourState::Running(MOVE_TO_SHEEP) => move_to_sheep(game, pawn_index),
-        BehaviourState::Running(ATTACK_SHEEP) => attack_sheep(game, pawn_index),
-        BehaviourState::Running(PAUSE) => pause(game, pawn_index),
+    let mut params = read_params(game, pawn_index);
+    match params.state {
+        BehaviourState::Initial => init(game, &mut params),
+        BehaviourState::Running(MOVE_TO_SHEEP) => move_to_sheep(game, &mut params),
+        BehaviourState::Running(ATTACK_SHEEP) => attack_sheep(game, &mut params),
+        BehaviourState::Running(PAUSE) => pause(game, &mut params),
         _ => {}
     }
+
+    write_params(game, pawn_index, &params);
 }
 
-fn init(game: &mut DemoGameData, pawn_index: usize) {
-    game.world.pawns[pawn_index].animation = game.assets.animations.pawn.walk;
-    game.world.pawns_behaviour[pawn_index].state = BehaviourState::Running(MOVE_TO_SHEEP);
-    move_to_sheep(game, pawn_index);
+fn init(game: &DemoGameData, params: &mut PawnHuntSheepParams) {
+    params.pawn.animation = game.assets.animations.pawn.walk;
+    params.state = BehaviourState::Running(MOVE_TO_SHEEP);
+    move_to_sheep(game, params);
 }
 
-fn move_to_sheep(game: &mut DemoGameData, pawn_index: usize) {
+fn move_to_sheep(game: &DemoGameData, params: &mut PawnHuntSheepParams) {
     use crate::behaviour::behaviour_shared::move_to;
-    
-    let world = &mut game.world;
-    let pawn = &mut world.pawns[pawn_index];
-    let behaviour = &mut world.pawns_behaviour[pawn_index];
 
-    let sheep_index = params(behaviour.ty);
-    let sheep = &mut world.sheeps[sheep_index];
-    let sheep_data = &mut world.sheeps_data[sheep_index];
-
-    if sheep_data.life == 0 {
-        *behaviour = PawnBehaviour::idle();
+    if params.sheep_life == 0 {
+        params.new_behaviour = Some(PawnBehaviour::idle());
         return;
     }
 
-    let mut target_position = sheep.position;
+    let mut target_position = params.sheep_position;
     target_position.y += 1.0;
-    if pawn.position.x > target_position.x {
+    if params.pawn.position.x > target_position.x {
         target_position.x += 60.0;
     } else {
         target_position.x -= 60.0;
     }
 
-    let updated_position = move_to(pawn.position, target_position, game.global.frame_delta);
+    let updated_position = move_to(params.pawn.position, target_position, game.global.frame_delta);
     if updated_position == target_position {
-        pawn.animation = game.assets.animations.pawn.axe;
-        pawn.current_frame = 0;
-        behaviour.state = BehaviourState::Running(ATTACK_SHEEP);
-        params_set_last_timestamp(&mut behaviour.ty, game.global.time);
+        params.pawn.animation = game.assets.animations.pawn.axe;
+        params.pawn.current_frame = 0;
+        params.state = BehaviourState::Running(ATTACK_SHEEP);
+        params.last_timestamp = game.global.time as f32;
     }
 
-    pawn.position = updated_position;
-    pawn.flipped = pawn.position.x > sheep.position.x;
+    params.pawn.position = updated_position;
+    params.pawn.flipped = params.pawn.position.x > params.sheep_position.x;
 }
 
-fn attack_sheep(data: &mut DemoGameData, pawn_index: usize) {
+fn attack_sheep(game: &mut DemoGameData, params: &mut PawnHuntSheepParams) {
     use crate::behaviour::behaviour_shared::elapsed;
 
-    let world = &mut data.world;
-    let pawn = &mut world.pawns[pawn_index];
-    let behaviour = &mut world.pawns_behaviour[pawn_index];
-
-    let sheep_index = params(behaviour.ty);
-    let sheep = &mut world.sheeps[sheep_index];
-    let sheep_data = &mut world.sheeps_data[sheep_index];
-
-    if sheep_data.life == 0 {
-        *behaviour = PawnBehaviour::idle();
+    if params.sheep_life == 0 {
+        params.new_behaviour = Some(PawnBehaviour::idle());
         return;
     }
 
-    if sheep.position.distance(pawn.position) > 65.0 {
-        pawn.animation = data.assets.animations.pawn.idle;
-        params_set_last_timestamp(&mut behaviour.ty, data.global.time);
-        behaviour.state = BehaviourState::Running(PAUSE);
+    if params.sheep_position.distance(params.pawn.position) > 65.0 {
+        params.pawn.animation = game.assets.animations.pawn.idle;
+        params.last_timestamp = game.global.time as f32;
+        params.state = BehaviourState::Running(PAUSE);
         return;
     }
-
-    let last_timestamp = params_timestamp(behaviour.ty);
-
-    if pawn.current_frame == 5 && elapsed(data.global.time, last_timestamp, 300.0) {
-        params_set_last_timestamp(&mut behaviour.ty, data.global.time);
-        crate::behaviour::sheep::strike(data, sheep_index, 4);
+    else if params.pawn.current_frame == 5 && elapsed(game.global.time, params.last_timestamp as f64, 300.0) {
+        params.last_timestamp = game.global.time as f32;
+        crate::behaviour::sheep::strike(game, params.sheep_id as usize, 4);
     }
 }
 
-fn pause(game: &mut DemoGameData, pawn_index: usize) {
+fn pause(game: &DemoGameData, params: &mut PawnHuntSheepParams) {
     use crate::behaviour::behaviour_shared::elapsed;
 
-    let pawn = &mut game.world.pawns[pawn_index];
-    let behaviour = &mut game.world.pawns_behaviour[pawn_index];
-    let timestamp = params_timestamp(behaviour.ty);
-    if elapsed(game.global.time, timestamp, 500.0) {
-        pawn.animation = game.assets.animations.pawn.walk;
-        pawn.current_frame = 0;
-        behaviour.state = BehaviourState::Running(MOVE_TO_SHEEP);
+    if elapsed(game.global.time, params.last_timestamp as f64, 500.0) {
+        params.pawn.animation = game.assets.animations.pawn.walk;
+        params.pawn.current_frame = 0;
+        params.state = BehaviourState::Running(MOVE_TO_SHEEP);
     }
 }
 
-#[inline(always)]
-fn params(value: PawnBehaviourType) -> usize {
-    match value {
-        PawnBehaviourType::HuntSheep { sheep_id, .. } => sheep_id as usize,
-        _ => unsafe { ::std::hint::unreachable_unchecked()}
+fn read_params(game: &DemoGameData, pawn_index: usize) -> PawnHuntSheepParams {
+    let pawn = game.world.pawns.get(pawn_index);
+    let behaviour = game.world.pawns_behaviour.get(pawn_index);
+
+    match (pawn, behaviour) {
+        (Some(pawn), Some(behaviour)) => {
+            let (sheep_index, last_timestamp) = match behaviour.ty {
+                PawnBehaviourType::HuntSheep { sheep_id, last_timestamp } => (sheep_id as usize, last_timestamp),
+                _ => unsafe { ::std::hint::unreachable_unchecked() }
+            };
+
+            let (sheep_position, sheep_life) = match (game.world.sheeps.get(sheep_index), game.world.sheeps_data.get(sheep_index)) {
+                (Some(sheep), Some(sheep_data)) => (sheep.position, sheep_data.life),
+                _ => unsafe { ::std::hint::unreachable_unchecked() }
+            };
+
+            PawnHuntSheepParams {
+                pawn: *pawn,
+                sheep_position,
+                sheep_life,
+                last_timestamp,
+                sheep_id: sheep_index as u32,
+                new_behaviour: None,
+                state: behaviour.state
+            }
+        },
+        _  => {
+            unsafe { ::std::hint::unreachable_unchecked(); }
+        }
     }
 }
 
-#[inline(always)]
-fn params_timestamp(value: PawnBehaviourType) -> f64 {
-    match value {
-        PawnBehaviourType::HuntSheep { last_timestamp, .. } => last_timestamp as f64,
-        _ => unsafe { ::std::hint::unreachable_unchecked()}
-    }
-}
+fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnHuntSheepParams) {
+    let pawn = game.world.pawns.get_mut(pawn_index);
+    let behaviour = game.world.pawns_behaviour.get_mut(pawn_index);
 
-#[inline(always)]
-fn params_set_last_timestamp(value: &mut PawnBehaviourType, time: f64) {
-    match value {
-        PawnBehaviourType::HuntSheep { last_timestamp, .. } => *last_timestamp = time as f32,
-        _ => unsafe { ::std::hint::unreachable_unchecked() }
+    match (pawn, behaviour) {
+        (Some(pawn), Some(behaviour)) => {
+            *pawn = params.pawn;
+
+            match params.new_behaviour {
+                Some(new_behaviour) => {
+                    *behaviour = new_behaviour;
+                },
+                None => {
+                    behaviour.ty = PawnBehaviourType::HuntSheep { sheep_id: params.sheep_id, last_timestamp: params.last_timestamp };
+                    behaviour.state = params.state;
+                }
+            }
+        },
+        _ => {
+            unsafe { ::std::hint::unreachable_unchecked(); }
+        }
     }
 }

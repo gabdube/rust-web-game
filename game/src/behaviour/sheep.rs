@@ -12,7 +12,7 @@ pub enum SheepBehaviourType {
     Dead,
     Idle { time: f64 },
     Moving { target_position: Position<f32> },
-    Escaping { timestamp: f64, angle: f32, },
+    Escaping { target_position: Position<f32> },
 }
 
 #[derive(Copy, Clone)]
@@ -39,7 +39,7 @@ impl SheepBehaviour {
 
     pub fn escaping() -> Self {
         SheepBehaviour {
-            ty: SheepBehaviourType::Escaping { timestamp: 0.0, angle: 0.0 },
+            ty: SheepBehaviourType::Escaping { target_position: Position::default() },
             state: BehaviourState::Initial,
         }
     }
@@ -109,10 +109,9 @@ impl crate::store::SaveAndLoad for SheepBehaviourType {
                 writer.write_u32(2);
                 writer.write(target_position);
             },
-            Self::Escaping { timestamp, angle } => {
+            Self::Escaping { target_position } => {
                 writer.write_u32(3);
-                writer.write_f64(*timestamp);
-                writer.write_f32(*angle);
+                writer.write(target_position);
             }
         }
     }
@@ -122,10 +121,7 @@ impl crate::store::SaveAndLoad for SheepBehaviourType {
         match id {
             1 => Self::Idle { time: reader.read_f64() },
             2 => Self::Moving { target_position: reader.read() },
-            3 => Self::Escaping { 
-                timestamp: reader.read_f64(),
-                angle: reader.read_f32()
-            },
+            3 => Self::Escaping { target_position: reader.read() },
             _ => Self::Dead
         }
 
