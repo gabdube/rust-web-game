@@ -134,7 +134,8 @@ pub enum StructureData {
 }
 
 impl StructureData {
-    pub fn gold_mine_mut(&mut self) -> &mut StructureGoldMineData {
+
+    pub fn gold_mine(self) -> StructureGoldMineData {
         match self {
             StructureData::GoldMine(data) => data,
             _ => panic!("Structure data is not gold mine")

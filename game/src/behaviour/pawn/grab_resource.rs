@@ -1,5 +1,5 @@
 use crate::behaviour::BehaviourState;
-use crate::world::{BaseAnimated, PawnData, ResourceType, WorldObject, WorldObjectType};
+use crate::world::{BaseAnimated, BaseStatic, PawnData, ResourceData, ResourceType, WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{PawnBehaviour, PawnBehaviourType};
 
@@ -9,7 +9,9 @@ const GRAB_RESOURCE: u8 = 1;
 struct PawnGrabResourceParams {
     pawn: BaseAnimated,
     pawn_data: PawnData,
-    resource_index: usize,
+    resource: BaseStatic,
+    resource_data: ResourceData,
+    resource_index: u32,
     new_behaviour: Option<PawnBehaviour>,
     state: BehaviourState,
 }
@@ -59,14 +61,13 @@ fn init(game: &DemoGameData, params: &mut PawnGrabResourceParams) {
 
 fn move_to_resource(game: &DemoGameData, params: &mut PawnGrabResourceParams) {
     use crate::behaviour::behaviour_shared::move_to;
-    
-    let resource_data = game.world.resources_data[params.resource_index];
-    if resource_data.grabbed {
+
+    if params.resource_data.grabbed {
         params.new_behaviour = Some(PawnBehaviour::idle());
         return;
     }
 
-    let target_position = game.world.resources[params.resource_index].position;
+    let target_position = params.resource.position;
     let updated_position = move_to(params.pawn.position, target_position, game.global.frame_delta);
     if updated_position == target_position {
         params.state = BehaviourState::Running(GRAB_RESOURCE);
@@ -76,11 +77,8 @@ fn move_to_resource(game: &DemoGameData, params: &mut PawnGrabResourceParams) {
     params.pawn.flipped = params.pawn.position.x > target_position.x;
 }
 
-fn grab_resource(game: &mut DemoGameData, params: &mut PawnGrabResourceParams) {
-    let world = &mut game.world;
-    let resource = &mut world.resources[params.resource_index];
-    let resource_data = &mut world.resources_data[params.resource_index];
-    if resource_data.grabbed {
+fn grab_resource(game: &DemoGameData, params: &mut PawnGrabResourceParams) {
+    if params.resource_data.grabbed {
         // Targeted resource was grabbed by another pawn
         params.new_behaviour = Some(PawnBehaviour::idle());
         return;
@@ -89,12 +87,12 @@ fn grab_resource(game: &mut DemoGameData, params: &mut PawnGrabResourceParams) {
     params.pawn.animation = game.assets.animations.pawn.idle_hold;
     params.pawn_data.grabbed_resource = params.resource_index as u32;
 
-    resource_data.grabbed = true;
+    params.resource_data.grabbed = true;
 
-    resource.position = params.pawn.position;
-    resource.position.y -= 60.0;
+    params.resource.position = params.pawn.position;
+    params.resource.position.y -= 60.0;
 
-    resource.sprite = match resource_data.resource_type {
+    params.resource.sprite = match params.resource_data.resource_type {
         ResourceType::Gold => game.assets.resources.gold_shadowless,
         ResourceType::Food => game.assets.resources.meat_shadowless,
         ResourceType::Wood => game.assets.resources.wood_shadowless,
@@ -104,52 +102,47 @@ fn grab_resource(game: &mut DemoGameData, params: &mut PawnGrabResourceParams) {
 }
 
 fn read_params(game: &DemoGameData, pawn_index: usize) -> PawnGrabResourceParams {
-    let pawn = game.world.pawns.get(pawn_index);
-    let pawn_data = game.world.pawns_data.get(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get(pawn_index);
+    let pawn = unsafe { game.world.pawns.get_unchecked(pawn_index) };
+    let pawn_data = unsafe { game.world.pawns_data.get_unchecked(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked(pawn_index) };
 
-    match (pawn, pawn_data, behaviour) {
-        (Some(pawn), Some(pawn_data), Some(behaviour)) => {
-            let resource_index = match behaviour.ty {
-                PawnBehaviourType::GrabResource { resource_id } => resource_id as usize,
-                _ => unsafe { ::std::hint::unreachable_unchecked()}
-            };
+    let resource_index = match behaviour.ty {
+        PawnBehaviourType::GrabResource { resource_id } => resource_id as usize,
+        _ => unsafe { ::std::hint::unreachable_unchecked()}
+    };
 
-            PawnGrabResourceParams {
-                pawn: *pawn,
-                pawn_data: *pawn_data,
-                resource_index,
-                new_behaviour: None,
-                state: behaviour.state
-            }
-        },
-        _  => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
-        }
+    let resource = unsafe { game.world.resources.get_unchecked(resource_index) };
+    let resource_data = unsafe { game.world.resources_data.get_unchecked(resource_index) };
+
+    PawnGrabResourceParams {
+        pawn: *pawn,
+        pawn_data: *pawn_data,
+        resource: *resource,
+        resource_data: *resource_data,
+        resource_index: resource_index as u32,
+        new_behaviour: None,
+        state: behaviour.state
     }
 }
 
 fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnGrabResourceParams) {
-    let pawn = game.world.pawns.get_mut(pawn_index);
-    let pawn_data = game.world.pawns_data.get_mut(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get_mut(pawn_index);
+    let pawn = unsafe { game.world.pawns.get_unchecked_mut(pawn_index) };
+    let pawn_data = unsafe { game.world.pawns_data.get_unchecked_mut(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked_mut(pawn_index) };
+    let resource = unsafe { game.world.resources.get_unchecked_mut(params.resource_index as usize) };
+    let resource_data = unsafe { game.world.resources_data.get_unchecked_mut(params.resource_index as usize) };
 
-    match (pawn, pawn_data, behaviour) {
-        (Some(pawn), Some(pawn_data), Some(behaviour)) => {
-            *pawn = params.pawn;
-            *pawn_data = params.pawn_data;
+    *pawn = params.pawn;
+    *pawn_data = params.pawn_data;
+    *resource = params.resource;
+    *resource_data = params.resource_data;
 
-            match params.new_behaviour {
-                Some(new_behaviour) => {
-                    *behaviour = new_behaviour;
-                },
-                None => {
-                    behaviour.state = params.state;
-                }
-            }
+    match params.new_behaviour {
+        Some(new_behaviour) => {
+            *behaviour = new_behaviour;
         },
-        _ => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
+        None => {
+            behaviour.state = params.state;
         }
     }
 }

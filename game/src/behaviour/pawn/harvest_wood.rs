@@ -7,7 +7,6 @@ use super::{PawnBehaviour, PawnBehaviourType};
 const MOVE_TO_TREE: u8 = 0;
 const BEGIN_CUT_TREE: u8 = 1;
 const CUT_TREE: u8 = 2;
-const SPAWN_WOOD: u8 = 3;
 
 struct PawnHarvestWoodParams {
     pawn: BaseAnimated,
@@ -15,6 +14,7 @@ struct PawnHarvestWoodParams {
     tree_data: TreeData,
     tree_id: u32,
     last_timestamp: f32,
+    spawn_wood: bool,
     new_behaviour: Option<PawnBehaviour>,
     state: BehaviourState,
 }
@@ -52,10 +52,7 @@ pub fn cancel(game: &mut DemoGameData, pawn_index: usize) {
             params.pawn.animation = game.assets.animations.pawn.idle;
             params.tree.animation = game.assets.resources.tree_idle;
             params.tree_data.being_harvested = false;
-        },
-        BehaviourState::Running(SPAWN_WOOD) => {
-            spawn_wood(game, &mut params);
-        },
+        }
         _ => {}
     }
 
@@ -69,7 +66,6 @@ pub fn process(game: &mut DemoGameData, pawn_index: usize) {
         BehaviourState::Running(MOVE_TO_TREE) => move_to_tree(game, &mut params),
         BehaviourState::Running(BEGIN_CUT_TREE) => begin_cut_tree(game, &mut params),
         BehaviourState::Running(CUT_TREE) => cut_tree(game, &mut params),
-        BehaviourState::Running(SPAWN_WOOD) => spawn_wood(game, &mut params),
         _ => {}
     }
 
@@ -133,90 +129,76 @@ fn cut_tree(game: &DemoGameData, params: &mut PawnHarvestWoodParams) {
     }
 
     if params.tree_data.life == 0 {
-        params.state = BehaviourState::Running(SPAWN_WOOD);
-    }
-}
-
-fn spawn_wood(game: &mut DemoGameData, params: &mut PawnHarvestWoodParams) {
-    params.tree.animation = AnimationBase::from_aabb(game.assets.resources.tree_stump);
-    params.tree_data.being_harvested = false;
-
-    params.new_behaviour = Some(PawnBehaviour::idle());
-
-    // Spawns three wood resources around the tree
-    let center_pos = params.tree.position;
-    let mut position = center_pos;
-    let mut angle = 0.0;
-    for _ in 0..3 {
-        angle += f32::to_radians(fastrand::u8(120..180) as f32);
-        position.x = f32::ceil(center_pos.x + f32::cos(angle) * 64.0);
-        position.y = f32::ceil(center_pos.y + f32::sin(angle) * 64.0);
-
-        crate::behaviour::spawn_resources::spawn_wood(game, position);
+        params.tree.animation = AnimationBase::from_aabb(game.assets.resources.tree_stump);
+        params.tree_data.being_harvested = false;
+        params.new_behaviour = Some(PawnBehaviour::idle());
+        params.spawn_wood = true;
     }
 }
 
 fn read_params(game: &DemoGameData, pawn_index: usize) -> PawnHarvestWoodParams {
-    let pawn = game.world.pawns.get(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get(pawn_index);
+    let pawn = unsafe { game.world.pawns.get_unchecked(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked(pawn_index) };
+    let (tree_index, last_timestamp) = match behaviour.ty {
+        PawnBehaviourType::HarvestWood { tree_id, last_timestamp } => (tree_id as usize, last_timestamp),
+        _ => unsafe { ::std::hint::unreachable_unchecked()}
+    };
 
-    match (pawn, behaviour) {
-        (Some(pawn), Some(behaviour)) => {
-            let (tree_index, last_timestamp) = match behaviour.ty {
-                PawnBehaviourType::HarvestWood { tree_id, last_timestamp } => (tree_id as usize, last_timestamp),
-                _ => unsafe { ::std::hint::unreachable_unchecked()}
-            };
+    let tree = unsafe { game.world.trees.get_unchecked(tree_index) };
+    let tree_data = unsafe { game.world.trees_data.get_unchecked(tree_index) };
 
-            let (tree, tree_data) = match (game.world.trees.get(tree_index), game.world.trees_data.get(tree_index)) {
-                (Some(tree), Some(tree_data)) => (tree, tree_data),
-                _ => unsafe { ::std::hint::unreachable_unchecked()}
-            };
-
-            PawnHarvestWoodParams {
-                pawn: *pawn,
-                tree: *tree,
-                tree_data: *tree_data,
-                tree_id: tree_index as u32,
-                last_timestamp,
-                new_behaviour: None,
-                state: behaviour.state
-            }
-        },
-        _  => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
-        }
+    PawnHarvestWoodParams {
+        pawn: *pawn,
+        tree: *tree,
+        tree_data: *tree_data,
+        tree_id: tree_index as u32,
+        last_timestamp,
+        spawn_wood: false,
+        new_behaviour: None,
+        state: behaviour.state
     }
 }
 
+fn spawn_wood(game: &mut DemoGameData, params: &PawnHarvestWoodParams) {
+   // Spawns three wood resources around the tree
+   let center_pos = params.tree.position;
+   let mut position = center_pos;
+   let mut angle = 0.0;
+   for _ in 0..3 {
+       angle += f32::to_radians(fastrand::u8(120..180) as f32);
+       position.x = f32::ceil(center_pos.x + f32::cos(angle) * 64.0);
+       position.y = f32::ceil(center_pos.y + f32::sin(angle) * 64.0);
+
+       crate::behaviour::spawn_resources::spawn_wood(game, position);
+   }
+}
+
 fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnHarvestWoodParams) {
+    if params.spawn_wood {
+        spawn_wood(game, params);
+    }
+    
     let tree_index = params.tree_id as usize;
-    let pawn = game.world.pawns.get_mut(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get_mut(pawn_index);
-    let tree = game.world.trees.get_mut(tree_index);
-    let tree_data = game.world.trees_data.get_mut(tree_index);
+    let pawn = unsafe { game.world.pawns.get_unchecked_mut(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked_mut(pawn_index) };
+    let tree = unsafe { game.world.trees.get_unchecked_mut(tree_index) };
+    let tree_data = unsafe { game.world.trees_data.get_unchecked_mut(tree_index) };
 
-    match (pawn, behaviour, tree, tree_data) {
-        (Some(pawn), Some(behaviour), Some(tree), Some(tree_data)) => {
-            *pawn = params.pawn;
-            *tree = params.tree;
-            *tree_data = params.tree_data;
+    *pawn = params.pawn;
+    *tree = params.tree;
+    *tree_data = params.tree_data;
 
-            match params.new_behaviour {
-                Some(new_behaviour) => {
-                    *behaviour = new_behaviour;
-                },
-                None => {
-                    behaviour.ty = PawnBehaviourType::HarvestWood { 
-                        tree_id: params.tree_id,
-                        last_timestamp: params.last_timestamp
-                    };
-
-                    behaviour.state = params.state;
-                }
-            }
+    match params.new_behaviour {
+        Some(new_behaviour) => {
+            *behaviour = new_behaviour;
         },
-        _ => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
+        None => {
+            behaviour.ty = PawnBehaviourType::HarvestWood { 
+                tree_id: params.tree_id,
+                last_timestamp: params.last_timestamp
+            };
+
+            behaviour.state = params.state;
         }
     }
 }

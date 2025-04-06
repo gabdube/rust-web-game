@@ -12,6 +12,7 @@ struct PawnHuntSheepParams {
     pawn: BaseAnimated,
     sheep_position: Position<f32>, 
     sheep_life: u8,
+    sheep_strike: bool,
     last_timestamp: f32,
     sheep_id: u32,
     new_behaviour: Option<PawnBehaviour>,
@@ -85,7 +86,7 @@ fn move_to_sheep(game: &DemoGameData, params: &mut PawnHuntSheepParams) {
     params.pawn.flipped = params.pawn.position.x > params.sheep_position.x;
 }
 
-fn attack_sheep(game: &mut DemoGameData, params: &mut PawnHuntSheepParams) {
+fn attack_sheep(game: &DemoGameData, params: &mut PawnHuntSheepParams) {
     use crate::behaviour::behaviour_shared::elapsed;
 
     if params.sheep_life == 0 {
@@ -101,7 +102,7 @@ fn attack_sheep(game: &mut DemoGameData, params: &mut PawnHuntSheepParams) {
     }
     else if params.pawn.current_frame == 5 && elapsed(game.global.time, params.last_timestamp as f64, 300.0) {
         params.last_timestamp = game.global.time as f32;
-        crate::behaviour::sheep::strike(game, params.sheep_id as usize, 4);
+        params.sheep_strike = true;
     }
 }
 
@@ -116,57 +117,46 @@ fn pause(game: &DemoGameData, params: &mut PawnHuntSheepParams) {
 }
 
 fn read_params(game: &DemoGameData, pawn_index: usize) -> PawnHuntSheepParams {
-    let pawn = game.world.pawns.get(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get(pawn_index);
+    let pawn = unsafe { game.world.pawns.get_unchecked(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked(pawn_index) };
 
-    match (pawn, behaviour) {
-        (Some(pawn), Some(behaviour)) => {
-            let (sheep_index, last_timestamp) = match behaviour.ty {
-                PawnBehaviourType::HuntSheep { sheep_id, last_timestamp } => (sheep_id as usize, last_timestamp),
-                _ => unsafe { ::std::hint::unreachable_unchecked() }
-            };
+    let (sheep_index, last_timestamp) = match behaviour.ty {
+        PawnBehaviourType::HuntSheep { sheep_id, last_timestamp } => (sheep_id as usize, last_timestamp),
+        _ => unsafe { ::std::hint::unreachable_unchecked() }
+    };
 
-            let (sheep_position, sheep_life) = match (game.world.sheeps.get(sheep_index), game.world.sheeps_data.get(sheep_index)) {
-                (Some(sheep), Some(sheep_data)) => (sheep.position, sheep_data.life),
-                _ => unsafe { ::std::hint::unreachable_unchecked() }
-            };
+    let sheep_position = unsafe { game.world.sheeps.get_unchecked(sheep_index).position };
+    let sheep_life = unsafe { game.world.sheeps_data.get_unchecked(sheep_index).life };
 
-            PawnHuntSheepParams {
-                pawn: *pawn,
-                sheep_position,
-                sheep_life,
-                last_timestamp,
-                sheep_id: sheep_index as u32,
-                new_behaviour: None,
-                state: behaviour.state
-            }
-        },
-        _  => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
-        }
+    PawnHuntSheepParams {
+        pawn: *pawn,
+        sheep_position,
+        sheep_life,
+        sheep_strike: false,
+        last_timestamp,
+        sheep_id: sheep_index as u32,
+        new_behaviour: None,
+        state: behaviour.state
     }
 }
 
 fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnHuntSheepParams) {
-    let pawn = game.world.pawns.get_mut(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get_mut(pawn_index);
+    if params.sheep_strike {
+        crate::behaviour::sheep::strike(game, params.sheep_id as usize, 4);
+    }
 
-    match (pawn, behaviour) {
-        (Some(pawn), Some(behaviour)) => {
-            *pawn = params.pawn;
+    let pawn = unsafe { game.world.pawns.get_unchecked_mut(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked_mut(pawn_index) };
 
-            match params.new_behaviour {
-                Some(new_behaviour) => {
-                    *behaviour = new_behaviour;
-                },
-                None => {
-                    behaviour.ty = PawnBehaviourType::HuntSheep { sheep_id: params.sheep_id, last_timestamp: params.last_timestamp };
-                    behaviour.state = params.state;
-                }
-            }
+    *pawn = params.pawn;
+
+    match params.new_behaviour {
+        Some(new_behaviour) => {
+            *behaviour = new_behaviour;
         },
-        _ => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
+        None => {
+            behaviour.ty = PawnBehaviourType::HuntSheep { sheep_id: params.sheep_id, last_timestamp: params.last_timestamp };
+            behaviour.state = params.state;
         }
     }
 }

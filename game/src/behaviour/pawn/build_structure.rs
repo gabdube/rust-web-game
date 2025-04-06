@@ -164,67 +164,51 @@ fn early_exit(data: StructureData) -> bool {
 }
 
 fn read_params(game: &DemoGameData, pawn_index: usize) -> PawnBuildStructureParams {
-    let pawn = game.world.pawns.get(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get(pawn_index);
+    let pawn = unsafe { game.world.pawns.get_unchecked(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked(pawn_index) };
 
-    match (pawn, behaviour) {
-        (Some(pawn), Some(behaviour)) => {
-            let (structure_index, last_timestamp) = match behaviour.ty {
-                PawnBehaviourType::BuildStructure { structure_id, last_timestamp } => (structure_id as usize, last_timestamp),
-                _ => unsafe { ::std::hint::unreachable_unchecked()}
-            };
+    let (structure_index, last_timestamp) = match behaviour.ty {
+        PawnBehaviourType::BuildStructure { structure_id, last_timestamp } => (structure_id as usize, last_timestamp),
+        _ => unsafe { ::std::hint::unreachable_unchecked()}
+    };
 
-            let (structure, structure_data) = match (game.world.structures.get(structure_index), game.world.structures_data.get(structure_index)) {
-               ( Some(structure), Some(structure_data)) => { (structure, structure_data) },
-               _ => unsafe { ::std::hint::unreachable_unchecked()}
-            };
+    let structure = unsafe { game.world.structures.get_unchecked(structure_index) };
+    let structure_data = unsafe { game.world.structures_data.get_unchecked(structure_index) };
 
-            PawnBuildStructureParams {
-                pawn: *pawn,
-                structure: *structure,
-                structure_data: *structure_data,
-                last_timestamp,
-                structure_id: structure_index as u32,
-                new_behaviour: None,
-                state: behaviour.state
-            }
-        },
-        _  => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
-        }
+    PawnBuildStructureParams {
+        pawn: *pawn,
+        structure: *structure,
+        structure_data: *structure_data,
+        last_timestamp,
+        structure_id: structure_index as u32,
+        new_behaviour: None,
+        state: behaviour.state
     }
 }
 
 fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnBuildStructureParams) {
     let structure_index = params.structure_id as usize;
 
-    let pawn = game.world.pawns.get_mut(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get_mut(pawn_index);
-    let structure = game.world.structures.get_mut(structure_index);
-    let structure_data = game.world.structures_data.get_mut(structure_index);
+    let pawn = unsafe { game.world.pawns.get_unchecked_mut(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked_mut(pawn_index) };
+    let structure = unsafe { game.world.structures.get_unchecked_mut(structure_index) };
+    let structure_data = unsafe { game.world.structures_data.get_unchecked_mut(structure_index) };
 
-    match (pawn, behaviour, structure, structure_data) {
-        (Some(pawn), Some(behaviour), Some(structure), Some(structure_data)) => {
-            *pawn = params.pawn;
-            *structure = params.structure;
-            *structure_data = params.structure_data;
+    *pawn = params.pawn;
+    *structure = params.structure;
+    *structure_data = params.structure_data;
 
-            match params.new_behaviour {
-                Some(new_behaviour) => {
-                    *behaviour = new_behaviour;
-                },
-                None => {
-                    behaviour.ty = PawnBehaviourType::BuildStructure { 
-                        structure_id: params.structure_id,
-                        last_timestamp: params.last_timestamp
-                    };
-
-                    behaviour.state = params.state;
-                }
-            }
+    match params.new_behaviour {
+        Some(new_behaviour) => {
+            *behaviour = new_behaviour;
         },
-        _ => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
+        None => {
+            behaviour.ty = PawnBehaviourType::BuildStructure { 
+                structure_id: params.structure_id,
+                last_timestamp: params.last_timestamp
+            };
+
+            behaviour.state = params.state;
         }
     }
 }

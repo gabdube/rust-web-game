@@ -17,6 +17,7 @@ struct PawnHarvestGoldParams {
     last_timestamp: f32,
     pawn_id: u32,
     structure_id: u32,
+    respawn_pawn: bool,
     new_behaviour: Option<PawnBehaviour>,
     state: BehaviourState,
 }
@@ -75,7 +76,7 @@ pub fn cancel(game: &mut DemoGameData, pawn_index: usize) {
         _ => {}
     }
 
-    write_params(game, pawn_index, &params);
+    write_params(game, pawn_index, &mut params);
 }
 
 pub fn process(game: &mut DemoGameData, pawn_index: usize) {
@@ -89,7 +90,7 @@ pub fn process(game: &mut DemoGameData, pawn_index: usize) {
         _ => {}
     }
 
-    write_params(game, pawn_index, &params);
+    write_params(game, pawn_index, &mut params);
 }
 
 fn init(game: &DemoGameData, params: &mut PawnHarvestGoldParams) {
@@ -170,6 +171,39 @@ fn disable_mine(game: &mut DemoGameData, params: &mut PawnHarvestGoldParams) {
         return;
     }
 
+    // Disable mine
+    params.structure.sprite = game.assets.structures.gold_mine_destroyed.aabb;
+    params.structure_data.miners_count = 0;
+    params.structure_data.miners_ids = [0; 3];
+    params.respawn_pawn = true;
+}
+
+fn read_params(game: &DemoGameData, pawn_index: usize) -> PawnHarvestGoldParams {
+    let pawn = unsafe { game.world.pawns.get_unchecked(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked(pawn_index) };
+
+    let (structure_index, last_timestamp) = match behaviour.ty {
+        PawnBehaviourType::HarvestGold { structure_id, last_timestamp } => (structure_id as usize, last_timestamp),
+        _ => unsafe { ::std::hint::unreachable_unchecked()}
+    };
+
+    let structure = unsafe { game.world.structures.get_unchecked(structure_index) };
+    let structure_data = unsafe { game.world.structures_data.get_unchecked(structure_index).gold_mine() };
+
+    PawnHarvestGoldParams {
+        pawn: *pawn,
+        structure: *structure,
+        structure_data,
+        last_timestamp,
+        pawn_id: pawn_index as u32,
+        structure_id: structure_index as u32,
+        respawn_pawn: false,
+        new_behaviour: None,
+        state: behaviour.state
+    }
+}
+
+fn respawn_pawns(game: &mut DemoGameData, params: &mut PawnHarvestGoldParams) {
     // Respawn pawns
     let mut position = params.structure.position;
     position.y += 10.0;
@@ -189,77 +223,33 @@ fn disable_mine(game: &mut DemoGameData, params: &mut PawnHarvestGoldParams) {
         }
         position.x += 70.0;
     }
-
-    // Disable mine
-    params.structure.sprite = game.assets.structures.gold_mine_destroyed.aabb;
-    params.structure_data.miners_count = 0;
-    params.structure_data.miners_ids = [0; 3];
-    
 }
 
-fn read_params(game: &DemoGameData, pawn_index: usize) -> PawnHarvestGoldParams {
-    let pawn = game.world.pawns.get(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get(pawn_index);
-
-    match (pawn, behaviour) {
-        (Some(pawn), Some(behaviour)) => {
-            let (structure_index, last_timestamp) = match behaviour.ty {
-                PawnBehaviourType::HarvestGold { structure_id, last_timestamp } => (structure_id as usize, last_timestamp),
-                _ => unsafe { ::std::hint::unreachable_unchecked()}
-            };
-
-            let (structure, structure_data) = match (game.world.structures.get(structure_index), game.world.structures_data.get(structure_index)) {
-                (Some(structure), Some(StructureData::GoldMine(structure_data))) => (structure, structure_data),
-                _ => unsafe { ::std::hint::unreachable_unchecked()}
-            };
-
-            PawnHarvestGoldParams {
-                pawn: *pawn,
-                structure: *structure,
-                structure_data: *structure_data,
-                last_timestamp,
-                pawn_id: pawn_index as u32,
-                structure_id: structure_index as u32,
-                new_behaviour: None,
-                state: behaviour.state
-            }
-        },
-        _  => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
-        }
+fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &mut PawnHarvestGoldParams) {
+    if params.respawn_pawn {
+        respawn_pawns(game, params);
     }
-}
 
-fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnHarvestGoldParams) {
-    let structure_index = params.structure_id as usize;
+    let pawn = unsafe { game.world.pawns.get_unchecked_mut(pawn_index) };
+    let behaviour = unsafe { game.world.pawns_behaviour.get_unchecked_mut(pawn_index) };
+    let structure = unsafe { game.world.structures.get_unchecked_mut(params.structure_id as usize) };
+    let structure_data = unsafe { game.world.structures_data.get_unchecked_mut(params.structure_id as usize) };
 
-    let pawn = game.world.pawns.get_mut(pawn_index);
-    let behaviour = game.world.pawns_behaviour.get_mut(pawn_index);
-    let structure = game.world.structures.get_mut(structure_index);
-    let structure_data = game.world.structures_data.get_mut(structure_index);
+    *pawn = params.pawn;
+    *structure = params.structure;
+    *structure_data = StructureData::GoldMine(params.structure_data);
 
-    match (pawn, behaviour, structure, structure_data) {
-        (Some(pawn), Some(behaviour), Some(structure), Some(structure_data)) => {
-            *pawn = params.pawn;
-            *structure = params.structure;
-            *structure_data = StructureData::GoldMine(params.structure_data);
-
-            match params.new_behaviour {
-                Some(new_behaviour) => {
-                    *behaviour = new_behaviour;
-                },
-                None => {
-                    behaviour.ty = PawnBehaviourType::HarvestGold { 
-                        structure_id: params.structure_id,
-                        last_timestamp: params.last_timestamp
-                    };
-
-                    behaviour.state = params.state;
-                }
-            }
+    match params.new_behaviour {
+        Some(new_behaviour) => {
+            *behaviour = new_behaviour;
         },
-        _ => {
-            unsafe { ::std::hint::unreachable_unchecked(); }
+        None => {
+            behaviour.ty = PawnBehaviourType::HarvestGold { 
+                structure_id: params.structure_id,
+                last_timestamp: params.last_timestamp
+            };
+
+            behaviour.state = params.state;
         }
     }
 }
