@@ -33,9 +33,6 @@ enum ShootingAnimation {
 }
 
 pub fn new(game: &mut DemoGameData, archer: WorldObject, target: WorldObject) {
-    if archer.ty != WorldObjectType::Archer {
-        return;
-    }
 
     let archer_index = archer.id as usize;
     let target_index = target.id as usize;
@@ -44,7 +41,7 @@ pub fn new(game: &mut DemoGameData, archer: WorldObject, target: WorldObject) {
         _ => false
     };
 
-    if target_invalid || archer_index >= game.world.archers.len() {
+    if archer.ty != WorldObjectType::Archer  || archer_index >= game.world.archers.len() || target_invalid  {
         return;
     }
 
@@ -59,16 +56,17 @@ pub fn process(game: &mut DemoGameData, archer_index: usize) {
 
     if params.target_life == 0 {
         params.new_behaviour = Some(ArcherBehaviour::idle());
-    } else {
-        match params.state {
-            BehaviourState::Initial => init(game, &mut params),
-            BehaviourState::Running(MOVING) => moving(game, &mut params),
-            BehaviourState::Running(SHOOTING) => shooting(game, &mut params),
-            BehaviourState::Running(PAUSE) => pause(game, &mut params),
-            _ => {},
-        }    
+        write_params(game, archer_index, &params);
+        return;
+    } 
+
+    match params.state {
+        BehaviourState::Initial => init(game, &mut params),
+        BehaviourState::Running(MOVING) => moving(game, &mut params),
+        BehaviourState::Running(SHOOTING) => shooting(game, &mut params),
+        BehaviourState::Running(PAUSE) => pause(game, &mut params),
+        _ => {},
     }
- 
     write_params(game, archer_index, &params);
 }
 
@@ -77,6 +75,7 @@ fn init(game: &DemoGameData, params: &mut ArcherShootParams) {
     
     if params.archer.position.distance(params.target_position) > MAX_SHOOTING_DISTANCE {
         params.archer.animation = game.assets.animations.archer.walk;
+        params.archer.current_frame = 0;
         params.state = BehaviourState::Running(MOVING);
         moving(game, params);
     } else {
@@ -150,6 +149,7 @@ fn shooting(game: &DemoGameData, params: &mut ArcherShootParams) {
     }
 
     if params.archer.position.distance(params.target_position) > MAX_SHOOTING_DISTANCE {
+        params.archer.animation = game.assets.animations.archer.idle;
         params.archer.current_frame = 0;
         params.last_timestamp = game.global.time as f32;
         params.state = BehaviourState::Running(PAUSE);
@@ -160,6 +160,7 @@ fn shooting(game: &DemoGameData, params: &mut ArcherShootParams) {
 
     let animation_time = crate::ANIMATION_INTERVAL * 7.0;
     if params.archer.current_frame == 7 && elapsed(game.global.time, params.last_timestamp as f64, animation_time) {
+        params.archer.animation = game.assets.animations.archer.idle;
         params.archer.current_frame = 0;
         params.last_timestamp = game.global.time as f32;
         params.state = BehaviourState::Running(PAUSE);
@@ -170,37 +171,9 @@ fn shooting(game: &DemoGameData, params: &mut ArcherShootParams) {
 fn pause(game: &DemoGameData, params: &mut ArcherShootParams) {
     use crate::behaviour::behaviour_shared::elapsed;
 
-    params.archer.animation = game.assets.animations.archer.idle;
-
     if elapsed(game.global.time, params.last_timestamp as f64, 500.0) {
         init(game, params);
     }
-}
-
-fn target_life(game: &DemoGameData, target: WorldObject) -> u8 {
-    let target_index = target.id as usize;
-    match target.ty {
-        WorldObjectType::Sheep => game.world.sheeps_data[target_index].life,
-        _ => unsafe { ::std::hint::unreachable_unchecked() }
-    }
-}
-
-fn target_position(game: &DemoGameData, target: WorldObject) -> Position<f32> {
-    let mut base;
-    let height;
-    let target_index = target.id as usize;
-    match target.ty {
-        WorldObjectType::Sheep => { 
-            let sheep = game.world.sheeps[target_index];
-            base = sheep.position;
-            height = sheep.aabb().height();
-         },
-        _ => unsafe { ::std::hint::unreachable_unchecked() }
-    }
-
-    base.y -= height * 0.5;
-
-    base
 }
 
 fn read_params(game: &DemoGameData, archer_index: usize) -> ArcherShootParams {
@@ -211,8 +184,8 @@ fn read_params(game: &DemoGameData, archer_index: usize) -> ArcherShootParams {
         _ => unsafe { ::std::hint::unreachable_unchecked(); }
     };
 
-    let target_position = target_position(game, target);
-    let target_life = target_life(game, target);
+    let target_position = crate::behaviour::behaviour_shared::target_position(game, target, true);
+    let target_life = crate::behaviour::behaviour_shared::target_life(game, target);
 
     ArcherShootParams {
         archer: *archer,

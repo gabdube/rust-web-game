@@ -445,7 +445,7 @@ impl SaveAndLoad for World {
         writer.write_slice(&self.pawns_behaviour);
 
         writer.write_slice(&self.warriors);
-        writer.write_slice(&self.warriors_behaviour);
+        writer.save_slice(&self.warriors_behaviour);
 
         writer.write_slice(&self.archers);
         writer.write_slice(&self.archers_behaviour);
@@ -488,7 +488,7 @@ impl SaveAndLoad for World {
         let pawns_behaviour = reader.read_vec();
 
         let warriors = reader.read_vec();
-        let warriors_behaviour = reader.read_vec();
+        let warriors_behaviour = reader.load_vec();
 
         let archers = reader.read_vec();
         let archers_behaviour = reader.read_vec();

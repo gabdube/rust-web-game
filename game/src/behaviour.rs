@@ -61,6 +61,7 @@ fn run_warrior_behaviour(game: &mut DemoGame) {
         match behaviour_type {
             WarriorBehaviourType::Idle { .. } => warrior::idle(data, index),
             WarriorBehaviourType::MoveTo { .. } => warrior::warrior_move::process(data, index),
+            WarriorBehaviourType::Attack { .. } => warrior::warrior_attack::process(data, index),
         }
         index += 1;
     }

@@ -228,6 +228,12 @@ fn warrior_actions(game: &mut DemoGameData, warrior: WorldObject, target_object:
         behaviour::warrior::warrior_move::new(game, warrior, cursor_world_position);
         return;
     }
+
+    let target_object = target_object.unwrap();
+    match target_object.ty {
+        WorldObjectType::Sheep => behaviour::warrior::warrior_attack::new(game, warrior, target_object),
+        _ => {}
+    }
 }
 
 fn archer_actions(game: &mut DemoGameData, archer: WorldObject, target_object: Option<WorldObject>) {

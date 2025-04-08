@@ -1,3 +1,9 @@
+/*!
+    Packs objects sprites into a single atlas. Also generates a csv file with the name/uv offsets
+
+    Call this script using `cargo run -p tools --release -- -c generate_characters_sprites`
+*/
+
 use png::OutputInfo;
 use std::fs::File;
 use crate::packing::{PackSprite, PackingState};
@@ -9,7 +15,7 @@ const DST_ROOT: &str = "build/assets/";
 const DST_NAME_IMAGE: &str = "units.png";
 const DST_NAME_CSV: &str = "units.csv";
 
-const DST_WIDTH: usize = 1650; // Manually tune this number to minimise wasted space
+const DST_WIDTH: usize = 1624; // Manually tune this number to minimise wasted space
 
 /// Sprites to pack in the objects atlas
 static ASSETS: &[(&str, &str, SpriteInfo)] = &[
@@ -21,8 +27,6 @@ static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     ("gobintorch_idle", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 0, 1344, 192), size(192, 192))),
     ("gobintorch_walk", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 192, 1152, 384), size(192, 192))),
     ("gobintorch_strike_horz", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 384, 1152, 576), size(192, 192))),
-    ("gobintorch_strike_bottom", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 576, 1152, 768), size(192, 192))),
-    ("gobintorch_strike_top", "Factions/Goblins/Troops/Torch/Red/Torch_Red.png", SpriteInfo::animated(rect(0, 768, 1152, 960), size(192, 192))),
 
     // Sheep
     ("sheep_idle", "Resources/Sheep/HappySheep_Idle.png", SpriteInfo::animated(rect(0, 0, 1024, 128), size(128, 128))),
@@ -50,10 +54,6 @@ static ASSETS: &[(&str, &str, SpriteInfo)] = &[
     ("warrior_walk", "Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png", SpriteInfo::animated(rect(0, 192, 1152, 384), size(192, 192))),
     ("warrior_strike_horz1", "Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png", SpriteInfo::animated(rect(0, 384, 1152, 576), size(192, 192))),
     ("warrior_strike_horz2", "Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png", SpriteInfo::animated(rect(0, 576, 1152, 768), size(192, 192))),
-    ("warrior_strike_bottom1", "Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png", SpriteInfo::animated(rect(0, 768, 1152, 960), size(192, 192))),
-    ("warrior_strike_bottom2", "Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png", SpriteInfo::animated(rect(0, 960, 1152, 1152), size(192, 192))),
-    ("warrior_strike_top1", "Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png", SpriteInfo::animated(rect(0, 1152, 1152, 1344), size(192, 192))),
-    ("warrior_strike_top2", "Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png", SpriteInfo::animated(rect(0, 1344, 1152, 1536), size(192, 192))),
 
     // Death
     ("death_spawn", "Factions/Knights/Troops/Dead/Dead.png", SpriteInfo::animated(rect(0, 0, 896, 128), size(128, 128))),

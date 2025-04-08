@@ -55,10 +55,6 @@ pub struct WarriorAnimation {
     pub walk: AnimationBase,
     pub strike_h1: AnimationBase,
     pub strike_h2: AnimationBase,
-    pub strike_b1: AnimationBase,
-    pub strike_b2: AnimationBase,
-    pub strike_t1: AnimationBase,
-    pub strike_t2: AnimationBase,
 }
 
 impl WarriorAnimation {
@@ -68,10 +64,6 @@ impl WarriorAnimation {
             "warrior_walk" => Some(&mut self.walk),
             "warrior_strike_horz1" => Some(&mut self.strike_h1),
             "warrior_strike_horz2" => Some(&mut self.strike_h2),
-            "warrior_strike_bottom1" => Some(&mut self.strike_b1),
-            "warrior_strike_bottom2" => Some(&mut self.strike_b2),
-            "warrior_strike_top1" => Some(&mut self.strike_t1),
-            "warrior_strike_top2" => Some(&mut self.strike_t2),
             _ => None,
         }?;
 
@@ -116,8 +108,6 @@ pub struct TorchGoblinAnimation {
     pub idle: AnimationBase,
     pub walk: AnimationBase,
     pub strike_h: AnimationBase,
-    pub strike_b: AnimationBase,
-    pub strike_t: AnimationBase,
 }
 
 impl TorchGoblinAnimation {
@@ -126,8 +116,6 @@ impl TorchGoblinAnimation {
             "gobintorch_idle" => Some(&mut self.idle),
             "gobintorch_walk" => Some(&mut self.walk),
             "gobintorch_strike_horz" => Some(&mut self.strike_h),
-            "gobintorch_strike_bottom" => Some(&mut self.strike_b),
-            "gobintorch_strike_top" => Some(&mut self.strike_t),
             _ => None,
         }?;
 
