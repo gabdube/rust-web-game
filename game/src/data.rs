@@ -1,5 +1,5 @@
 //! Storage for the game data
-use crate::inputs::InputState;
+use std::sync::Arc;
 use crate::shared::Position;
 use crate::{assets, inputs, store, world, gui};
 
@@ -43,7 +43,7 @@ pub struct DemoGameData {
     /// State of the user input for the current frame
     pub inputs: inputs::InputState,
     /// Game static assets
-    pub assets: assets::Assets,
+    pub assets: Arc<assets::Assets>,
     /// Game data
     pub world: world::World,
     /// Gui state
@@ -70,7 +70,7 @@ impl Default for DemoGameData {
         DemoGameData {
             global: DemoGameGlobalData::default(),
             inputs: inputs::InputState::default(),
-            assets: assets::Assets::default(),
+            assets: Arc::default(),
             world: world::World::default(),
             gui: gui::Gui::default(),
         }
@@ -101,7 +101,7 @@ impl store::SaveAndLoad for DemoGameGlobalData {
 
 impl store::SaveAndLoad for DemoGameData {
     fn save(&self, writer: &mut store::SaveFileWriter) {
-        writer.save(&self.assets);
+        writer.save(self.assets.as_ref());
         writer.save(&self.world);
         writer.save(&self.gui);
         writer.save(&self.global);
@@ -109,11 +109,13 @@ impl store::SaveAndLoad for DemoGameData {
     }
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
-        let assets = reader.load();
-        let world = reader.load();
+        let assets = Arc::new(reader.load());
+        let mut world = reader.load::<crate::world::World>();
         let gui = reader.load();
         let global = reader.load();
-        let inputs: InputState = reader.read();
+        let inputs = reader.read();
+
+        world.assets = Some(Arc::clone(&assets));
 
         DemoGameData {
             global,

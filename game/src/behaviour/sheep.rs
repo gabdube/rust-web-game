@@ -71,7 +71,6 @@ fn spawn_meat(data: &mut DemoGameData, sheep_index: usize) {
     }
 }
 
-
 pub fn dead(data: &mut DemoGameData, sheep_index: usize) {
     let behaviour = &mut data.world.sheep_behaviour[sheep_index];
     if let BehaviourState::Initial = behaviour.state {

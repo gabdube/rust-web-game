@@ -4,7 +4,10 @@ use terrain::Terrain;
 mod extra_data;
 pub use extra_data::*;
 
-use crate::assets::{AnimationBase, StructureBase, Texture};
+
+use std::hint::unreachable_unchecked;
+use std::sync::Arc;
+use crate::assets::{Assets, AnimationBase, Texture};
 use crate::behaviour;
 use crate::shared::{AABB, aabb, size, pos};
 use crate::store::SaveAndLoad;
@@ -116,11 +119,7 @@ pub struct BaseProjectile {
 
 /// The game world data. Includes actors, terrain, and decorations
 pub struct World {
-    pub total_sprite_count: u32,
-
-    pub static_resources_texture: Texture,
-    pub units_texture: Texture,
-
+    pub assets: Option<Arc<Assets>>,
     pub terrain: Terrain,
 
     pub pawns: Vec<BaseAnimated>,
@@ -157,7 +156,11 @@ pub struct World {
 
     pub decorations: Vec<BaseStatic>,
 
-    pub selected: Vec<WorldObject>
+    pub selected: Vec<WorldObject>,
+
+    pub total_sprite_count: u32,
+    pub static_resources_texture: Texture,
+    pub units_texture: Texture,
 }
 
 impl World {
@@ -217,79 +220,77 @@ impl World {
         self.terrain.init_terrain(width, height);
     }
 
-    pub fn create_pawn(&mut self, position: Position<f32>) -> usize {
-        self.total_sprite_count += 1;
+    pub fn create_pawn(&mut self, position: Position<f32>) {
         self.pawns_data.push(PawnData::default());
         self.pawns_behaviour.push(behaviour::pawn::PawnBehaviour::idle());
-        self.pawns.push(BaseAnimated { position, ..Default::default()});
-        self.pawns.len() - 1
+        self.pawns.push(BaseAnimated { position, ..Default::default() });
+        self.total_sprite_count += 1;
     }
 
-    pub fn create_warrior(&mut self, position: Position<f32>) -> usize {
-        self.total_sprite_count += 1;
+    pub fn create_warrior(&mut self, position: Position<f32>) {
         self.warriors_behaviour.push(behaviour::warrior::WarriorBehaviour::idle());
-        self.warriors.push(BaseAnimated { position, ..Default::default()});
-        self.warriors.len() - 1
-    }
-
-    pub fn create_archer(&mut self, position: Position<f32>) -> usize {
+        self.warriors.push(BaseAnimated { position, ..Default::default() });
         self.total_sprite_count += 1;
-        self.archers_behaviour.push(behaviour::archer::ArcherBehaviour::idle());
-        self.archers.push(BaseAnimated { position, ..Default::default()});
-        self.archers.len() - 1
     }
 
-    pub fn create_sheep(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
+    pub fn create_archer(&mut self, position: Position<f32>) {
+        self.archers_behaviour.push(behaviour::archer::ArcherBehaviour::idle());
+        self.archers.push(BaseAnimated { position, ..Default::default() });
+        self.total_sprite_count += 1;
+    }
+
+    pub fn create_sheep(&mut self, position: Position<f32>) {
         self.total_sprite_count += 1;
         self.sheeps_data.push(SheepData::default());
         self.sheep_behaviour.push(behaviour::sheep::SheepBehaviour::idle());
-        Self::create_inner_actor(&mut self.sheeps, position, animation)
+        self.sheeps.push(BaseAnimated { position, ..Default::default() });
     }
 
-    pub fn create_tree(&mut self, position: Position<f32>, animation: &AnimationBase) -> usize {
-        self.total_sprite_count += 1;
+    pub fn create_tree(&mut self, position: Position<f32>) {
+        let animation = self.assets().resources.tree_idle;
         self.trees_data.push(TreeData::default());
-        Self::create_inner_actor(&mut self.trees, position, animation)
+        self.trees.push(BaseAnimated { position, animation, ..Default::default() });
+        self.total_sprite_count += 1;
     }
 
-    pub fn create_gold_mine(&mut self, position: Position<f32>, sprite: StructureBase) {
-        self.total_sprite_count += 1;
-        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
+    pub fn create_gold_mine(&mut self, position: Position<f32>) {
+        let sprite = self.assets().structures.gold_mine_inactive.aabb;
+        self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::GoldMine(Default::default()));
+        self.total_sprite_count += 1;
     }
 
-    pub fn create_castle(&mut self, position: Position<f32>, sprite: StructureBase) -> usize {
-        self.total_sprite_count += 1;
-        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
+    pub fn create_castle(&mut self, position: Position<f32>) {
+        let sprite = self.assets().structures.knights_castle_construction.aabb;
+        self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::Castle(StructureCastleData { hp: 0, building: true, destroyed: false }));
-        self.structures.len() - 1
+        self.total_sprite_count += 1;
     }
 
-    pub fn create_tower(&mut self, position: Position<f32>, sprite: StructureBase) -> usize {
-        self.total_sprite_count += 1;
-        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
+    pub fn create_tower(&mut self, position: Position<f32>) {
+        let sprite = self.assets().structures.knights_tower_construction.aabb;
+        self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::Tower(StructureTowerData { hp: 0, building: true, destroyed: false }));
-        self.structures.len() - 1
+        self.total_sprite_count += 1;
     }
 
-    pub fn create_house(&mut self, position: Position<f32>, sprite: StructureBase) -> usize {
-        self.total_sprite_count += 1;
-        self.structures.push(BaseStatic { position, sprite: sprite.aabb, selected: false });
+    pub fn create_house(&mut self, position: Position<f32>) {
+        let sprite = self.assets().structures.knights_house_construction.aabb;
+        self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::House(StructureHouseData { hp: 0, building: true, destroyed: false }));
-        self.structures.len() - 1
+        self.total_sprite_count += 1;
     }
 
-    pub fn create_resource_spawn(&mut self, position: Position<f32>, animation: &AnimationBase, resource_type: ResourceType) -> usize {
-        self.total_sprite_count += 1;
+    pub fn create_resource_spawn(&mut self, position: Position<f32>, resource_type: ResourceType) {
         self.resources_spawn_behaviour.push(behaviour::spawn_resources::SpawnResourceBehaviour::spawn(resource_type));
-        Self::create_inner_actor(&mut self.resources_spawn, position, animation)
+        self.total_sprite_count += 1;
+        self.resources_spawn.push(BaseAnimated { position, ..Default::default() });
     }
 
-    pub fn create_resource(&mut self, position: Position<f32>, sprite: AABB, resource_data: ResourceData) -> usize {
-        self.total_sprite_count += 1;
+    pub fn create_resource(&mut self, position: Position<f32>, sprite: AABB, resource_data: ResourceData) {
         self.resources.push(BaseStatic { position, sprite, selected: false });
         self.resources_data.push(resource_data);
-        self.resources.len() - 1
+        self.total_sprite_count += 1;
     }
 
     pub fn object_at(&self, position: Position<f32>) -> Option<WorldObject> {
@@ -425,14 +426,11 @@ impl World {
         }
     }
 
-    fn create_inner_actor(
-        base: &mut Vec<BaseAnimated>,
-        position: Position<f32>,
-        animation: &AnimationBase
-    ) -> usize {
-        let index = base.len();
-        base.push(BaseAnimated { position, animation: *animation, current_frame: 0, ..Default::default()});
-        return index
+    fn assets(&self) -> &Assets {
+        match self.assets.as_ref() {
+            Some(assets) => assets,
+            None => unsafe { unreachable_unchecked() } // Assets will always be initialized
+        }
     }
 
 }
@@ -440,6 +438,8 @@ impl World {
 impl SaveAndLoad for World {
 
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
+        writer.save(&self.terrain);
+        
         writer.write_slice(&self.pawns);
         writer.write_slice(&self.pawns_data);
         writer.write_slice(&self.pawns_behaviour);
@@ -475,14 +475,14 @@ impl SaveAndLoad for World {
 
         writer.write_slice(&self.selected);
 
+        writer.write_u32(self.total_sprite_count);
         writer.write(&self.static_resources_texture);
         writer.write(&self.units_texture);
-        writer.write_u32(self.total_sprite_count);
-
-        writer.save(&self.terrain);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
+        let terrain = reader.load();
+
         let pawns = reader.read_vec();
         let pawns_data = reader.read_vec();
         let pawns_behaviour = reader.read_vec();
@@ -518,17 +518,12 @@ impl SaveAndLoad for World {
 
         let selected = reader.read_vec();
 
+        let total_sprite_count = reader.read_u32();
         let static_resources_texture = reader.read();
         let units_texture = reader.read();
-        let total_sprite_count = reader.read_u32();
-
-        let terrain = reader.load();
 
         World {
-            total_sprite_count,
-            static_resources_texture,
-            units_texture,
-
+            assets: None,
             terrain,
 
             pawns,
@@ -565,6 +560,10 @@ impl SaveAndLoad for World {
             decorations,
 
             selected,
+
+            total_sprite_count,
+            static_resources_texture,
+            units_texture,
         }
     }
 
@@ -573,10 +572,7 @@ impl SaveAndLoad for World {
 impl Default for World {
     fn default() -> Self {
         World {
-            total_sprite_count: 0,
-            static_resources_texture: Texture { id: 0 },
-            units_texture: Texture { id: 0 },
-
+            assets: None,
             terrain: Terrain::default(),
     
             pawns: Vec::with_capacity(16),
@@ -613,6 +609,10 @@ impl Default for World {
             decorations: Vec::with_capacity(16),
 
             selected: Vec::with_capacity(8),
+
+            total_sprite_count: 0,
+            static_resources_texture: Texture { id: 0 },
+            units_texture: Texture { id: 0 },
         }
     }
 }

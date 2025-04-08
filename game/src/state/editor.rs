@@ -14,6 +14,7 @@ pub enum TestId {
     PawnAi,
     WarriorAi,
     ArcherAi,
+    PathfindingAi,
 }
 
 impl TestId {
@@ -22,6 +23,7 @@ impl TestId {
             1 => TestId::PawnAi,
             2 => TestId::WarriorAi,
             3 => TestId::ArcherAi,
+            4 => TestId::PathfindingAi,
             _ => TestId::None,
         }
     }
@@ -51,6 +53,7 @@ pub fn init(game: &mut DemoGame, test: TestId) -> Result<(), Error> {
         TestId::PawnAi => init_pawn_tests(&mut game.data),
         TestId::WarriorAi => init_warrior_ai(&mut game.data),
         TestId::ArcherAi => init_archer_ai(&mut game.data),
+        TestId::PathfindingAi => init_pathfinding_ai(&mut game.data),
     }
 
     inner_state.gui.build(&mut game.data)?;
@@ -62,40 +65,39 @@ pub fn init(game: &mut DemoGame, test: TestId) -> Result<(), Error> {
 
 fn init_pawn_tests(data: &mut DemoGameData) {
     let world = &mut data.world;
-    let assets = &data.assets;
 
     world.create_pawn(pos(100.0, 100.0));
     world.create_pawn(pos(100.0, 200.0));
     world.create_pawn(pos(100.0, 300.0));
     
-    world.create_tree(pos(300.0, 220.0), &assets.resources.tree_idle);
-    world.create_tree(pos(380.0, 300.0), &assets.resources.tree_idle);
-    world.create_tree(pos(230.0, 330.0), &assets.resources.tree_idle);
+    world.create_tree(pos(300.0, 220.0));
+    world.create_tree(pos(380.0, 300.0));
+    world.create_tree(pos(230.0, 330.0));
 
-    world.create_gold_mine(pos(200.0, 500.0), assets.structures.gold_mine_inactive);
+    world.create_gold_mine(pos(200.0, 500.0));
 
-    world.create_castle(pos(200.0, 760.0), assets.structures.knights_castle_construction);
-    world.create_tower(pos(500.0, 760.0), assets.structures.knights_tower_construction);
-    world.create_house(pos(700.0, 760.0), assets.structures.knights_house_construction);
+    world.create_castle(pos(200.0, 760.0));
+    world.create_tower(pos(500.0, 760.0));
+    world.create_house(pos(700.0, 760.0));
 
     // Destroyed
-    let mut id = world.create_castle(pos(200.0, 960.0), assets.structures.knights_castle_destroyed);
-    if let StructureData::Castle(data) = &mut world.structures_data[id] {
-        data.building = false;
-        data.destroyed = true;
-    }
+    // let mut id = world.create_castle(pos(200.0, 960.0));
+    // if let StructureData::Castle(data) = &mut world.structures_data[id] {
+    //     data.building = false;
+    //     data.destroyed = true;
+    // }
 
-    id = world.create_tower(pos(500.0, 960.0), assets.structures.knights_tower_destroyed);
-    if let StructureData::Tower(data) = &mut world.structures_data[id] {
-        data.building = false;
-        data.destroyed = true;
-    }
+    // id = world.create_tower(pos(500.0, 960.0));
+    // if let StructureData::Tower(data) = &mut world.structures_data[id] {
+    //     data.building = false;
+    //     data.destroyed = true;
+    // }
 
-    id = world.create_house(pos(700.0, 960.0), assets.structures.knights_house_destroyed);
-    if let StructureData::House(data) = &mut world.structures_data[id] {
-        data.building = false;
-        data.destroyed = true;
-    }
+    // id = world.create_house(pos(700.0, 960.0));
+    // if let StructureData::House(data) = &mut world.structures_data[id] {
+    //     data.building = false;
+    //     data.destroyed = true;
+    // }
 
     create_sheeps(data);
 }
@@ -119,17 +121,22 @@ fn init_archer_ai(data: &mut DemoGameData) {
     create_sheeps(data);
 }
 
-fn create_sheeps(data: &mut DemoGameData) {
+fn init_pathfinding_ai(data: &mut DemoGameData) {
     let world = &mut data.world;
     let assets = &data.assets;
 
+    world.create_pawn(pos(100.0, 100.0));
+}
+
+fn create_sheeps(data: &mut DemoGameData) {
+    let world = &mut data.world;
     let y = 200.0;
 
-    world.create_sheep(pos(650.0, y+170.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(690.0, y+210.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(620.0, y+240.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(590.0, y+190.0), &assets.animations.sheep.idle);
-    world.create_sheep(pos(700.0, y+250.0), &assets.animations.sheep.idle);
+    world.create_sheep(pos(650.0, y+170.0));
+    world.create_sheep(pos(690.0, y+210.0));
+    world.create_sheep(pos(620.0, y+240.0));
+    world.create_sheep(pos(590.0, y+190.0));
+    world.create_sheep(pos(700.0, y+250.0));
 }
 
 //

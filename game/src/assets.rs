@@ -21,6 +21,7 @@ mod gui;
 pub use gui::GuiBundle;
 
 use fnv::FnvHashMap;
+use std::sync::Arc;
 
 use crate::error::Error;
 use crate::shared::AABB;
@@ -131,14 +132,17 @@ impl Assets {
 }
 
 pub fn init_assets(game: &mut DemoGame, init: &DemoGameInit) -> Result<(), Error> {
-    import_assets_index(game, &init)?;
+    let mut assets = Assets::default();
+    import_assets_index(&mut assets, &init)?;
+
+    game.data.assets = ::std::sync::Arc::new(assets);
     init_world_assets(game)?;
+    
     Ok(())
 }
 
-fn import_assets_index(game: &mut DemoGame, init: &DemoGameInit) -> Result<(), Error> {
+fn import_assets_index(assets: &mut Assets, init: &DemoGameInit) -> Result<(), Error> {
     let mut error: Option<Error> = None;
-    let assets = &mut game.data.assets;
 
     // Assets index
     crate::shared::split_csv::<5, _>(&init.assets_bundle, |args| {
@@ -177,6 +181,8 @@ fn init_world_assets(game: &mut DemoGame) -> Result<(), Error> {
 
     world.static_resources_texture = assets.textures.get("static_resources").copied()
         .ok_or_else(|| assets_err!("static_resources texture missing") )?;
+
+    world.assets = Some(Arc::clone(assets));
 
     Ok(())
 }
