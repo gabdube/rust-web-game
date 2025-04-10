@@ -1,4 +1,5 @@
 use crate::behaviour::BehaviourState;
+use crate::behaviour::behaviour_shared::{is_enemy_structure, move_to, elapsed};
 use crate::shared::{Position, AABB, pos};
 use crate::world::{BaseAnimated, WorldObject, WorldObjectType};
 use crate::DemoGameData;
@@ -38,6 +39,7 @@ pub fn new(game: &mut DemoGameData, archer: WorldObject, target: WorldObject) {
     let target_index = target.id as usize;
     let target_invalid = match target.ty {
         WorldObjectType::Sheep => target_index >= game.world.sheeps.len(),
+        WorldObjectType::Structure => is_enemy_structure(game, target_index) == false,
         _ => false
     };
 
@@ -85,8 +87,6 @@ fn init(game: &DemoGameData, params: &mut ArcherShootParams) {
 }
 
 fn moving(game: &DemoGameData, params: &mut ArcherShootParams) {
-    use crate::behaviour::behaviour_shared::move_to;
-
     params.archer.position = move_to(params.archer.position, params.target_position, game.global.frame_delta);
     params.archer.flipped = params.archer.position.x > params.target_position.x;
 
@@ -97,8 +97,6 @@ fn moving(game: &DemoGameData, params: &mut ArcherShootParams) {
 }
 
 fn shooting(game: &DemoGameData, params: &mut ArcherShootParams) {
-    use crate::behaviour::behaviour_shared::elapsed;
-
     fn select_animation(params: &ArcherShootParams) -> ShootingAnimation {
         let position = params.archer.position;
         let target_position = params.target_position;
@@ -169,8 +167,6 @@ fn shooting(game: &DemoGameData, params: &mut ArcherShootParams) {
 }
 
 fn pause(game: &DemoGameData, params: &mut ArcherShootParams) {
-    use crate::behaviour::behaviour_shared::elapsed;
-
     if elapsed(game.global.time, params.last_timestamp as f64, 500.0) {
         init(game, params);
     }

@@ -14,6 +14,7 @@ mod state;
 mod data;
 mod output;
 mod behaviour;
+mod pathfinding;
 
 use data::DemoGameData;
 use state::GameState;
@@ -96,7 +97,7 @@ impl DemoGame {
         }
 
         #[cfg(feature="editor")]
-        if let Err(e) = state::editor::init(&mut demo_app, crate::state::TestId::PathfindingAi) {
+        if let Err(e) = state::editor::init(&mut demo_app, crate::state::TestId::ArcherAi) {
             set_last_error(e);
             return None;
         }
@@ -111,7 +112,7 @@ impl DemoGame {
 
     pub fn on_reload(&mut self) -> bool {
         #[cfg(feature="editor")]
-        if let Err(e) = state::editor::init(self, crate::state::TestId::PathfindingAi) {
+        if let Err(e) = state::editor::init(self, crate::state::TestId::ArcherAi) {
             set_last_error(e);
             return false;
         }

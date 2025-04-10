@@ -67,7 +67,7 @@ pub fn cancel(game: &mut DemoGameData, pawn_index: usize) {
             }
 
             if params.structure_data.miners_count == 0 {
-                params.structure.sprite = game.assets.structures.gold_mine_inactive.aabb;
+                params.structure.sprite = game.assets.structures.gold_mine_inactive;
             }
         },
         BehaviourState::Running(DISABLE_MINE) => {
@@ -126,7 +126,7 @@ fn enter_mine(game: &DemoGameData, params: &mut PawnHarvestGoldParams) {
     let index = params.structure_data.miners_count as usize;
     params.structure_data.miners_ids[index] = params.pawn_id;
     params.structure_data.miners_count += 1;
-    params.structure.sprite = game.assets.structures.gold_mine.aabb;
+    params.structure.sprite = game.assets.structures.gold_mine;
     params.last_timestamp = game.global.time as f32;
 
     // Hide the pawn
@@ -172,7 +172,7 @@ fn disable_mine(game: &mut DemoGameData, params: &mut PawnHarvestGoldParams) {
     }
 
     // Disable mine
-    params.structure.sprite = game.assets.structures.gold_mine_destroyed.aabb;
+    params.structure.sprite = game.assets.structures.gold_mine_destroyed;
     params.structure_data.miners_count = 0;
     params.structure_data.miners_ids = [0; 3];
     params.respawn_pawn = true;

@@ -6,7 +6,7 @@ pub mod hunt_sheep;
 pub mod build_structure;
 
 use crate::behaviour::BehaviourState;
-use crate::shared::Position;
+use crate::pathfinding::PathFindingData;
 use crate::world::ResourceType;
 use crate::DemoGameData;
 
@@ -14,7 +14,7 @@ use crate::DemoGameData;
 #[derive(Copy, Clone)]
 pub enum PawnBehaviourType {
     Idle,
-    MoveTo { target_position: Position<f32> },
+    MoveTo { pathfinding_state: PathFindingData },
     HarvestWood { tree_id: u32, last_timestamp: f32 },
     HarvestGold { structure_id: u32, last_timestamp: f32 },
     GrabResource { resource_id: u32 },

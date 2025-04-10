@@ -131,15 +131,15 @@ fn build_structure(game: &DemoGameData, params: &mut PawnBuildStructureParams) {
 fn finalize_structure(game: &DemoGameData, params: &mut PawnBuildStructureParams) {
     match &mut params.structure_data {
         StructureData::Castle(data) => {
-            params.structure.sprite = game.assets.structures.knights_castle.aabb;
+            params.structure.sprite = game.assets.structures.knights_castle;
             data.building = false;
         }
         StructureData::Tower(data) => {
-            params.structure.sprite = game.assets.structures.knights_tower.aabb;
+            params.structure.sprite = game.assets.structures.knights_tower;
             data.building = false;
         }
         StructureData::House(data) => {
-            params.structure.sprite = game.assets.structures.knights_house.aabb;
+            params.structure.sprite = game.assets.structures.knights_house;
             data.building = false;
         }
         StructureData::GoldMine(..) | StructureData::GoblinHut(_) => {}

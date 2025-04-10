@@ -35,7 +35,7 @@ fn run_pawn_behaviour(game: &mut DemoGame) {
     let mut index = 0;
 
     while index < data.world.pawns.len() {
-        let behaviour_type = data.world.pawns_behaviour[index].ty;
+        let behaviour_type = &data.world.pawns_behaviour[index].ty;
         match behaviour_type {
             PawnBehaviourType::Idle { .. } => pawn::idle(data, index),
             PawnBehaviourType::MoveTo { .. } => pawn::pawn_move::process(data, index),
@@ -57,7 +57,7 @@ fn run_warrior_behaviour(game: &mut DemoGame) {
     let mut index = 0;
 
     while index < data.world.warriors.len() {
-        let behaviour_type = data.world.warriors_behaviour[index].ty;
+        let behaviour_type = &data.world.warriors_behaviour[index].ty;
         match behaviour_type {
             WarriorBehaviourType::Idle { .. } => warrior::idle(data, index),
             WarriorBehaviourType::MoveTo { .. } => warrior::warrior_move::process(data, index),
@@ -74,7 +74,7 @@ fn run_archers_behaviour(game: &mut DemoGame) {
     let mut index = 0;
 
     while index < data.world.archers.len() {
-        let behaviour_type = data.world.archers_behaviour[index].ty;
+        let behaviour_type = &data.world.archers_behaviour[index].ty;
         match behaviour_type {
             ArcherBehaviourType::Idle { .. } => archer::idle(data, index),
             ArcherBehaviourType::MoveTo { .. } => archer::archer_move::process(data, index),

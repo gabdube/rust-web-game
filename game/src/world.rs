@@ -9,6 +9,7 @@ use std::hint::unreachable_unchecked;
 use std::sync::Arc;
 use crate::assets::{Assets, AnimationBase, Texture};
 use crate::behaviour;
+use crate::pathfinding::PathfindingState;
 use crate::shared::{AABB, aabb, size, pos};
 use crate::store::SaveAndLoad;
 use crate::Position;
@@ -121,6 +122,7 @@ pub struct BaseProjectile {
 pub struct World {
     pub assets: Option<Arc<Assets>>,
     pub terrain: Terrain,
+    pub pathfinding: PathfindingState,
 
     pub pawns: Vec<BaseAnimated>,
     pub pawns_data: Vec<PawnData>,
@@ -254,14 +256,14 @@ impl World {
     }
 
     pub fn create_gold_mine(&mut self, position: Position<f32>) {
-        let sprite = self.assets().structures.gold_mine_inactive.aabb;
+        let sprite = self.assets().structures.gold_mine_inactive;
         self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::GoldMine(Default::default()));
         self.total_sprite_count += 1;
     }
 
     pub fn create_castle(&mut self, position: Position<f32>) {
-        let sprite = self.assets().structures.knights_castle_construction.aabb;
+        let sprite = self.assets().structures.knights_castle_construction;
         self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::Castle(StructureCastleData { hp: 0, building: true, destroyed: false }));
         self.total_sprite_count += 1;
@@ -270,9 +272,9 @@ impl World {
     pub fn create_castle_with_data(&mut self, position: Position<f32>, data: StructureCastleData) {
         let assets = self.assets();
         let sprite = match (data.destroyed, data.building) {
-            (true, _) => assets.structures.knights_castle_destroyed.aabb,
-            (false, true) => assets.structures.knights_castle_construction.aabb,
-            (false, false) => assets.structures.knights_castle.aabb,
+            (true, _) => assets.structures.knights_castle_destroyed,
+            (false, true) => assets.structures.knights_castle_construction,
+            (false, false) => assets.structures.knights_castle,
         };
 
         self.structures.push(BaseStatic { position, sprite, selected: false });
@@ -281,7 +283,7 @@ impl World {
     }
 
     pub fn create_tower(&mut self, position: Position<f32>) {
-        let sprite = self.assets().structures.knights_tower_construction.aabb;
+        let sprite = self.assets().structures.knights_tower_construction;
         self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::Tower(StructureTowerData { hp: 0, building: true, destroyed: false }));
         self.total_sprite_count += 1;
@@ -290,9 +292,9 @@ impl World {
     pub fn create_tower_with_data(&mut self, position: Position<f32>, data: StructureTowerData) {
         let assets = self.assets();
         let sprite = match (data.destroyed, data.building) {
-            (true, _) => assets.structures.knights_tower_destroyed.aabb,
-            (false, true) => assets.structures.knights_tower_construction.aabb,
-            (false, false) => assets.structures.knights_tower.aabb,
+            (true, _) => assets.structures.knights_tower_destroyed,
+            (false, true) => assets.structures.knights_tower_construction,
+            (false, false) => assets.structures.knights_tower,
         };
 
         self.structures.push(BaseStatic { position, sprite, selected: false });
@@ -301,7 +303,7 @@ impl World {
     }
 
     pub fn create_house(&mut self, position: Position<f32>) {
-        let sprite = self.assets().structures.knights_house_construction.aabb;
+        let sprite = self.assets().structures.knights_house_construction;
         self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::House(StructureHouseData { hp: 0, building: true, destroyed: false }));
         self.total_sprite_count += 1;
@@ -310,9 +312,9 @@ impl World {
     pub fn create_house_with_data(&mut self, position: Position<f32>, data: StructureHouseData) {
         let assets = self.assets();
         let sprite = match (data.destroyed, data.building) {
-            (true, _) => assets.structures.knights_house_destroyed.aabb,
-            (false, true) => assets.structures.knights_house_construction.aabb,
-            (false, false) => assets.structures.knights_house.aabb,
+            (true, _) => assets.structures.knights_house_destroyed,
+            (false, true) => assets.structures.knights_house_construction,
+            (false, false) => assets.structures.knights_house,
         };
 
         self.structures.push(BaseStatic { position, sprite, selected: false });
@@ -321,7 +323,7 @@ impl World {
     }
 
     pub fn create_goblin_hut(&mut self, position: Position<f32>) {
-        let sprite = self.assets().structures.goblin_house.aabb;
+        let sprite = self.assets().structures.goblin_house;
         self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::GoblinHut(GobinHutData { hp: MAX_GOBIN_HUT_LIFE, destroyed: false }));
         self.total_sprite_count += 1;
@@ -485,6 +487,7 @@ impl SaveAndLoad for World {
 
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
         writer.save(&self.terrain);
+        writer.save(&self.pathfinding);
         
         writer.write_slice(&self.pawns);
         writer.write_slice(&self.pawns_data);
@@ -528,6 +531,7 @@ impl SaveAndLoad for World {
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let terrain = reader.load();
+        let pathfinding = reader.load();
 
         let pawns = reader.read_vec();
         let pawns_data = reader.read_vec();
@@ -570,7 +574,9 @@ impl SaveAndLoad for World {
 
         World {
             assets: None,
+
             terrain,
+            pathfinding,
 
             pawns,
             pawns_data,
@@ -620,6 +626,7 @@ impl Default for World {
         World {
             assets: None,
             terrain: Terrain::default(),
+            pathfinding: PathfindingState::default(),
     
             pawns: Vec::with_capacity(16),
             pawns_data: Vec::with_capacity(16),

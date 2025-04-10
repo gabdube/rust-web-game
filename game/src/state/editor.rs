@@ -85,7 +85,11 @@ fn init_pawn_tests(data: &mut DemoGameData) {
     world.create_tower_with_data(pos(500.0, 960.0), crate::world::StructureTowerData { hp: 0, building: true, destroyed: true });
     world.create_house_with_data(pos(700.0, 960.0), crate::world::StructureHouseData { hp: 0, building: true, destroyed: true });
 
-    create_sheeps(data);
+    world.create_sheep(pos(650.0, 370.0));
+    world.create_sheep(pos(690.0, 510.0));
+    world.create_sheep(pos(620.0, 540.0));
+    world.create_sheep(pos(590.0, 390.0));
+    world.create_sheep(pos(700.0, 550.0));
 }
 
 fn init_warrior_ai(data: &mut DemoGameData) {
@@ -95,7 +99,15 @@ fn init_warrior_ai(data: &mut DemoGameData) {
     world.create_warrior(pos(200.0, 100.0));
     world.create_warrior(pos(300.0, 100.0));
 
-    create_sheeps(data);
+    world.create_goblin_hut(pos(90.0, 500.0));
+    world.create_goblin_hut(pos(250.0, 430.0));
+    world.create_goblin_hut(pos(180.0, 600.0));
+
+    world.create_sheep(pos(650.0, 370.0));
+    world.create_sheep(pos(690.0, 510.0));
+    world.create_sheep(pos(620.0, 540.0));
+    world.create_sheep(pos(590.0, 390.0));
+    world.create_sheep(pos(700.0, 550.0));
 }
 
 fn init_archer_ai(data: &mut DemoGameData) {
@@ -104,12 +116,23 @@ fn init_archer_ai(data: &mut DemoGameData) {
     world.create_archer(pos(200.0, 100.0));
     world.create_archer(pos(300.0, 100.0));
 
-    create_sheeps(data);
+    world.create_goblin_hut(pos(90.0, 500.0));
+    world.create_goblin_hut(pos(250.0, 430.0));
+    world.create_goblin_hut(pos(180.0, 600.0));
+
+    world.create_sheep(pos(650.0, 370.0));
+    world.create_sheep(pos(690.0, 510.0));
+    world.create_sheep(pos(620.0, 540.0));
+    world.create_sheep(pos(590.0, 390.0));
+    world.create_sheep(pos(700.0, 550.0));
 }
 
 fn init_pathfinding_ai(data: &mut DemoGameData) {
     let world = &mut data.world;
+    
     world.create_pawn(pos(100.0, 100.0));
+    world.create_warrior(pos(200.0, 100.0));
+    world.create_archer(pos(300.0, 100.0));
 
     world.create_castle_with_data(pos(400.0, 480.0), crate::world::StructureCastleData { hp: crate::world::MAX_CASTLE_HP, building: false, destroyed: false });
     
@@ -120,7 +143,7 @@ fn init_pathfinding_ai(data: &mut DemoGameData) {
     world.create_tower_with_data(pos(600.0, 600.0), tower_data);
     world.create_tower_with_data(pos(400.0, 650.0), tower_data);
 
-    let house_data = crate::world::StructureHouseData { hp: crate::world::MAX_TOWER_HP, building: false, destroyed: false };
+    let house_data = crate::world::StructureHouseData { hp: crate::world::MAX_HOUSE_HP, building: false, destroyed: false };
     world.create_house_with_data(pos(750.0, 750.0), house_data);
     world.create_house_with_data(pos(850.0, 750.0), house_data);
     world.create_house_with_data(pos(950.0, 750.0), house_data);
@@ -161,16 +184,6 @@ fn init_pathfinding_ai(data: &mut DemoGameData) {
     world.create_tree(pos(1200.0, 500.0));
 }
 
-fn create_sheeps(data: &mut DemoGameData) {
-    let world = &mut data.world;
-    let y = 200.0;
-
-    world.create_sheep(pos(650.0, y+170.0));
-    world.create_sheep(pos(690.0, y+210.0));
-    world.create_sheep(pos(620.0, y+240.0));
-    world.create_sheep(pos(590.0, y+190.0));
-    world.create_sheep(pos(700.0, y+250.0));
-}
 
 //
 // General updates
@@ -273,6 +286,7 @@ fn warrior_actions(game: &mut DemoGameData, warrior: WorldObject, target_object:
     let target_object = target_object.unwrap();
     match target_object.ty {
         WorldObjectType::Sheep => behaviour::warrior::warrior_attack::new(game, warrior, target_object),
+        WorldObjectType::Structure => behaviour::warrior::warrior_attack::new(game, warrior, target_object),
         _ => {}
     }
 }
@@ -288,6 +302,7 @@ fn archer_actions(game: &mut DemoGameData, archer: WorldObject, target_object: O
     let target_object = target_object.unwrap();
     match target_object.ty {
         WorldObjectType::Sheep => behaviour::archer::shoot::new(game, archer, target_object),
+        WorldObjectType::Structure => behaviour::archer::shoot::new(game, archer, target_object),
         _ => {}
     }
 }

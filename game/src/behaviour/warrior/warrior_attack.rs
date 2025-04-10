@@ -1,7 +1,7 @@
 use crate::behaviour::BehaviourState;
-use crate::behaviour::behaviour_shared::elapsed;
+use crate::behaviour::behaviour_shared::{elapsed, is_enemy_structure};
 use crate::shared::Position;
-use crate::world::{BaseAnimated, WorldObject, WorldObjectType};
+use crate::world::{BaseAnimated, StructureData, WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{WarriorBehaviour, WarriorBehaviourType};
 
@@ -36,10 +36,11 @@ pub fn new(game: &mut DemoGameData, warrior: WorldObject, target: WorldObject) {
 
     let target_invalid = match target.ty {
         WorldObjectType::Sheep => target_index >= game.world.sheeps.len(),
+        WorldObjectType::Structure => !is_enemy_structure(game, target_index),
         _ => false
     };
 
-    if warrior.ty != WorldObjectType::Warrior || warrior_index >= game.world.warriors.len() || target_invalid {
+    if target_invalid || warrior.ty != WorldObjectType::Warrior || warrior_index >= game.world.warriors.len() {
         return;
     }
 
@@ -194,6 +195,7 @@ fn compute_damage(game: &mut DemoGameData, warrior_index: usize) {
     let target_index = target.id as usize;
     match target.ty {
         WorldObjectType::Sheep => crate::behaviour::sheep::strike(game, target_index, 5),
+        WorldObjectType::Structure => crate::behaviour::behaviour_shared::damage_structure(game, target_index, 5),
         _ => {},
     }
 }

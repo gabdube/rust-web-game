@@ -49,7 +49,14 @@ fn arrow_strike(data: &mut DemoGameData, arrow_position: Position<f32>, target: 
                 super::sheep::strike(data, index, 5);
                 touched = true;
             }
-        }
+        },
+        WorldObjectType::Structure => {
+            let aabb = data.world.structures[index].aabb();
+            if aabb.point_inside(arrow_position) {
+                crate::behaviour::behaviour_shared::damage_structure(data, index, 3);
+                touched = true;
+            }
+        },
         _ => {},
     }
 

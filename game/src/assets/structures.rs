@@ -1,27 +1,22 @@
 use crate::shared::AABB;
 
-#[derive(Copy, Clone, Default)]
-pub struct StructureBase {
-    pub aabb: AABB
-}
-
 #[allow(dead_code)]
 #[derive(Copy, Clone, Default)]
 pub struct StructuresBundle {
-    pub knights_castle: StructureBase,
-    pub knights_castle_construction: StructureBase,
-    pub knights_castle_destroyed: StructureBase,
-    pub knights_tower: StructureBase,
-    pub knights_tower_construction: StructureBase,
-    pub knights_tower_destroyed: StructureBase,
-    pub knights_house: StructureBase,
-    pub knights_house_construction: StructureBase,
-    pub knights_house_destroyed: StructureBase,
-    pub goblin_house: StructureBase,
-    pub goblin_house_destroyed: StructureBase,
-    pub gold_mine: StructureBase,
-    pub gold_mine_destroyed: StructureBase,
-    pub gold_mine_inactive: StructureBase,
+    pub knights_castle: AABB,
+    pub knights_castle_construction: AABB,
+    pub knights_castle_destroyed: AABB,
+    pub knights_tower: AABB,
+    pub knights_tower_construction: AABB,
+    pub knights_tower_destroyed: AABB,
+    pub knights_house: AABB,
+    pub knights_house_construction: AABB,
+    pub knights_house_destroyed: AABB,
+    pub goblin_house: AABB,
+    pub goblin_house_destroyed: AABB,
+    pub gold_mine: AABB,
+    pub gold_mine_destroyed: AABB,
+    pub gold_mine_inactive: AABB,
 }
 
 impl StructuresBundle {
@@ -39,12 +34,12 @@ impl StructuresBundle {
             let bottom = parse(args[5]);
 
             if let Some(base) = self.match_name(name) {
-                base.aabb = AABB { left, top, right, bottom };
+                *base = AABB { left, top, right, bottom };
             }
         });
     }
 
-    fn match_name(&mut self, name: &str) -> Option<&mut StructureBase> {
+    fn match_name(&mut self, name: &str) -> Option<&mut AABB> {
         match name {
             "knight_castle" => Some(&mut self.knights_castle),
             "knight_castle_construction" => Some(&mut self.knights_castle_construction),
