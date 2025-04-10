@@ -267,10 +267,36 @@ impl World {
         self.total_sprite_count += 1;
     }
 
+    pub fn create_castle_with_data(&mut self, position: Position<f32>, data: StructureCastleData) {
+        let assets = self.assets();
+        let sprite = match (data.destroyed, data.building) {
+            (true, _) => assets.structures.knights_castle_destroyed.aabb,
+            (false, true) => assets.structures.knights_castle_construction.aabb,
+            (false, false) => assets.structures.knights_castle.aabb,
+        };
+
+        self.structures.push(BaseStatic { position, sprite, selected: false });
+        self.structures_data.push(StructureData::Castle(data));
+        self.total_sprite_count += 1;
+    }
+
     pub fn create_tower(&mut self, position: Position<f32>) {
         let sprite = self.assets().structures.knights_tower_construction.aabb;
         self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::Tower(StructureTowerData { hp: 0, building: true, destroyed: false }));
+        self.total_sprite_count += 1;
+    }
+
+    pub fn create_tower_with_data(&mut self, position: Position<f32>, data: StructureTowerData) {
+        let assets = self.assets();
+        let sprite = match (data.destroyed, data.building) {
+            (true, _) => assets.structures.knights_tower_destroyed.aabb,
+            (false, true) => assets.structures.knights_tower_construction.aabb,
+            (false, false) => assets.structures.knights_tower.aabb,
+        };
+
+        self.structures.push(BaseStatic { position, sprite, selected: false });
+        self.structures_data.push(StructureData::Tower(data));
         self.total_sprite_count += 1;
     }
 
@@ -281,10 +307,30 @@ impl World {
         self.total_sprite_count += 1;
     }
 
+    pub fn create_house_with_data(&mut self, position: Position<f32>, data: StructureHouseData) {
+        let assets = self.assets();
+        let sprite = match (data.destroyed, data.building) {
+            (true, _) => assets.structures.knights_house_destroyed.aabb,
+            (false, true) => assets.structures.knights_house_construction.aabb,
+            (false, false) => assets.structures.knights_house.aabb,
+        };
+
+        self.structures.push(BaseStatic { position, sprite, selected: false });
+        self.structures_data.push(StructureData::House(data));
+        self.total_sprite_count += 1;
+    }
+
+    pub fn create_goblin_hut(&mut self, position: Position<f32>) {
+        let sprite = self.assets().structures.goblin_house.aabb;
+        self.structures.push(BaseStatic { position, sprite, selected: false });
+        self.structures_data.push(StructureData::GoblinHut(GobinHutData { hp: MAX_GOBIN_HUT_LIFE, destroyed: false }));
+        self.total_sprite_count += 1;
+    }
+
     pub fn create_resource_spawn(&mut self, position: Position<f32>, resource_type: ResourceType) {
         self.resources_spawn_behaviour.push(behaviour::spawn_resources::SpawnResourceBehaviour::spawn(resource_type));
-        self.total_sprite_count += 1;
         self.resources_spawn.push(BaseAnimated { position, ..Default::default() });
+        self.total_sprite_count += 1;
     }
 
     pub fn create_resource(&mut self, position: Position<f32>, sprite: AABB, resource_data: ResourceData) {

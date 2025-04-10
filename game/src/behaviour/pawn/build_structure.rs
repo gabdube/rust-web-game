@@ -32,7 +32,7 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, structure: WorldObject) {
     }
 
     let ok = match game.world.structures_data[structure_index] {
-        StructureData::GoldMine(_) => false,
+        StructureData::GoldMine(_) | StructureData::GoblinHut(_) => false,
         StructureData::Castle(data) => data.hp < MAX_CASTLE_HP,
         StructureData::Tower(data) => data.hp < MAX_TOWER_HP,
         StructureData::House(data) => data.hp < MAX_HOUSE_HP,
@@ -118,7 +118,7 @@ fn build_structure(game: &DemoGameData, params: &mut PawnBuildStructureParams) {
             data.hp = u8::min(data.hp + 5, MAX_HOUSE_HP);
             data.hp == MAX_HOUSE_HP
         },
-        StructureData::GoldMine(_) => unsafe { ::std::hint::unreachable_unchecked() }
+        StructureData::GoldMine(_) | StructureData::GoblinHut(_) => unsafe { ::std::hint::unreachable_unchecked() }
     };
 
     if finalize {
@@ -131,24 +131,18 @@ fn build_structure(game: &DemoGameData, params: &mut PawnBuildStructureParams) {
 fn finalize_structure(game: &DemoGameData, params: &mut PawnBuildStructureParams) {
     match &mut params.structure_data {
         StructureData::Castle(data) => {
-            if !data.destroyed {
-                params.structure.sprite = game.assets.structures.knights_castle.aabb;
-                data.building = false;
-            }
-        },
+            params.structure.sprite = game.assets.structures.knights_castle.aabb;
+            data.building = false;
+        }
         StructureData::Tower(data) => {
-            if !data.destroyed {
-                params.structure.sprite = game.assets.structures.knights_tower.aabb;
-                data.building = false;
-            }
-        },
+            params.structure.sprite = game.assets.structures.knights_tower.aabb;
+            data.building = false;
+        }
         StructureData::House(data) => {
-            if !data.destroyed {
-                params.structure.sprite = game.assets.structures.knights_house.aabb;
-                data.building = false;
-            }
-        },
-        StructureData::GoldMine(..) => {},
+            params.structure.sprite = game.assets.structures.knights_house.aabb;
+            data.building = false;
+        }
+        StructureData::GoldMine(..) | StructureData::GoblinHut(_) => {}
     }
 
     params.new_behaviour = Some(PawnBehaviour::idle());
@@ -156,7 +150,7 @@ fn finalize_structure(game: &DemoGameData, params: &mut PawnBuildStructureParams
 
 fn early_exit(data: StructureData) -> bool {
     match data {
-        StructureData::GoldMine(..) => true,
+        StructureData::GoldMine(..) | StructureData::GoblinHut(_) => true,
         StructureData::Castle(data) => data.hp == MAX_CASTLE_HP,
         StructureData::Tower(data) => data.hp == MAX_TOWER_HP,
         StructureData::House(data) => data.hp == MAX_HOUSE_HP,

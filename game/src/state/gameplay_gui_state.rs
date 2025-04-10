@@ -141,6 +141,14 @@ impl GameplayGuiState {
                 gui.set_image(self.bindings.details_icon1, data.assets.gui.life_icon);
                 gui.set_text(self.bindings.details_text1, text_2);
             },
+            StructureData::GoblinHut(house_data) => {
+                let text_1 = font.compute_text_metrics("Goblin Hut", 22.0);
+                let text_2 = font.compute_text_metrics(&format!("  {} / {}", house_data.hp, crate::world::MAX_GOBIN_HUT_LIFE), 28.0);
+
+                gui.set_text(bindings.selected_name2, text_1);
+                gui.set_image(self.bindings.details_icon1, data.assets.gui.life_icon);
+                gui.set_text(self.bindings.details_text1, text_2);
+            }
         }
     }
 

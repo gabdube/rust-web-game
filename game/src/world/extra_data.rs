@@ -10,6 +10,7 @@ pub const MAX_HOUSE_HP: u8 = 50;
 pub const MAX_GOLD_MINE_AMOUNT: u8 = 10;
 pub const MAX_TREE_LIFE: u8 = 15;
 pub const MAX_SHEEP_LIFE: u8 = 10;
+pub const MAX_GOBIN_HUT_LIFE: u8 = 50;
 
 #[derive(Copy, Clone)]
 pub struct TreeData {
@@ -126,11 +127,18 @@ pub struct StructureHouseData {
 }
 
 #[derive(Copy, Clone)]
+pub struct GobinHutData {
+    pub hp: u8,
+    pub destroyed: bool,
+}
+
+#[derive(Copy, Clone)]
 pub enum StructureData {
     GoldMine(StructureGoldMineData),
     Castle(StructureCastleData),
     Tower(StructureTowerData),
     House(StructureHouseData),
+    GoblinHut(GobinHutData)
 }
 
 impl StructureData {

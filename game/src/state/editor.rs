@@ -79,25 +79,11 @@ fn init_pawn_tests(data: &mut DemoGameData) {
     world.create_castle(pos(200.0, 760.0));
     world.create_tower(pos(500.0, 760.0));
     world.create_house(pos(700.0, 760.0));
-
-    // Destroyed
-    // let mut id = world.create_castle(pos(200.0, 960.0));
-    // if let StructureData::Castle(data) = &mut world.structures_data[id] {
-    //     data.building = false;
-    //     data.destroyed = true;
-    // }
-
-    // id = world.create_tower(pos(500.0, 960.0));
-    // if let StructureData::Tower(data) = &mut world.structures_data[id] {
-    //     data.building = false;
-    //     data.destroyed = true;
-    // }
-
-    // id = world.create_house(pos(700.0, 960.0));
-    // if let StructureData::House(data) = &mut world.structures_data[id] {
-    //     data.building = false;
-    //     data.destroyed = true;
-    // }
+    
+    // Destroyed structures
+    world.create_castle_with_data(pos(200.0, 960.0), crate::world::StructureCastleData { hp: 0, building: true, destroyed: true });
+    world.create_tower_with_data(pos(500.0, 960.0), crate::world::StructureTowerData { hp: 0, building: true, destroyed: true });
+    world.create_house_with_data(pos(700.0, 960.0), crate::world::StructureHouseData { hp: 0, building: true, destroyed: true });
 
     create_sheeps(data);
 }
@@ -123,9 +109,56 @@ fn init_archer_ai(data: &mut DemoGameData) {
 
 fn init_pathfinding_ai(data: &mut DemoGameData) {
     let world = &mut data.world;
-    let assets = &data.assets;
-
     world.create_pawn(pos(100.0, 100.0));
+
+    world.create_castle_with_data(pos(400.0, 480.0), crate::world::StructureCastleData { hp: crate::world::MAX_CASTLE_HP, building: false, destroyed: false });
+    
+    let tower_data = crate::world::StructureTowerData { hp: crate::world::MAX_TOWER_HP, building: false, destroyed: false };
+    world.create_tower_with_data(pos(200.0, 600.0), tower_data);
+    world.create_tower_with_data(pos(200.0, 380.0), tower_data);
+    world.create_tower_with_data(pos(600.0, 380.0), tower_data);
+    world.create_tower_with_data(pos(600.0, 600.0), tower_data);
+    world.create_tower_with_data(pos(400.0, 650.0), tower_data);
+
+    let house_data = crate::world::StructureHouseData { hp: crate::world::MAX_TOWER_HP, building: false, destroyed: false };
+    world.create_house_with_data(pos(750.0, 750.0), house_data);
+    world.create_house_with_data(pos(850.0, 750.0), house_data);
+    world.create_house_with_data(pos(950.0, 750.0), house_data);
+    world.create_house_with_data(pos(1050.0, 750.0), house_data);
+
+    world.create_house_with_data(pos(500.0, 850.0), house_data);
+    world.create_house_with_data(pos(500.0, 950.0), house_data);
+    world.create_house_with_data(pos(500.0, 1050.0), house_data);
+    world.create_house_with_data(pos(500.0, 1150.0), house_data);
+
+    world.create_house_with_data(pos(900.0, 1200.0), house_data);
+    world.create_house_with_data(pos(1000.0, 1200.0), house_data);
+    world.create_house_with_data(pos(1100.0, 1200.0), house_data);
+    world.create_house_with_data(pos(1200.0, 1200.0), house_data);
+
+    world.create_house_with_data(pos(1200.0, 900.0), house_data);
+    world.create_house_with_data(pos(1200.0, 1000.0), house_data);
+    world.create_house_with_data(pos(1200.0, 1100.0), house_data);
+
+    world.create_goblin_hut(pos(1550.0, 250.0));
+    world.create_goblin_hut(pos(1550.0, 350.0));
+    world.create_goblin_hut(pos(1550.0, 450.0));
+    world.create_goblin_hut(pos(1550.0, 550.0));
+    world.create_goblin_hut(pos(1550.0, 650.0));
+    world.create_goblin_hut(pos(1550.0, 750.0));
+    world.create_goblin_hut(pos(1550.0, 850.0));
+    world.create_goblin_hut(pos(1550.0, 950.0));
+    world.create_goblin_hut(pos(1550.0, 1050.0));
+
+    world.create_tree(pos(1000.0, 300.0));
+    world.create_tree(pos(1000.0, 400.0));
+    world.create_tree(pos(1000.0, 500.0));
+    world.create_tree(pos(1100.0, 300.0));
+    world.create_tree(pos(1100.0, 400.0));
+    world.create_tree(pos(1100.0, 500.0));
+    world.create_tree(pos(1200.0, 300.0));
+    world.create_tree(pos(1200.0, 400.0));
+    world.create_tree(pos(1200.0, 500.0));
 }
 
 fn create_sheeps(data: &mut DemoGameData) {
@@ -222,6 +255,7 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
                 StructureData::Castle(_) | StructureData::House(_) | StructureData::Tower(_) => {
                     behaviour::pawn::build_structure::new(game, pawn, target_object);
                 },
+                StructureData::GoblinHut(_) => {},
             } 
         },
         _ => {},
