@@ -44,25 +44,29 @@ pub fn process(game: &mut DemoGameData, pawn_index: usize) {
 }
 
 fn init(game: &DemoGameData, params: &mut PawnMoveParams) {
-    let completed = game.world.pathfinding.compute_path(&mut params.pathfinding_state);
-    if completed {
-        params.state = BehaviourState::Running(MOVING);
-        params.pawn.animation = match params.pawn_grabbed_resource {
-            true => game.assets.animations.pawn.walk_hold,
-            false => game.assets.animations.pawn.walk
-        };
-    }
+    let step = params.pawn.aabb().width();
+    game.world.pathfinding.build_graph(&mut params.pathfinding_state, step);
+    
+    params.state = BehaviourState::Running(MOVING);
+    params.pawn.animation = match params.pawn_grabbed_resource {
+        true => game.assets.animations.pawn.walk_hold,
+        false => game.assets.animations.pawn.walk
+    };
 }
 
 fn moving(game: &DemoGameData, params: &mut PawnMoveParams) {
     use crate::behaviour::behaviour_shared::move_to;
-    let updated_position = move_to(params.pawn.position, params.pathfinding_state.final_position, game.global.frame_delta);
-    if updated_position == params.pathfinding_state.final_position {
+
+    let position = params.pawn.position;
+    if position == params.pathfinding_state.final_position {
         params.new_behaviour = Some(PawnBehaviour::idle());
-    } else {
-        params.pawn.flipped = params.pawn.position.x > params.pathfinding_state.final_position.x;
+        return;
+    } else if position == params.pathfinding_state.current_position {
+        game.world.pathfinding.compute_path(&mut params.pathfinding_state);
     }
 
+    let updated_position = move_to(position, params.pathfinding_state.current_position, game.global.frame_delta);
+    params.pawn.flipped = updated_position.x - position.x < 0.0;
     params.pawn.position = updated_position;
 }
 
@@ -100,6 +104,9 @@ fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnMovePar
 
     match params.new_behaviour {
         Some(new_behaviour) => { *behaviour = new_behaviour; },
-        None => { behaviour.state = params.state; }
+        None => { 
+            behaviour.ty = PawnBehaviourType::MoveTo { pathfinding_state: params.pathfinding_state };
+            behaviour.state = params.state;
+        }
     }
 }

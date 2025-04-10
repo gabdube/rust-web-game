@@ -126,6 +126,8 @@ function init_handlers(engine: Engine) {
         if (event.button === 0) { input_state.left_mouse_button = true; }
         else if (event.button === 1) { input_state.center_mouse_button = true; }
         else if (event.button === 2) { input_state.right_mouse_button = true; }
+        
+        event.preventDefault();
     })
 
     canvas.addEventListener("mouseup", (event) => {
@@ -136,11 +138,13 @@ function init_handlers(engine: Engine) {
         if (event.button === 0) { input_state.left_mouse_button = false; }
         else if (event.button === 1) { input_state.center_mouse_button = false; }
         else if (event.button === 2) { input_state.right_mouse_button = false; }
+        
+        event.preventDefault();
     })
 
     canvas.addEventListener("contextmenu", (event) => { event.preventDefault(); });
 
-    window.addEventListener("keydown", (event) => { 
+    window.addEventListener("keydown", (event) => {
         input_state.keys.set(event.code, true);
         input_state.updates |= UPDATE_KEYS;
     });

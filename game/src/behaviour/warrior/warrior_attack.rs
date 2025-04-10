@@ -1,7 +1,7 @@
 use crate::behaviour::BehaviourState;
 use crate::behaviour::behaviour_shared::{elapsed, is_enemy_structure};
 use crate::shared::Position;
-use crate::world::{BaseAnimated, StructureData, WorldObject, WorldObjectType};
+use crate::world::{BaseAnimated, WorldObject, WorldObjectType};
 use crate::DemoGameData;
 use super::{WarriorBehaviour, WarriorBehaviourType};
 
@@ -36,7 +36,7 @@ pub fn new(game: &mut DemoGameData, warrior: WorldObject, target: WorldObject) {
 
     let target_invalid = match target.ty {
         WorldObjectType::Sheep => target_index >= game.world.sheeps.len(),
-        WorldObjectType::Structure => !is_enemy_structure(game, target_index),
+        WorldObjectType::Structure => is_enemy_structure(game, target_index) == false,
         _ => false
     };
 

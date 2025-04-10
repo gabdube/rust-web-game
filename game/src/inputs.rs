@@ -2,13 +2,13 @@ use crate::shared::{Position, Size, pos, size};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Key {
-    ShiftLeft
+    CtrlLeft
 }
 
 impl Key {
     pub fn from_name(name: &str) -> Option<Key> {
         match name {
-            "ShiftLeft" => Some(Key::ShiftLeft),
+            "ControlLeft" => Some(Key::CtrlLeft),
             _ => None
         }
     }
@@ -50,7 +50,7 @@ pub struct InputState {
     pub last_mouse_position: Position<f32>,
     pub mouse_position: Position<f32>,
     pub mouse_buttons: [ButtonState; 3],
-    pub left_shift: ButtonState,
+    pub left_ctrl: ButtonState,
 }
 
 impl InputState {
@@ -96,7 +96,7 @@ impl InputState {
 
     pub fn update_keys(&mut self, key: Key, pressed: ButtonState) {
         match key {
-            Key::ShiftLeft => { self.left_shift = pressed; }
+            Key::CtrlLeft => { self.left_ctrl = pressed; }
         }
     }
 
@@ -115,7 +115,7 @@ impl Default for InputState {
             last_mouse_position: pos(0.0, 0.0),
             mouse_position: pos(0.0, 0.0),
             mouse_buttons: [ButtonState::Released; 3],
-            left_shift: ButtonState::Released,
+            left_ctrl: ButtonState::Released,
         }
     }
 }

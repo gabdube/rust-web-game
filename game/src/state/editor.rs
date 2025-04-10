@@ -252,7 +252,7 @@ pub fn on_right_mouse(state: &mut GameState, data: &mut DemoGameData) {
 fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Option<WorldObject>) {
     let cursor_world_position = game.inputs.mouse_position + game.global.view_offset;
 
-    if target_object.is_none() || game.inputs.left_shift.pressed() {
+    if target_object.is_none() || game.inputs.left_ctrl.pressed() {
         behaviour::pawn::pawn_move::new(game, pawn, cursor_world_position);
         return;
     }
@@ -278,7 +278,7 @@ fn pawn_actions(game: &mut DemoGameData, pawn: WorldObject, target_object: Optio
 fn warrior_actions(game: &mut DemoGameData, warrior: WorldObject, target_object: Option<WorldObject>) {
     let cursor_world_position = game.inputs.mouse_position + game.global.view_offset;
 
-    if target_object.is_none() || game.inputs.left_shift.pressed() {
+    if target_object.is_none() || game.inputs.left_ctrl.pressed() {
         behaviour::warrior::warrior_move::new(game, warrior, cursor_world_position);
         return;
     }
@@ -294,7 +294,7 @@ fn warrior_actions(game: &mut DemoGameData, warrior: WorldObject, target_object:
 fn archer_actions(game: &mut DemoGameData, archer: WorldObject, target_object: Option<WorldObject>) {
     let cursor_world_position = game.inputs.mouse_position + game.global.view_offset;
 
-    if target_object.is_none() || game.inputs.left_shift.pressed() {
+    if target_object.is_none() || game.inputs.left_ctrl.pressed() {
         behaviour::archer::archer_move::new(game, archer, cursor_world_position);
         return;
     }

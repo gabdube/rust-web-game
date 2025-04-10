@@ -64,7 +64,7 @@ fn clear_inputs_after_state_process(inputs: &mut InputState) {
         state.flip();
     }
     
-    inputs.left_shift.flip();
+    inputs.left_ctrl.flip();
 }
 
 impl SaveAndLoad for GameState {
