@@ -136,12 +136,12 @@ fn init_pathfinding_ai(data: &mut DemoGameData) {
 
     world.create_castle_with_data(pos(400.0, 480.0), crate::world::StructureCastleData { hp: crate::world::MAX_CASTLE_HP, building: false, destroyed: false });
     
-    let tower_data = crate::world::StructureTowerData { hp: crate::world::MAX_TOWER_HP, building: false, destroyed: false };
-    world.create_tower_with_data(pos(200.0, 600.0), tower_data);
-    world.create_tower_with_data(pos(200.0, 380.0), tower_data);
-    world.create_tower_with_data(pos(600.0, 380.0), tower_data);
-    world.create_tower_with_data(pos(600.0, 600.0), tower_data);
-    world.create_tower_with_data(pos(400.0, 650.0), tower_data);
+    // let tower_data = crate::world::StructureTowerData { hp: crate::world::MAX_TOWER_HP, building: false, destroyed: false };
+    // world.create_tower_with_data(pos(200.0, 600.0), tower_data);
+    // world.create_tower_with_data(pos(200.0, 380.0), tower_data);
+    // world.create_tower_with_data(pos(600.0, 380.0), tower_data);
+    // world.create_tower_with_data(pos(600.0, 600.0), tower_data);
+    // world.create_tower_with_data(pos(400.0, 650.0), tower_data);
 
     let house_data = crate::world::StructureHouseData { hp: crate::world::MAX_HOUSE_HP, building: false, destroyed: false };
     world.create_house_with_data(pos(750.0, 750.0), house_data);

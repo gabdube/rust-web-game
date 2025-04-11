@@ -577,6 +577,9 @@ export class WebGL2Backend {
                     this.update_view_offset(draw_update);
                     break;
                 }
+                case DrawUpdateType.DrawDebugInfo: {
+                    break;
+                }
                 default: {
                     console.log(`Warning: A drawing update with an unknown type ${draw_update.module} was received`);
                 }
@@ -669,6 +672,10 @@ export class WebGL2Backend {
         ctx.drawElements(ctx.TRIANGLES, buffers.gui_indices_len, ctx.UNSIGNED_SHORT, 0);
     }
 
+    private render_debug() {
+
+    }
+
     render() {
         const ctx = this.ctx;
         const canvas = this.canvas;
@@ -681,6 +688,7 @@ export class WebGL2Backend {
         this.render_sprites();
         this.render_projectiles();
         this.render_gui();
+        this.render_debug();
 
         ctx.bindFramebuffer(ctx.READ_FRAMEBUFFER, this.framebuffer);
         ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, null);

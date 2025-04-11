@@ -15,6 +15,7 @@ mod data;
 mod output;
 mod behaviour;
 mod pathfinding;
+mod debug;
 
 use data::DemoGameData;
 use state::GameState;

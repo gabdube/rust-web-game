@@ -18,6 +18,7 @@ pub enum DrawUpdateType {
     UpdateViewOffset = 4,
     UpdateGui = 5,
     DrawProjectileSprites = 6,
+    DrawDebugInfo = 7,
 }
 
 #[repr(C)]
@@ -50,6 +51,11 @@ pub struct UpdateGuiParams {
     pub vertex_count: u32,
 }
 
+/// DrawDebugParams doesn't have any parameters
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct DrawDebugParams;
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union DrawUpdateParams {
@@ -58,6 +64,7 @@ pub union DrawUpdateParams {
     pub draw_terrain_chunk: DrawTerrainChunkParams,
     pub update_view_offset: Position<f32>,
     pub update_gui: UpdateGuiParams,
+    pub draw_debug: DrawDebugParams,
 }
 
 /// A generic draw update that will be read by the renderere
@@ -85,7 +92,7 @@ pub struct SpriteData {
 /// Memory layout must match `in_instance_position`, `in_instance_texcoord`, `in_instance_data` in `proj_sprites.vert.glsl`
 /// If this struct size change, it must also be updated in `game_interface.ts`
 #[repr(C)]
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default)]
 pub struct ProjectileSpriteData {
     pub position: [f32; 2],
     pub size: [f32; 2],
@@ -93,6 +100,7 @@ pub struct ProjectileSpriteData {
     pub texcoord_size: [f32; 2],
     pub rotation: f32,
 }
+
 
 /// Texture coordinates for the 4 vertex of a sprite the terrain data buffer
 #[repr(C)]
@@ -104,11 +112,20 @@ pub struct TerrainChunkTexcoord {
     pub v3: [f32; 2],
 }
 
+/// A vertex used in the gui pipeline
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
 pub struct GuiVertex {
     pub position: [f32; 2],
     pub texcoord: [f32; 2],
+    pub color: [u8; 4],
+}
+
+/// A vertex in the debug pipeline
+#[repr(C)]
+#[derive(Copy, Clone, Default)]
+pub struct DebugVertex {
+    pub position: [f32; 2],
     pub color: [u8; 4],
 }
 
@@ -136,6 +153,8 @@ pub struct OutputIndex {
     pub gui_indices_count: usize,
     pub gui_vertex_ptr: *const GuiVertex,
     pub gui_vertex_count: usize,
+    pub debug_vertex_ptr: *const DebugVertex,
+    pub debug_vertex_count: usize,
     pub validation: usize
 }
 
@@ -159,6 +178,9 @@ pub struct GameOutput {
     /// Buffer holding the vertex of the gui mesh
     pub gui_vertex: Vec<GuiVertex>,
 
+    /// Buffer holding the vertex of the debug info. Debug info do not use an index buffer
+    pub debug_vertex: Vec<DebugVertex>,
+
     /// Buffers of the generated draw update for the current frame.
     pub commands: Vec<DrawUpdate>,
 
@@ -174,6 +196,7 @@ impl GameOutput {
         self.projectile_sprites_buffer.clear();
         self.sprite_data_buffer.clear();
         self.terrain_data.clear();
+        self.debug_vertex.clear();
     }
 
     pub fn write_index(&mut self) {
@@ -190,6 +213,8 @@ impl GameOutput {
         index.gui_indices_count = self.gui_indices.len();
         index.gui_vertex_ptr = self.gui_vertex.as_ptr();
         index.gui_vertex_count = self.gui_vertex.len();
+        index.debug_vertex_ptr = self.debug_vertex.as_ptr();
+        index.debug_vertex_count = self.debug_vertex.len();
     }
 
 }
@@ -202,6 +227,10 @@ pub fn update(game: &mut DemoGame) {
     render_sprites(game);
     render_projectiles(game);
     render_gui(game);
+
+    #[cfg(feature="debug")]
+    render_debug(game);
+    
     game.output.write_index();
 }
 
@@ -594,6 +623,47 @@ fn render_gui(game: &mut DemoGame) {
     }
 }
 
+#[cfg(feature="debug")]
+fn render_debug(game: &mut DemoGame) {
+    use crate::debug::DebugElement;
+    use crate::shared::{AABB, aabb, pos, size};
+
+    fn debug_rect(vertex: &mut Vec<DebugVertex>, aabb: &AABB, color: [u8; 4]) {
+        vertex.push(DebugVertex { position: [aabb.left, aabb.top],     color });
+        vertex.push(DebugVertex { position: [aabb.left, aabb.bottom],  color });
+        vertex.push(DebugVertex { position: [aabb.right, aabb.bottom], color });
+
+        vertex.push(DebugVertex { position: [aabb.right, aabb.top],    color });
+        vertex.push(DebugVertex { position: [aabb.left, aabb.top],     color });
+        vertex.push(DebugVertex { position: [aabb.right, aabb.bottom], color });
+    }
+    
+    let vertex = &mut game.output.debug_vertex;
+    let elements = &game.data.debug.elements;
+    if elements.len() == 0 {
+        return;
+    }
+
+    for element in elements.iter() {
+        match *element {
+            DebugElement::Rect { base, color } => {
+                let rect_size = base.size();
+                debug_rect(vertex, &aabb(pos(base.left, base.top), size(rect_size.width, 2.0)), color);         // Top
+                debug_rect(vertex, &aabb(pos(base.left, base.bottom-2.0), size(rect_size.width, 2.0)), color);  // Bottom
+                debug_rect(vertex, &aabb(pos(base.left, base.top), size(2.0, rect_size.height)), color);        // Left
+                debug_rect(vertex, &aabb(pos(base.right-2.0, base.top), size(2.0, rect_size.height)), color);   // Right
+            }
+        }
+    }
+
+    game.output.commands.push(DrawUpdate {
+        graphics: DrawUpdateType::DrawDebugInfo,
+        params: DrawUpdateParams { draw_debug: DrawDebugParams },
+    });
+
+    game.data.debug.clear();
+}
+
 impl Default for GameOutput {
 
     fn default() -> Self {
@@ -605,6 +675,7 @@ impl Default for GameOutput {
             terrain_data: Vec::with_capacity(1024),
             gui_indices: Vec::with_capacity(1500),
             gui_vertex: Vec::with_capacity(1000),
+            debug_vertex: Vec::with_capacity(256),
             commands: Vec::with_capacity(32),
             sprites_builder: Vec::with_capacity(64),
         }
@@ -628,6 +699,8 @@ impl Default for OutputIndex {
             gui_indices_count: 0,
             gui_vertex_ptr: ::std::ptr::null(),
             gui_vertex_count: 0,
+            debug_vertex_ptr: ::std::ptr::null(),
+            debug_vertex_count: 0,
             validation: 33355,
         }
     }

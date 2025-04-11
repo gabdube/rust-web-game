@@ -2,7 +2,7 @@
 
 import { DemoGame } from "../build/game/game";
 
-const OUTPUT_INDEX_SIZE: number = 56;  // size_of(OutputIndex)
+const OUTPUT_INDEX_SIZE: number = 64;  // size_of(OutputIndex)
 const DRAW_UPDATE_SIZE: number = 16;   // size_of(DrawUpdate)
 export const SPRITE_DATA_SIZE: number = 36;       // size_of(SpriteData) && size_of(ProjectileSpriteData)
 const TERRAIN_CHUNK_TEXT_COORD_SIZE: number = 32; // size_of(TerrainChunkTexcoord)
@@ -26,7 +26,10 @@ const OUTPUT_INDEX_GUI_INDICES_COUNT_OFFSET: number = 40;
 const OUTPUT_INDEX_GUI_VERTEX_OFFSET: number = 44;
 const OUTPUT_INDEX_GUI_VERTEX_COUNT_OFFSET: number = 48;
 
-const OUTPUT_INDEX_VALIDATION_INDEX: number = 52;
+const OUTPUT_INDEX_DEBUG_VERTEX_OFFSET: number = 52;
+const OUTPUT_INDEX_DEBUG_VERTEX_COUNT_OFFSET: number = 56;
+
+const OUTPUT_INDEX_VALIDATION_INDEX: number = 60;
 
 const DRAW_UPDATE_GRAPHICS_MODULE_OFFSET: number = 0;
 
@@ -42,6 +45,7 @@ export enum DrawUpdateType {
     UpdateViewOffset = 4,
     UpdateGui = 5,
     DrawProjectileSprites = 6,
+    DrawDebugInfo = 7,
 }
 
 export class EngineGameDrawUpdate {
@@ -132,6 +136,9 @@ export class EngineGameInstanceUpdates {
                 draw.instance_base = draw_update_view.getUint32(4, true);
                 draw.instance_count = draw_update_view.getUint32(8, true);
                 draw.texture_id = draw_update_view.getUint32(12, true);
+                break;
+            }
+            case DrawUpdateType.DrawDebugInfo: {
                 break;
             }
             default: {

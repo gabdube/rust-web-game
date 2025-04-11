@@ -1,7 +1,7 @@
 //! Storage for the game data
 use std::sync::Arc;
 use crate::shared::Position;
-use crate::{assets, inputs, store, world, gui};
+use crate::{assets, inputs, store, world, gui, debug};
 
 #[derive(Copy, Clone, Default)]
 pub struct DemoGameFlags {
@@ -48,6 +48,8 @@ pub struct DemoGameData {
     pub world: world::World,
     /// Gui state
     pub gui: gui::Gui,
+    /// Debug state (only if the debug feature is enabled)
+    pub debug: debug::DebugState,
 }
 
 impl DemoGameData {
@@ -73,6 +75,7 @@ impl Default for DemoGameData {
             assets: Arc::default(),
             world: world::World::default(),
             gui: gui::Gui::default(),
+            debug: debug::DebugState::default(),
         }
     }
 }
@@ -106,6 +109,7 @@ impl store::SaveAndLoad for DemoGameData {
         writer.save(&self.gui);
         writer.save(&self.global);
         writer.write(&self.inputs);
+        writer.save(&self.debug);
     }
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
@@ -114,6 +118,7 @@ impl store::SaveAndLoad for DemoGameData {
         let gui = reader.load();
         let global = reader.load();
         let inputs = reader.read();
+        let debug = reader.load();
 
         world.assets = Some(Arc::clone(&assets));
 
@@ -124,6 +129,8 @@ impl store::SaveAndLoad for DemoGameData {
             assets,
             world,
             gui,
+
+            debug,
         }
     }
 }
