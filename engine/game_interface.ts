@@ -7,6 +7,7 @@ const DRAW_UPDATE_SIZE: number = 16;   // size_of(DrawUpdate)
 export const SPRITE_DATA_SIZE: number = 36;       // size_of(SpriteData) && size_of(ProjectileSpriteData)
 const TERRAIN_CHUNK_TEXT_COORD_SIZE: number = 32; // size_of(TerrainChunkTexcoord)
 export const GUI_VERTEX_SIZE: number = 20;        // size_of(GuiVertex)
+export const DEBUG_VERTEX_SIZE: number = 12;      // size_of(DebugVertex)
 
 const OUTPUT_INDEX_DRAW_UPDATES_OFFSET: number = 4;
 const OUTPUT_INDEX_DRAW_UPDATES_COUNT_OFFSET: number = 8;
@@ -181,6 +182,16 @@ export class EngineGameInstanceUpdates {
         const gui_vertex_base = this.index.getUint32(OUTPUT_INDEX_GUI_VERTEX_OFFSET, true);
         const gui_vertex_count = this.index.getUint32(OUTPUT_INDEX_GUI_VERTEX_COUNT_OFFSET, true);
         return this.buffer.slice(gui_vertex_base, gui_vertex_base+(gui_vertex_count*GUI_VERTEX_SIZE));
+    }
+
+    get_debug_vertex_count(): number {
+        return this.index.getUint32(OUTPUT_INDEX_DEBUG_VERTEX_COUNT_OFFSET, true);
+    }
+
+    get_debug_vertex_data(): ArrayBuffer {
+        const debug_vertex_base = this.index.getUint32(OUTPUT_INDEX_DEBUG_VERTEX_OFFSET, true);
+        const debug_vertex_count = this.index.getUint32(OUTPUT_INDEX_DEBUG_VERTEX_COUNT_OFFSET, true);
+        return this.buffer.slice(debug_vertex_base, debug_vertex_base+(debug_vertex_count*DEBUG_VERTEX_SIZE));
     }
 
 }

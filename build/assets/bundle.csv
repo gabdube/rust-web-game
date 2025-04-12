@@ -14,3 +14,4 @@ SHADER;sprites;assets/shaders/sprites.vert.glsl;assets/shaders/sprites.frag.glsl
 SHADER;projectile_sprites;assets/shaders/projectile_sprites.vert.glsl;assets/shaders/projectile_sprites.frag.glsl;
 SHADER;terrain;assets/shaders/terrain.vert.glsl;assets/shaders/terrain.frag.glsl;
 SHADER;gui;assets/shaders/gui.vert.glsl;assets/shaders/gui.frag.glsl;
+SHADER;debug;assets/shaders/debug.vert.glsl;assets/shaders/debug.frag.glsl;

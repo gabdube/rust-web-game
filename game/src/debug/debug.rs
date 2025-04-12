@@ -14,6 +14,10 @@ pub struct DebugState {
 
 impl DebugState {
 
+    pub fn debug_rect(&mut self, base: AABB, color: [u8; 4]) {
+        self.elements.push(DebugElement::Rect { base, color })
+    }
+
     pub fn clear(&mut self) {
         self.elements.clear();
     }

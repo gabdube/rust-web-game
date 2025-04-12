@@ -1,5 +1,6 @@
 import { EngineGameInstance, EngineGameInstanceUpdates, EngineGameDrawUpdate, DrawUpdateType,
-    SPRITE_DATA_SIZE, TERRAIN_CHUNK_STRIDE, TERRAIN_CHUNK_SIZE_BYTES, GUI_VERTEX_SIZE } from "../game_interface";
+    SPRITE_DATA_SIZE, TERRAIN_CHUNK_STRIDE, TERRAIN_CHUNK_SIZE_BYTES, GUI_VERTEX_SIZE, 
+    DEBUG_VERTEX_SIZE} from "../game_interface";
 import { EngineAssets, Texture } from "../assets";
 import { set_last_error } from "../error";
 import { Size, file_extension } from "../helpers";
@@ -42,36 +43,41 @@ class RendererTexture {
 }
 
 class RendererShaders {
-    draw_sprites_position_attrloc: number;
-    draw_sprites_instance_position_attrloc: number;
-    draw_sprites_instance_texcoord_attrloc: number;
-    draw_sprites_instance_data_attrloc: number;
-    draw_sprites_view_position: WebGLUniformLocation;
-    draw_sprites_view_size: WebGLUniformLocation;
-    draw_sprites: WebGLProgram;
+    sprites_position_attrloc: number;
+    sprites_instance_position_attrloc: number;
+    sprites_instance_texcoord_attrloc: number;
+    sprites_instance_data_attrloc: number;
+    sprites_view_position: WebGLUniformLocation;
+    sprites_view_size: WebGLUniformLocation;
+    sprites: WebGLProgram;
 
-    draw_proj_sprites_position_attrloc: number;
-    draw_proj_sprites_instance_position_attrloc: number;
-    draw_proj_sprites_instance_texcoord_attrloc: number;
-    draw_proj_sprites_instance_rotation_attrloc: number;
-    draw_proj_sprites_view_position: WebGLUniformLocation;
-    draw_proj_sprites_view_size: WebGLUniformLocation;
-    draw_proj_sprites: WebGLProgram;
+    proj_sprites_position_attrloc: number;
+    proj_sprites_instance_position_attrloc: number;
+    proj_sprites_instance_texcoord_attrloc: number;
+    proj_sprites_instance_rotation_attrloc: number;
+    proj_sprites_view_position: WebGLUniformLocation;
+    proj_sprites_view_size: WebGLUniformLocation;
+    proj_sprites: WebGLProgram;
 
-    draw_terrain_position_attrloc: number;
-    draw_terrain_uv_attrloc: number;
-    draw_terrain_view_position: WebGLUniformLocation;
-    draw_terrain_view_size: WebGLUniformLocation;
-    draw_terrain_chunk_position: WebGLUniformLocation;
-    draw_terrain: WebGLProgram;
+    terrain_position_attrloc: number;
+    terrain_uv_attrloc: number;
+    terrain_view_position: WebGLUniformLocation;
+    terrain_view_size: WebGLUniformLocation;
+    terrain_chunk_position: WebGLUniformLocation;
+    terrain: WebGLProgram;
 
-    draw_gui_position_attrloc: number;
-    draw_gui_uv_attrloc: number;
-    draw_gui_color_attrloc: number;
-    draw_gui_view_size: WebGLUniformLocation;
-    draw_gui_font_texture: WebGLUniformLocation;
-    draw_gui_image_texture: WebGLUniformLocation;
-    draw_gui: WebGLProgram;
+    gui_position_attrloc: number;
+    gui_uv_attrloc: number;
+    gui_color_attrloc: number;
+    gui_view_size: WebGLUniformLocation;
+    gui_font_texture: WebGLUniformLocation;
+    gui_image_texture: WebGLUniformLocation;
+    gui: WebGLProgram;
+
+    debug_position_attrloc: number;
+    debug_color_attrloc: number;
+    debug_view_size: WebGLUniformLocation;
+    debug: WebGLProgram;
 }
 
 class TerrainChunkData {
@@ -101,6 +107,11 @@ class RendererBuffers {
     gui_indices_len: number = 0;
     gui_vertex_len: number = 0;
     gui_vao: WebGLVertexArrayObject;
+
+    debug_vertex: WebGLBuffer;
+    debug_vertex_capacity: number = 0;
+    debug_vertex_len: number = 0;
+    debug_vao: WebGLVertexArrayObject;
 }
 
 class RendererCanvas {
@@ -147,7 +158,7 @@ export class WebGL2Backend {
         if ( !this.setup_canvas() ) { return false };
         if ( !this.setup_context() ) { return false; }
         if ( !this.setup_framebuffer() ) { return false; }
-        
+
         const ctx = this.ctx;
         ctx.disable(ctx.CULL_FACE);
         ctx.enable(ctx.BLEND);
@@ -224,17 +235,20 @@ export class WebGL2Backend {
         ctx.viewport(0, 0, canvas.width, canvas.height);
 
         // Screen size uniforms
-        ctx.useProgram(this.shaders.draw_sprites);
-        ctx.uniform2f(this.shaders.draw_sprites_view_size, this.canvas.width, this.canvas.height);
+        ctx.useProgram(this.shaders.sprites);
+        ctx.uniform2f(this.shaders.sprites_view_size, canvas.width, canvas.height);
 
-        ctx.useProgram(this.shaders.draw_proj_sprites);
-        ctx.uniform2f(this.shaders.draw_proj_sprites_view_size, this.canvas.width, this.canvas.height);
+        ctx.useProgram(this.shaders.proj_sprites);
+        ctx.uniform2f(this.shaders.proj_sprites_view_size, canvas.width, canvas.height);
 
-        ctx.useProgram(this.shaders.draw_terrain);
-        ctx.uniform2f(this.shaders.draw_terrain_view_size, this.canvas.width, this.canvas.height);
+        ctx.useProgram(this.shaders.terrain);
+        ctx.uniform2f(this.shaders.terrain_view_size, canvas.width, canvas.height);
 
-        ctx.useProgram(this.shaders.draw_gui);
-        ctx.uniform2f(this.shaders.draw_gui_view_size, this.canvas.width, this.canvas.height);
+        ctx.useProgram(this.shaders.gui);
+        ctx.uniform2f(this.shaders.gui_view_size, canvas.width, canvas.height);
+
+        ctx.useProgram(this.shaders.debug);
+        ctx.uniform2f(this.shaders.debug, canvas.width, canvas.height);
 
         return true;
     }
@@ -278,24 +292,24 @@ export class WebGL2Backend {
         ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, this.buffers.sprites_indices);
         ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_vertex);
 
-        location = this.shaders.draw_sprites_position_attrloc;
+        location = this.shaders.sprites_position_attrloc;
         ctx.enableVertexAttribArray(location);
         ctx.vertexAttribPointer(location, 2, ctx.FLOAT, false, 8, 0);
 
         // Instance Data
         ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_attributes);
 
-        location = this.shaders.draw_sprites_instance_position_attrloc;
+        location = this.shaders.sprites_instance_position_attrloc;
         ctx.enableVertexAttribArray(location);
         ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 36, attributes_offset);
         ctx.vertexAttribDivisor(location, 1);
 
-        location = this.shaders.draw_sprites_instance_texcoord_attrloc;
+        location = this.shaders.sprites_instance_texcoord_attrloc;
         ctx.enableVertexAttribArray(location);
         ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 36, attributes_offset+16);
         ctx.vertexAttribDivisor(location, 1);
 
-        location = this.shaders.draw_sprites_instance_data_attrloc;
+        location = this.shaders.sprites_instance_data_attrloc;
         ctx.enableVertexAttribArray(location);
         ctx.vertexAttribIPointer(location, 1, ctx.INT, 36, attributes_offset+32);
         ctx.vertexAttribDivisor(location, 1);
@@ -321,24 +335,24 @@ export class WebGL2Backend {
         ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, this.buffers.sprites_indices);
         ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_vertex);
 
-        location = this.shaders.draw_proj_sprites_position_attrloc;
+        location = this.shaders.proj_sprites_position_attrloc;
         ctx.enableVertexAttribArray(location);
         ctx.vertexAttribPointer(location, 2, ctx.FLOAT, false, 8, 0);
 
         // Instance Data
         ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.sprites_attributes);
 
-        location = this.shaders.draw_proj_sprites_instance_position_attrloc;
+        location = this.shaders.proj_sprites_instance_position_attrloc;
         ctx.enableVertexAttribArray(location);
         ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 36, attributes_offset);
         ctx.vertexAttribDivisor(location, 1);
 
-        location = this.shaders.draw_proj_sprites_instance_texcoord_attrloc;
+        location = this.shaders.proj_sprites_instance_texcoord_attrloc;
         ctx.enableVertexAttribArray(location);
         ctx.vertexAttribPointer(location, 4, ctx.FLOAT, false, 36, attributes_offset+16);
         ctx.vertexAttribDivisor(location, 1);
 
-        location = this.shaders.draw_proj_sprites_instance_rotation_attrloc;
+        location = this.shaders.proj_sprites_instance_rotation_attrloc;
         ctx.enableVertexAttribArray(location);
         ctx.vertexAttribPointer(location, 1, ctx.FLOAT, false, 36, attributes_offset+32);
         ctx.vertexAttribDivisor(location, 1);
@@ -435,8 +449,8 @@ export class WebGL2Backend {
         chunk_data.vao = ctx.createVertexArray();
         chunk_data.chunk_buffer = ctx.createBuffer();
 
-        let position = this.shaders.draw_terrain_position_attrloc;
-        let uv = this.shaders.draw_terrain_uv_attrloc;
+        let position = this.shaders.terrain_position_attrloc;
+        let uv = this.shaders.terrain_uv_attrloc;
 
         ctx.bindVertexArray(chunk_data.vao);
 
@@ -526,14 +540,34 @@ export class WebGL2Backend {
         const x = -this.view_x;
         const y = -this.view_y;
     
-        ctx.useProgram(this.shaders.draw_sprites);
-        ctx.uniform2f(this.shaders.draw_sprites_view_position, x, y);
+        ctx.useProgram(this.shaders.sprites);
+        ctx.uniform2f(this.shaders.sprites_view_position, x, y);
 
-        ctx.useProgram(this.shaders.draw_proj_sprites);
-        ctx.uniform2f(this.shaders.draw_proj_sprites_view_position, x, y);
+        ctx.useProgram(this.shaders.proj_sprites);
+        ctx.uniform2f(this.shaders.proj_sprites_view_position, x, y);
 
-        ctx.useProgram(this.shaders.draw_terrain);
-        ctx.uniform2f(this.shaders.draw_terrain_view_position, x, y);
+        ctx.useProgram(this.shaders.terrain);
+        ctx.uniform2f(this.shaders.terrain_view_position, x, y);
+    }
+
+    private update_debug(updates: EngineGameInstanceUpdates) {
+        const ctx = this.ctx;
+        const buffers = this.buffers;
+
+        buffers.debug_vertex_len = updates.get_debug_vertex_count();
+        if (buffers.debug_vertex_len == 0) {
+            return;
+        }
+
+        if (buffers.debug_vertex_len > buffers.debug_vertex_capacity) {
+            const capacity = buffers.debug_vertex_len + 500;
+            this.setup_debug_vertex(capacity);
+            this.setup_debug_vao();
+        }
+
+        const debug_vertex_data = updates.get_debug_vertex_data();
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.debug_vertex);
+        ctx.bufferSubData(ctx.ARRAY_BUFFER, 0, debug_vertex_data);
     }
 
     private clear_drawing() {
@@ -542,6 +576,7 @@ export class WebGL2Backend {
         this.terrain_chunk_draw_count = 0;
         this.buffers.sprites_attributes_len = 0;
         this.buffers.sprite_vao_len = 0;
+        this.buffers.debug_vertex_len = 0;
     }
 
     update(game: EngineGameInstance) {
@@ -578,6 +613,7 @@ export class WebGL2Backend {
                     break;
                 }
                 case DrawUpdateType.DrawDebugInfo: {
+                    this.update_debug(game_updates);
                     break;
                 }
                 default: {
@@ -595,7 +631,7 @@ export class WebGL2Backend {
         const SPRITE_INDEX_COUNT: number = 6;
         const ctx = this.ctx;
 
-        ctx.useProgram(this.shaders.draw_sprites);
+        ctx.useProgram(this.shaders.sprites);
 
         for (let i = 0; i < this.sprite_draw_count; i += 1) {
             const draw = this.sprite_draw[i];
@@ -616,7 +652,7 @@ export class WebGL2Backend {
         const SPRITE_INDEX_COUNT: number = 6;
         const ctx = this.ctx;
 
-        ctx.useProgram(this.shaders.draw_proj_sprites);
+        ctx.useProgram(this.shaders.proj_sprites);
 
         for (let i = 0; i < this.projectile_draw_count; i += 1) {
             const draw = this.projectile_draw[i];
@@ -636,7 +672,7 @@ export class WebGL2Backend {
     private render_terrain_chunks() {
         const ctx = this.ctx;
 
-        ctx.useProgram(this.shaders.draw_terrain);
+        ctx.useProgram(this.shaders.terrain);
         ctx.activeTexture(ctx.TEXTURE0);
         ctx.bindTexture(ctx.TEXTURE_2D, this.terrain_texture.handle);
 
@@ -646,7 +682,7 @@ export class WebGL2Backend {
             const batch_y = draw.resource1 as number;
             const vao = draw.resource2 as WebGLVertexArrayObject;
 
-            ctx.uniform2f(this.shaders.draw_terrain_chunk_position, batch_x, batch_y);
+            ctx.uniform2f(this.shaders.terrain_chunk_position, batch_x, batch_y);
     
             ctx.bindVertexArray(vao);
             ctx.drawElements(ctx.TRIANGLES, TERRAIN_CHUNK_INDEX_COUNT, ctx.UNSIGNED_SHORT, 0);
@@ -660,7 +696,7 @@ export class WebGL2Backend {
             return;
         }
 
-        ctx.useProgram(this.shaders.draw_gui);
+        ctx.useProgram(this.shaders.gui);
 
         ctx.activeTexture(ctx.TEXTURE0);
         ctx.bindTexture(ctx.TEXTURE_2D, this.font_texture.handle);
@@ -673,7 +709,15 @@ export class WebGL2Backend {
     }
 
     private render_debug() {
+        const ctx = this.ctx;
+        const buffers = this.buffers;
+        if (buffers.gui_vertex_len == 0) {
+            return;
+        }
 
+        ctx.useProgram(this.shaders.debug);
+        ctx.bindVertexArray(this.buffers.debug_vao);
+        ctx.drawArrays(ctx.TRIANGLES, 0, buffers.debug_vertex_len);
     }
 
     render() {
@@ -682,7 +726,6 @@ export class WebGL2Backend {
 
         ctx.bindFramebuffer(ctx.DRAW_FRAMEBUFFER, this.framebuffer);
         ctx.clearBufferfv(ctx.COLOR, 0, [0.0, 0.0, 0.0, 1.0]);
-        // ctx.clearBufferfi(ctx.DEPTH_STENCIL, 0, 0.0, 0);
 
         this.render_terrain_chunks();
         this.render_sprites();
@@ -856,13 +899,13 @@ export class WebGL2Backend {
             return false;
         }
 
-        shaders.draw_sprites_position_attrloc = ctx.getAttribLocation(sprites_program, "in_position");
-        shaders.draw_sprites_instance_position_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_position");
-        shaders.draw_sprites_instance_texcoord_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_texcoord");
-        shaders.draw_sprites_instance_data_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_data");
-        shaders.draw_sprites_view_position = ctx.getUniformLocation(sprites_program, "view_position") as any;
-        shaders.draw_sprites_view_size = ctx.getUniformLocation(sprites_program, "view_size") as any;
-        shaders.draw_sprites = sprites_program;
+        shaders.sprites_position_attrloc = ctx.getAttribLocation(sprites_program, "in_position");
+        shaders.sprites_instance_position_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_position");
+        shaders.sprites_instance_texcoord_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_texcoord");
+        shaders.sprites_instance_data_attrloc = ctx.getAttribLocation(sprites_program, "in_instance_data");
+        shaders.sprites_view_position = ctx.getUniformLocation(sprites_program, "view_position") as any;
+        shaders.sprites_view_size = ctx.getUniformLocation(sprites_program, "view_size") as any;
+        shaders.sprites = sprites_program;
 
         // Projectile sprites
         const proj_sprites_shader_source = assets.shaders.get("projectile_sprites");
@@ -884,13 +927,13 @@ export class WebGL2Backend {
             return false;
         }
 
-        shaders.draw_proj_sprites_position_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_position");
-        shaders.draw_proj_sprites_instance_position_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_instance_position");
-        shaders.draw_proj_sprites_instance_texcoord_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_instance_texcoord");
-        shaders.draw_proj_sprites_instance_rotation_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_instance_rotation");
-        shaders.draw_proj_sprites_view_position = ctx.getUniformLocation(proj_sprites_program, "view_position") as any;
-        shaders.draw_proj_sprites_view_size = ctx.getUniformLocation(proj_sprites_program, "view_size") as any;
-        shaders.draw_proj_sprites = proj_sprites_program;
+        shaders.proj_sprites_position_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_position");
+        shaders.proj_sprites_instance_position_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_instance_position");
+        shaders.proj_sprites_instance_texcoord_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_instance_texcoord");
+        shaders.proj_sprites_instance_rotation_attrloc = ctx.getAttribLocation(proj_sprites_program, "in_instance_rotation");
+        shaders.proj_sprites_view_position = ctx.getUniformLocation(proj_sprites_program, "view_position") as any;
+        shaders.proj_sprites_view_size = ctx.getUniformLocation(proj_sprites_program, "view_size") as any;
+        shaders.proj_sprites = proj_sprites_program;
 
         // Terrain
         const terrain_shader_source = assets.shaders.get("terrain");
@@ -912,12 +955,12 @@ export class WebGL2Backend {
             return false;
         }
 
-        shaders.draw_terrain_position_attrloc = ctx.getAttribLocation(terrain_program, "in_position");
-        shaders.draw_terrain_uv_attrloc = ctx.getAttribLocation(terrain_program, "in_uv");
-        shaders.draw_terrain_view_position = ctx.getUniformLocation(terrain_program, "view_position") as any;
-        shaders.draw_terrain_view_size = ctx.getUniformLocation(terrain_program, "view_size") as any;
-        shaders.draw_terrain_chunk_position = ctx.getUniformLocation(terrain_program, "chunk_position") as any;
-        shaders.draw_terrain = terrain_program;
+        shaders.terrain_position_attrloc = ctx.getAttribLocation(terrain_program, "in_position");
+        shaders.terrain_uv_attrloc = ctx.getAttribLocation(terrain_program, "in_uv");
+        shaders.terrain_view_position = ctx.getUniformLocation(terrain_program, "view_position") as any;
+        shaders.terrain_view_size = ctx.getUniformLocation(terrain_program, "view_size") as any;
+        shaders.terrain_chunk_position = ctx.getUniformLocation(terrain_program, "chunk_position") as any;
+        shaders.terrain = terrain_program;
 
         // Gui
         const gui_shader_source = assets.shaders.get("gui");
@@ -939,13 +982,38 @@ export class WebGL2Backend {
             return false;
         }
 
-        shaders.draw_gui_position_attrloc = ctx.getAttribLocation(gui_program, "in_position");
-        shaders.draw_gui_uv_attrloc = ctx.getAttribLocation(gui_program, "in_uv");
-        shaders.draw_gui_color_attrloc = ctx.getAttribLocation(gui_program, "in_color");
-        shaders.draw_gui_view_size = ctx.getUniformLocation(gui_program, "view_size") as any;
-        shaders.draw_gui_font_texture = ctx.getUniformLocation(gui_program, "fonts_texture") as any;
-        shaders.draw_gui_image_texture = ctx.getUniformLocation(gui_program, "images_texture") as any;
-        shaders.draw_gui = gui_program;
+        shaders.gui_position_attrloc = ctx.getAttribLocation(gui_program, "in_position");
+        shaders.gui_uv_attrloc = ctx.getAttribLocation(gui_program, "in_uv");
+        shaders.gui_color_attrloc = ctx.getAttribLocation(gui_program, "in_color");
+        shaders.gui_view_size = ctx.getUniformLocation(gui_program, "view_size") as any;
+        shaders.gui_font_texture = ctx.getUniformLocation(gui_program, "fonts_texture") as any;
+        shaders.gui_image_texture = ctx.getUniformLocation(gui_program, "images_texture") as any;
+        shaders.gui = gui_program;
+
+        // Debug
+        const debug_shader_source = assets.shaders.get("debug");
+        if (!debug_shader_source) {
+            set_last_error("Failed to find debug shader source in assets");
+            return false;
+        }
+
+        const debug_vert = create_shader(ctx, ctx.VERTEX_SHADER, debug_shader_source.vertex);
+        const debug_frag = create_shader(ctx, ctx.FRAGMENT_SHADER, debug_shader_source.fragment);
+        if (!debug_vert || !debug_frag) {
+            set_last_error("Failed to create debug shaders");
+            return false;
+        }
+
+        const debug_program = create_program(ctx, debug_vert, debug_frag);
+        if (!debug_program) {
+            set_last_error("Failed to compile debug shaders");
+            return false;
+        }
+
+        shaders.debug_position_attrloc = ctx.getAttribLocation(debug_program, "in_position");
+        shaders.debug_color_attrloc = ctx.getAttribLocation(debug_program, "in_color");
+        shaders.debug_view_size = ctx.getUniformLocation(debug_program, "view_size") as any;
+        shaders.debug = debug_program;
 
         // Cleanup
         ctx.deleteShader(sprites_vert);
@@ -956,12 +1024,15 @@ export class WebGL2Backend {
         ctx.deleteShader(terrain_frag);
         ctx.deleteShader(gui_vert);
         ctx.deleteShader(gui_frag);
+        ctx.deleteShader(debug_vert);
+        ctx.deleteShader(debug_frag);
 
         return true;
     }
 
     private setup_textures(): boolean {
-        // Preload the terrain texture
+        // Preload constant textures used in some of the shader program
+
         const texture_id = this.assets.textures.get("terrain")?.id;
         if (!texture_id) {
             set_last_error("Failed to load terrain texture")
@@ -1128,9 +1199,9 @@ export class WebGL2Backend {
         const ctx = this.ctx;
         const buffers = this.buffers;
 
-        const position = this.shaders.draw_gui_position_attrloc;
-        const uv = this.shaders.draw_gui_uv_attrloc;
-        const color = this.shaders.draw_gui_color_attrloc;
+        const position = this.shaders.gui_position_attrloc;
+        const uv = this.shaders.gui_uv_attrloc;
+        const color = this.shaders.gui_color_attrloc;
 
         if (!buffers.gui_vao) {
             buffers.gui_vao = ctx.createVertexArray();
@@ -1153,33 +1224,72 @@ export class WebGL2Backend {
         ctx.bindVertexArray(null);
     }
 
+    private setup_debug_vertex(capacity?: number) {
+        const ctx = this.ctx;
+        const buffers = this.buffers;
+        const DEBUG_VERTEX_CAPACITY = capacity ? capacity : 500;
+        buffers.debug_vertex = ctx.createBuffer();
+        buffers.debug_vertex_capacity = DEBUG_VERTEX_CAPACITY;
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.debug_vertex);
+        ctx.bufferData(ctx.ARRAY_BUFFER, buffers.debug_vertex_capacity * DEBUG_VERTEX_SIZE, ctx.STATIC_DRAW);
+    }
+
+    private setup_debug_vao() {
+        const ctx = this.ctx;
+        const buffers = this.buffers;
+
+        const position = this.shaders.debug_position_attrloc;
+        const color = this.shaders.debug_color_attrloc;
+
+        if (!buffers.debug_vao) {
+            buffers.debug_vao = ctx.createVertexArray();
+        }
+        
+        ctx.bindVertexArray(buffers.debug_vao);
+
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this.buffers.debug_vertex);
+
+        ctx.enableVertexAttribArray(position);
+        ctx.vertexAttribPointer(position, 2, ctx.FLOAT, false, 12, 0);
+
+        ctx.enableVertexAttribArray(color);
+        ctx.vertexAttribPointer(color, 4, ctx.UNSIGNED_BYTE, true, 12, 8);
+
+        ctx.bindVertexArray(null);
+    }
+
     private setup_buffers() {
         this.setup_sprites_vertex();
         this.setup_sprites_attributes();
         this.setup_terrain_chunk_vertex();
         this.setup_gui_vertex();
         this.setup_gui_vao();
+        this.setup_debug_vertex();
+        this.setup_debug_vao();
     }
 
     private setup_uniforms() {
         const ctx = this.ctx;
 
-        ctx.useProgram(this.shaders.draw_sprites);
-        ctx.uniform2f(this.shaders.draw_sprites_view_position, 0.0, 0.0);
-        ctx.uniform2f(this.shaders.draw_sprites_view_size, this.canvas.width, this.canvas.height);
+        ctx.useProgram(this.shaders.sprites);
+        ctx.uniform2f(this.shaders.sprites_view_position, 0.0, 0.0);
+        ctx.uniform2f(this.shaders.sprites_view_size, this.canvas.width, this.canvas.height);
 
-        ctx.useProgram(this.shaders.draw_proj_sprites);
-        ctx.uniform2f(this.shaders.draw_proj_sprites_view_position, 0.0, 0.0);
-        ctx.uniform2f(this.shaders.draw_proj_sprites_view_size, this.canvas.width, this.canvas.height);
+        ctx.useProgram(this.shaders.proj_sprites);
+        ctx.uniform2f(this.shaders.proj_sprites_view_position, 0.0, 0.0);
+        ctx.uniform2f(this.shaders.proj_sprites_view_size, this.canvas.width, this.canvas.height);
 
-        ctx.useProgram(this.shaders.draw_terrain);
-        ctx.uniform2f(this.shaders.draw_terrain_view_position, 0.0, 0.0);
-        ctx.uniform2f(this.shaders.draw_terrain_view_size, this.canvas.width, this.canvas.height);
+        ctx.useProgram(this.shaders.terrain);
+        ctx.uniform2f(this.shaders.terrain_view_position, 0.0, 0.0);
+        ctx.uniform2f(this.shaders.terrain_view_size, this.canvas.width, this.canvas.height);
 
-        ctx.useProgram(this.shaders.draw_gui);
-        ctx.uniform2f(this.shaders.draw_gui_view_size, this.canvas.width, this.canvas.height);
-        ctx.uniform1i(this.shaders.draw_gui_font_texture, 0);
-        ctx.uniform1i(this.shaders.draw_gui_image_texture, 1);
+        ctx.useProgram(this.shaders.gui);
+        ctx.uniform2f(this.shaders.gui_view_size, this.canvas.width, this.canvas.height);
+        ctx.uniform1i(this.shaders.gui_font_texture, 0);
+        ctx.uniform1i(this.shaders.gui_image_texture, 1);
+
+        ctx.useProgram(this.shaders.debug);
+        ctx.uniform2f(this.shaders.debug_view_size, this.canvas.width, this.canvas.height);
     }
 
 }
