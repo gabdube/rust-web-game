@@ -6,6 +6,21 @@ use crate::shared::{pos, Position, AABB};
 
 type Vec2 = [Position<f32>; 2];
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum Corner {
+    LeftTop,
+    LeftBottom,
+    RightTop,
+    RightBottom
+}
+
+impl Corner {
+    const fn left(self) -> bool { match self { Self::LeftTop | Self::LeftBottom => true, _ => false } }
+    const fn right(self) -> bool { match self { Self::RightTop | Self::RightBottom => true, _ => false } }
+    const fn top(self) -> bool { match self { Self::LeftTop | Self::RightTop => true, _ => false } }
+    const fn bottom(self) -> bool { match self { Self::LeftBottom | Self::RightBottom => true, _ => false } }
+}
+
 /// Computed pathfinding data for a single unit 
 #[derive(Copy, Clone)]
 pub struct PathFindingData {
@@ -14,13 +29,14 @@ pub struct PathFindingData {
     pub graph_node_index: u32,
 }
 
-pub struct PathfindingNode {
-
+#[derive(Copy, Clone, Debug)]
+pub struct PathfindingCollision {
+    pub intersection: Position<f32>,
+    pub aabb: AABB,
 }
 
 /**
     A node graph of pathfinding points a character has to traverse to reach a destination
-    Use interior mutability because
 */
 pub struct PathfindingGraph {
     pub nodes: RefCell<Vec<Position<f32>>>,
@@ -29,13 +45,18 @@ pub struct PathfindingGraph {
 
 /// Global pathfinding state
 pub struct PathfindingState {
-    pub blocked: Vec<AABB>,
+    pub static_collisions: Vec<AABB>,
+    pub navmesh: (),
     pub graphs: Vec<PathfindingGraph>
 }
 
 impl PathfindingState {
 
-    pub fn new(&mut self, start_position: Position<f32>, final_position: Position<f32>) -> PathFindingData {
+    pub fn generate_navmesh(&mut self) {
+
+    }
+
+    pub fn compute_new_path(&mut self, start_position: Position<f32>, final_position: Position<f32>) -> PathFindingData {
         let graph_id;
         match self.graphs.iter_mut().enumerate().find(|(_,g)| g.free ) {
             Some((index, graph)) => {
@@ -51,7 +72,8 @@ impl PathfindingState {
             }
         }
 
-        self.build_graph(start_position, final_position, graph_id);
+        self.graphs[graph_id as usize].nodes.get_mut().push(start_position);
+        self.graphs[graph_id as usize].nodes.get_mut().push(final_position);
 
         PathFindingData {
             next_position: start_position,
@@ -61,7 +83,7 @@ impl PathfindingState {
     }
 
     pub fn clear(&mut self) {
-        self.blocked.clear();
+        self.static_collisions.clear();
 
         for graph in self.graphs.iter_mut() {
             graph.nodes.get_mut().clear();
@@ -69,13 +91,13 @@ impl PathfindingState {
         }
     }
 
-    pub fn register_collision(&mut self, aabb: AABB) {
-        self.blocked.push(aabb);
+    pub fn register_static_collision(&mut self, aabb: AABB) {
+        self.static_collisions.push(aabb);
     }
 
-    pub fn unregister_collision(&mut self, aabb1: AABB) {
-        if let Some(index) = self.blocked.iter().position(|&aabb2| aabb1 == aabb2 ) {
-            self.blocked.swap_remove(index);
+    pub fn unregister_static_collision(&mut self, aabb1: AABB) {
+        if let Some(index) = self.static_collisions.iter().position(|&aabb2| aabb1 == aabb2 ) {
+            self.static_collisions.swap_remove(index);
         }
     }
 
@@ -105,6 +127,17 @@ impl PathfindingState {
         graph.free = true;
     }
 
+    //
+    // Debugging tools
+    //
+
+    #[cfg(feature="debug")]
+    pub fn debug_static_collisions(&self, debug: &mut crate::debug::DebugState) {
+        for &aabb in self.static_collisions.iter() {
+            debug.debug_rect(aabb, [255, 0, 0, 255]);
+        }
+    }
+
     #[cfg(feature="debug")]
     pub fn debug_path(&self, debug: &mut crate::debug::DebugState, path_data: &PathFindingData) {
         let graph = &self.graphs[path_data.graph_id as usize];
@@ -129,84 +162,6 @@ impl PathfindingState {
 
             color_index += 1;
         }
-    }
-
-    /// Find the nearest collision between `vector1` and the bounding boxes registered in the pathfinding utility
-    fn collision(&self, vector1: Vec2) -> Option<Position<f32>> {
-        const fn vec(v1: f32, v2: f32, v3: f32, v4: f32) -> Vec2 {
-            [pos(v1, v2), pos(v3, v4)]
-        }
-
-        fn min_distance(
-            v1: Vec2,
-            v2: Vec2,
-            nearest_distance: &mut f32,
-            nearest_intersection: &mut Option<Position<f32>>
-        ) {
-            if let Some(point) = intersection(v1, v2) {
-                let distance = point.distance(v1[0]);
-                if distance < *nearest_distance {
-                    *nearest_distance = distance;
-                    *nearest_intersection = Some(point);
-                }
-            }
-        }
-        
-        let x1 = vector1[0].x;
-        let y1 = vector1[0].y;
-        let x2 = vector1[1].x;
-        let y2 = vector1[1].y;
-        let base = AABB {
-            left: f32::min(x1, x2),
-            right: f32::max(x1, x2),
-            top: f32::min(y1, y2),
-            bottom: f32::max(y1, y2),
-        };
-
-        let mut nearest_intersection = None;
-        let mut nearest_distance = f32::INFINITY;
-        let mut vector2;
-
-        for aabb in self.blocked.iter() {
-            if !base.intersects(aabb) {
-                continue;
-            }
-
-            // Top
-            vector2 = vec(aabb.left, aabb.top, aabb.right, aabb.top);
-            min_distance(vector1, vector2, &mut nearest_distance, &mut nearest_intersection);
-
-            // Bottom
-            vector2 = vec(aabb.left, aabb.bottom, aabb.right, aabb.bottom);
-            min_distance(vector1, vector2, &mut nearest_distance, &mut nearest_intersection);
-
-            // Left
-            vector2 = vec(aabb.left, aabb.top, aabb.left, aabb.bottom);
-            min_distance(vector1, vector2, &mut nearest_distance, &mut nearest_intersection);
-
-            // Right
-            vector2 = vec(aabb.right, aabb.top, aabb.right, aabb.bottom);
-            min_distance(vector1, vector2, &mut nearest_distance, &mut nearest_intersection);
-        } 
-
-        nearest_intersection
-    }
-
-    /**
-        Finds a path that go from `current_position` to `final_position`.
-    */
-    fn build_graph(&self, start: Position<f32>, end: Position<f32>, graph_index: u32) {
-        let graph = &self.graphs[graph_index as usize];
-        let mut nodes = graph.nodes.borrow_mut();
-        
-        nodes.clear();
-        nodes.push(start);
-
-        if let Some(intersection) = self.collision([start, end]) {
-            nodes.push(intersection);
-        }
-
-        nodes.push(end);
     }
 
 }
@@ -237,7 +192,8 @@ fn intersection(vector1: Vec2, vector2: Vec2) -> Option<Position<f32>> {
 impl Default for PathfindingState {
     fn default() -> Self {
         PathfindingState {
-            blocked: Vec::with_capacity(32),
+            static_collisions: Vec::with_capacity(32),
+            navmesh: (),
             graphs: Vec::with_capacity(32)
         }
     }
@@ -245,16 +201,17 @@ impl Default for PathfindingState {
 
 impl crate::store::SaveAndLoad for PathfindingState {
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let blocked = reader.read_vec();
+        let static_collisions = reader.read_vec();
         let graphs = reader.load_vec();
         PathfindingState {
-            blocked,
+            static_collisions,
+            navmesh: (),
             graphs
         }
     }
 
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        writer.write_slice(&self.blocked);
+        writer.write_slice(&self.static_collisions);
         writer.save_slice(&self.graphs);
     }
 }

@@ -122,7 +122,7 @@ pub fn damage_structure(game: &mut DemoGameData, structure_index: usize, damage:
     match game.world.structures_data[structure_index] {
         StructureData::Castle(_) => { 
             structure.sprite = game.assets.structures.knights_castle_destroyed; 
-            game.world.pathfinding.unregister_collision(structure.aabb());
+            game.world.pathfinding.unregister_static_collision(structure.aabb());
         }
         StructureData::Tower(_) => { structure.sprite = game.assets.structures.knights_tower_destroyed; }
         StructureData::House(_) => { structure.sprite = game.assets.structures.knights_house_destroyed;}

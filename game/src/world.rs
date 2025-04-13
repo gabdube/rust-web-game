@@ -251,14 +251,27 @@ impl World {
 
     pub fn create_tree(&mut self, position: Position<f32>) {
         let animation = self.assets().resources.tree_idle;
+        let tree = BaseAnimated { position, animation, ..Default::default() };
+
+        // The tree collision box needs a few adjustments
+        let mut aabb = tree.aabb();
+        aabb.top = aabb.bottom - 40.0;
+        aabb.left += 20.0;
+        aabb.right -= 20.0;
+        self.pathfinding.register_static_collision(aabb);
+
         self.trees_data.push(TreeData::default());
-        self.trees.push(BaseAnimated { position, animation, ..Default::default() });
+        self.trees.push(tree);
         self.total_sprite_count += 1;
     }
 
     pub fn create_gold_mine(&mut self, position: Position<f32>) {
         let sprite = self.assets().structures.gold_mine_inactive;
-        self.structures.push(BaseStatic { position, sprite, selected: false });
+        let mine = BaseStatic { position, sprite, selected: false };
+
+        self.pathfinding.register_static_collision(mine.aabb());
+
+        self.structures.push(mine);
         self.structures_data.push(StructureData::GoldMine(Default::default()));
         self.total_sprite_count += 1;
     }
@@ -267,7 +280,7 @@ impl World {
         let sprite = self.assets().structures.knights_castle_construction;
         let castle = BaseStatic { position, sprite, selected: false };
 
-        self.pathfinding.register_collision(castle.aabb());
+        self.pathfinding.register_static_collision(castle.aabb());
 
         self.structures.push(castle);
         self.structures_data.push(StructureData::Castle(StructureCastleData { hp: 0, building: true, destroyed: false }));
@@ -284,9 +297,7 @@ impl World {
 
         let castle = BaseStatic { position, sprite, selected: false };
 
-        if !data.destroyed {
-            self.pathfinding.register_collision(castle.aabb());
-        }
+        self.pathfinding.register_static_collision(castle.aabb());
 
         self.structures.push(castle);
         self.structures_data.push(StructureData::Castle(data));
@@ -295,7 +306,11 @@ impl World {
 
     pub fn create_tower(&mut self, position: Position<f32>) {
         let sprite = self.assets().structures.knights_tower_construction;
-        self.structures.push(BaseStatic { position, sprite, selected: false });
+        let tower = BaseStatic { position, sprite, selected: false };
+
+        self.pathfinding.register_static_collision(tower.aabb());
+
+        self.structures.push(tower);
         self.structures_data.push(StructureData::Tower(StructureTowerData { hp: 0, building: true, destroyed: false }));
         self.total_sprite_count += 1;
     }
@@ -308,13 +323,21 @@ impl World {
             (false, false) => assets.structures.knights_tower,
         };
 
-        self.structures.push(BaseStatic { position, sprite, selected: false });
+        let tower = BaseStatic { position, sprite, selected: false };
+
+        self.pathfinding.register_static_collision(tower.aabb());
+
+        self.structures.push(tower);
         self.structures_data.push(StructureData::Tower(data));
         self.total_sprite_count += 1;
     }
 
     pub fn create_house(&mut self, position: Position<f32>) {
         let sprite = self.assets().structures.knights_house_construction;
+        let house = BaseStatic { position, sprite, selected: false };
+
+        self.pathfinding.register_static_collision(house.aabb());
+
         self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::House(StructureHouseData { hp: 0, building: true, destroyed: false }));
         self.total_sprite_count += 1;
@@ -328,6 +351,10 @@ impl World {
             (false, false) => assets.structures.knights_house,
         };
 
+        let house = BaseStatic { position, sprite, selected: false };
+
+        self.pathfinding.register_static_collision(house.aabb());
+
         self.structures.push(BaseStatic { position, sprite, selected: false });
         self.structures_data.push(StructureData::House(data));
         self.total_sprite_count += 1;
@@ -335,7 +362,11 @@ impl World {
 
     pub fn create_goblin_hut(&mut self, position: Position<f32>) {
         let sprite = self.assets().structures.goblin_house;
-        self.structures.push(BaseStatic { position, sprite, selected: false });
+        let house = BaseStatic { position, sprite, selected: false };
+        
+        self.pathfinding.register_static_collision(house.aabb());
+
+        self.structures.push(house);
         self.structures_data.push(StructureData::GoblinHut(GobinHutData { hp: MAX_GOBIN_HUT_LIFE, destroyed: false }));
         self.total_sprite_count += 1;
     }

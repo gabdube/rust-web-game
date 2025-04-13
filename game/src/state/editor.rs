@@ -130,7 +130,7 @@ fn init_archer_ai(data: &mut DemoGameData) {
 fn init_pathfinding_ai(data: &mut DemoGameData) {
     let world = &mut data.world;
     
-    world.create_pawn(pos(100.0, 100.0));
+    world.create_pawn(pos(430.0, 200.0));
     world.create_warrior(pos(200.0, 100.0));
     world.create_archer(pos(300.0, 100.0));
 
@@ -182,6 +182,8 @@ fn init_pathfinding_ai(data: &mut DemoGameData) {
     world.create_tree(pos(1200.0, 300.0));
     world.create_tree(pos(1200.0, 400.0));
     world.create_tree(pos(1200.0, 500.0));
+
+    world.create_gold_mine(pos(200.0, 800.0));
 }
 
 
@@ -206,9 +208,11 @@ pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
         }
     }
 
-    for structure in data.world.structures.iter() {
-        data.debug.debug_rect(structure.aabb(), [255, 0, 0, 255]);
-    }
+    data.world.pathfinding.debug_static_collisions(&mut data.debug);
+
+    // for structure in data.world.structures.iter() {
+    //     data.debug.debug_rect(structure.aabb(), [255, 0, 0, 255]);
+    // }
 }
 
 //

@@ -24,7 +24,7 @@ pub fn new(game: &mut DemoGameData, pawn: WorldObject, target_position: Position
     PawnBehaviour::cancel(game, pawn.id, false);
 
     let starting_position = game.world.pawns[pawn_index].position;
-    let pathfinding_state = game.world.pathfinding.new(starting_position, target_position);
+    let pathfinding_state = game.world.pathfinding.compute_new_path(starting_position, target_position);
 
     game.world.pawns_behaviour[pawn_index] = PawnBehaviour {
         ty: PawnBehaviourType::MoveTo { pathfinding_state },
