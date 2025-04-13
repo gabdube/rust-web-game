@@ -117,7 +117,7 @@ impl SaveAndLoad for Size<f32> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Default, Debug)]
 pub struct AABB {
     pub left: f32,
     pub top: f32,
@@ -176,6 +176,7 @@ impl AABB {
     }
 
 }
+
 
 //
 // Helpers method

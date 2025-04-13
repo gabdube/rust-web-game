@@ -1,8 +1,10 @@
-use crate::shared::AABB;
+#![allow(dead_code)]
+use crate::shared::{AABB, Position};
 
 #[derive(Copy, Clone)]
 pub enum DebugElement {
-    Rect { base: AABB, color: [u8; 4] }
+    Rect { base: AABB, color: [u8; 4] },
+    Line { start: Position<f32>, end: Position<f32>, color: [u8; 4] },
 }
 
 /// Hold debugging information to be displayed on screen
@@ -13,9 +15,13 @@ pub struct DebugState {
 }
 
 impl DebugState {
-
+    
     pub fn debug_rect(&mut self, base: AABB, color: [u8; 4]) {
         self.elements.push(DebugElement::Rect { base, color })
+    }
+
+    pub fn debug_line(&mut self, start: Position<f32>, end: Position<f32>, color: [u8; 4]) {
+        self.elements.push(DebugElement::Line { start, end, color })
     }
 
     pub fn clear(&mut self) {
@@ -28,19 +34,6 @@ impl Default for DebugState {
     fn default() -> Self {
         DebugState {
             elements: Vec::with_capacity(16)
-        }
-    }
-}
-
-impl crate::store::SaveAndLoad for DebugState {
-    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        writer.write_slice(&self.elements);
-    }
-
-    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let elements = reader.read_vec();
-        DebugState {
-            elements
         }
     }
 }

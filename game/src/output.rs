@@ -628,7 +628,7 @@ fn render_debug(game: &mut DemoGame) {
     use crate::debug::DebugElement;
     use crate::shared::{AABB, aabb, pos, size};
 
-    fn debug_rect(vertex: &mut Vec<DebugVertex>, aabb: &AABB, color: [u8; 4]) {
+    fn debug_aabb(vertex: &mut Vec<DebugVertex>, aabb: &AABB, color: [u8; 4]) {
         vertex.push(DebugVertex { position: [aabb.left, aabb.top],     color });
         vertex.push(DebugVertex { position: [aabb.left, aabb.bottom],  color });
         vertex.push(DebugVertex { position: [aabb.right, aabb.bottom], color });
@@ -648,10 +648,23 @@ fn render_debug(game: &mut DemoGame) {
         match *element {
             DebugElement::Rect { base, color } => {
                 let rect_size = base.size();
-                debug_rect(vertex, &aabb(pos(base.left, base.top), size(rect_size.width, 2.0)), color);         // Top
-                debug_rect(vertex, &aabb(pos(base.left, base.bottom-2.0), size(rect_size.width, 2.0)), color);  // Bottom
-                debug_rect(vertex, &aabb(pos(base.left, base.top), size(2.0, rect_size.height)), color);        // Left
-                debug_rect(vertex, &aabb(pos(base.right-2.0, base.top), size(2.0, rect_size.height)), color);   // Right
+                debug_aabb(vertex, &aabb(pos(base.left, base.top), size(rect_size.width, 2.0)), color);         // Top
+                debug_aabb(vertex, &aabb(pos(base.left, base.bottom-2.0), size(rect_size.width, 2.0)), color);  // Bottom
+                debug_aabb(vertex, &aabb(pos(base.left, base.top), size(2.0, rect_size.height)), color);        // Left
+                debug_aabb(vertex, &aabb(pos(base.right-2.0, base.top), size(2.0, rect_size.height)), color);   // Right
+            },
+            DebugElement::Line { start, end, color } => {
+                let angle = f32::atan2(end.y-start.y, end.x-start.x);
+                let y = 1.0 * f32::cos(angle);
+                let x = 1.0 * f32::sin(angle);
+
+                vertex.push(DebugVertex { position: [start.x+x, start.y-y],  color });
+                vertex.push(DebugVertex { position: [start.x-x, start.y+y],  color });
+                vertex.push(DebugVertex { position: [end.x-x, end.y+y],      color });
+
+                vertex.push(DebugVertex { position: [end.x+x, end.y-y],  color });
+                vertex.push(DebugVertex { position: [start.x+x, start.y-y],  color });
+                vertex.push(DebugVertex { position: [end.x-x, end.y+y],      color });
             }
         }
     }

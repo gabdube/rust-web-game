@@ -206,15 +206,8 @@ pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
         }
     }
 
-    let cursor_world_position = data.inputs.mouse_position + data.global.view_offset;
-    if let Some(obj) = data.world.object_at(cursor_world_position) {
-        match obj.ty {
-            WorldObjectType::Pawn => {
-                let aabb = data.world.pawns[obj.id as usize].aabb();
-                data.debug.debug_rect(aabb, [255, 0, 0, 255]);
-            },
-            _ => {}
-        }
+    for structure in data.world.structures.iter() {
+        data.debug.debug_rect(structure.aabb(), [255, 0, 0, 255]);
     }
 }
 

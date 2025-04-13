@@ -216,6 +216,7 @@ impl World {
 
         self.selected.clear();
         self.terrain.reset();
+        self.pathfinding.clear();
     }
 
     pub fn init_terrain(&mut self, width: u32, height: u32) {
@@ -264,7 +265,11 @@ impl World {
 
     pub fn create_castle(&mut self, position: Position<f32>) {
         let sprite = self.assets().structures.knights_castle_construction;
-        self.structures.push(BaseStatic { position, sprite, selected: false });
+        let castle = BaseStatic { position, sprite, selected: false };
+
+        self.pathfinding.register_collision(castle.aabb());
+
+        self.structures.push(castle);
         self.structures_data.push(StructureData::Castle(StructureCastleData { hp: 0, building: true, destroyed: false }));
         self.total_sprite_count += 1;
     }
@@ -277,7 +282,13 @@ impl World {
             (false, false) => assets.structures.knights_castle,
         };
 
-        self.structures.push(BaseStatic { position, sprite, selected: false });
+        let castle = BaseStatic { position, sprite, selected: false };
+
+        if !data.destroyed {
+            self.pathfinding.register_collision(castle.aabb());
+        }
+
+        self.structures.push(castle);
         self.structures_data.push(StructureData::Castle(data));
         self.total_sprite_count += 1;
     }

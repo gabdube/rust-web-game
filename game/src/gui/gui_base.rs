@@ -23,7 +23,7 @@ impl GuiColor {
 
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct GuiOutputSprite {
     pub positions: AABB,
     pub texcoord: AABB,

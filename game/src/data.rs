@@ -109,7 +109,6 @@ impl store::SaveAndLoad for DemoGameData {
         writer.save(&self.gui);
         writer.save(&self.global);
         writer.write(&self.inputs);
-        writer.save(&self.debug);
     }
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
@@ -118,7 +117,7 @@ impl store::SaveAndLoad for DemoGameData {
         let gui = reader.load();
         let global = reader.load();
         let inputs = reader.read();
-        let debug = reader.load();
+        let debug = crate::debug::DebugState::default();
 
         world.assets = Some(Arc::clone(&assets));
 

@@ -1,8 +1,8 @@
 #[cfg(feature="debug")]
-pub mod debug;
+pub mod debug_state;
 
 #[cfg(feature="debug")]
-pub use debug::*;
+pub use debug_state::*;
 
 /// Empty debug state for if the debug feature flags is disabled
 #[cfg(not(feature="debug"))]

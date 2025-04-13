@@ -248,7 +248,7 @@ export class WebGL2Backend {
         ctx.uniform2f(this.shaders.gui_view_size, canvas.width, canvas.height);
 
         ctx.useProgram(this.shaders.debug);
-        ctx.uniform2f(this.shaders.debug, canvas.width, canvas.height);
+        ctx.uniform2f(this.shaders.debug_view_size, canvas.width, canvas.height);
 
         return true;
     }
