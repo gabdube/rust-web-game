@@ -179,6 +179,10 @@ impl World {
         self.arrows.len()
     }
 
+    pub fn generate_navmesh(&mut self) {
+        self.pathfinding.generate_navmesh();
+    }
+
     pub fn reset(&mut self) {
         self.pawns.clear();
         self.pawns_data.clear();

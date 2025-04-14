@@ -12,9 +12,22 @@ editor = []
 debug = []
 
 [dependencies]
+
+# WASM tooling
 wasm-bindgen = "0.2.92"
 console_error_panic_hook = "0.1"
+
+# Used in string rendering
 unicode-segmentation = "1.12.0"
+
+# Std hashmap replacement
 fnv = "1.0.7"
+
+# Global state mutex
 parking_lot = "0.12.3"
+
+# Random number generation
 fastrand = "2.3"
+
+# Used by delaunator
+robust = "1.0.0"

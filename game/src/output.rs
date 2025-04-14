@@ -637,6 +637,20 @@ fn render_debug(game: &mut DemoGame) {
         vertex.push(DebugVertex { position: [aabb.left, aabb.top],     color });
         vertex.push(DebugVertex { position: [aabb.right, aabb.bottom], color });
     }
+
+    fn debug_line(vertex: &mut Vec<DebugVertex>, p1: Position<f32>, p2: Position<f32>, color: [u8; 4]) {
+        let angle = f32::atan2(p2.y-p1.y, p2.x-p1.x);
+        let y = 1.0 * f32::cos(angle);
+        let x = 1.0 * f32::sin(angle);
+
+        vertex.push(DebugVertex { position: [p1.x+x, p1.y-y],  color });
+        vertex.push(DebugVertex { position: [p1.x-x, p1.y+y],  color });
+        vertex.push(DebugVertex { position: [p2.x-x, p2.y+y],      color });
+
+        vertex.push(DebugVertex { position: [p2.x+x, p2.y-y],      color });
+        vertex.push(DebugVertex { position: [p1.x+x, p1.y-y],  color });
+        vertex.push(DebugVertex { position: [p2.x-x, p2.y+y],      color });
+    }
     
     let vertex = &mut game.output.debug_vertex;
     let elements = &game.data.debug.elements;
@@ -654,17 +668,12 @@ fn render_debug(game: &mut DemoGame) {
                 debug_aabb(vertex, &aabb(pos(base.right-2.0, base.top), size(2.0, rect_size.height)), color);   // Right
             },
             DebugElement::Line { start, end, color } => {
-                let angle = f32::atan2(end.y-start.y, end.x-start.x);
-                let y = 1.0 * f32::cos(angle);
-                let x = 1.0 * f32::sin(angle);
-
-                vertex.push(DebugVertex { position: [start.x+x, start.y-y],  color });
-                vertex.push(DebugVertex { position: [start.x-x, start.y+y],  color });
-                vertex.push(DebugVertex { position: [end.x-x, end.y+y],      color });
-
-                vertex.push(DebugVertex { position: [end.x+x, end.y-y],  color });
-                vertex.push(DebugVertex { position: [start.x+x, start.y-y],  color });
-                vertex.push(DebugVertex { position: [end.x-x, end.y+y],      color });
+                debug_line(vertex, start, end, color);
+            },
+            DebugElement::Triangle { v0, v1, v2, color } => {
+                debug_line(vertex, v0, v1, color);
+                debug_line(vertex, v1, v2, color);
+                debug_line(vertex, v0, v2, color);
             }
         }
     }

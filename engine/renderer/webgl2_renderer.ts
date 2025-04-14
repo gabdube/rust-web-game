@@ -76,6 +76,7 @@ class RendererShaders {
 
     debug_position_attrloc: number;
     debug_color_attrloc: number;
+    debug_view_position: WebGLUniformLocation;
     debug_view_size: WebGLUniformLocation;
     debug: WebGLProgram;
 }
@@ -548,6 +549,9 @@ export class WebGL2Backend {
 
         ctx.useProgram(this.shaders.terrain);
         ctx.uniform2f(this.shaders.terrain_view_position, x, y);
+
+        ctx.useProgram(this.shaders.debug);
+        ctx.uniform2f(this.shaders.debug_view_position, x, y);
     }
 
     private update_debug(updates: EngineGameInstanceUpdates) {
@@ -1012,6 +1016,7 @@ export class WebGL2Backend {
 
         shaders.debug_position_attrloc = ctx.getAttribLocation(debug_program, "in_position");
         shaders.debug_color_attrloc = ctx.getAttribLocation(debug_program, "in_color");
+        shaders.debug_view_position = ctx.getUniformLocation(debug_program, "view_position") as any;
         shaders.debug_view_size = ctx.getUniformLocation(debug_program, "view_size") as any;
         shaders.debug = debug_program;
 
@@ -1289,6 +1294,7 @@ export class WebGL2Backend {
         ctx.uniform1i(this.shaders.gui_image_texture, 1);
 
         ctx.useProgram(this.shaders.debug);
+        ctx.uniform2f(this.shaders.debug_view_position, 0.0, 0.0);
         ctx.uniform2f(this.shaders.debug_view_size, this.canvas.width, this.canvas.height);
     }
 

@@ -184,6 +184,8 @@ fn init_pathfinding_ai(data: &mut DemoGameData) {
     world.create_tree(pos(1200.0, 500.0));
 
     world.create_gold_mine(pos(200.0, 800.0));
+
+    world.generate_navmesh();
 }
 
 
@@ -207,8 +209,9 @@ pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
             data.set_view_offset(data.global.view_offset - delta);
         }
     }
-
-    data.world.pathfinding.debug_static_collisions(&mut data.debug);
+    
+    data.world.pathfinding.debug_navmesh(&mut data.debug);
+    // data.world.pathfinding.debug_static_collisions(&mut data.debug);
 
     // for structure in data.world.structures.iter() {
     //     data.debug.debug_rect(structure.aabb(), [255, 0, 0, 255]);

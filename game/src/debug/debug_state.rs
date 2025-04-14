@@ -5,6 +5,7 @@ use crate::shared::{AABB, Position};
 pub enum DebugElement {
     Rect { base: AABB, color: [u8; 4] },
     Line { start: Position<f32>, end: Position<f32>, color: [u8; 4] },
+    Triangle { v0: Position<f32>, v1: Position<f32>, v2: Position<f32>, color: [u8; 4] }
 }
 
 /// Hold debugging information to be displayed on screen
@@ -18,6 +19,10 @@ impl DebugState {
     
     pub fn debug_rect(&mut self, base: AABB, color: [u8; 4]) {
         self.elements.push(DebugElement::Rect { base, color })
+    }
+
+    pub fn debug_triangle(&mut self, v0: Position<f32>, v1: Position<f32>, v2: Position<f32>, color: [u8; 4]) {
+        self.elements.push(DebugElement::Triangle { v0, v1, v2, color })
     }
 
     pub fn debug_line(&mut self, start: Position<f32>, end: Position<f32>, color: [u8; 4]) {
