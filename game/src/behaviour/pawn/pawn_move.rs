@@ -104,7 +104,7 @@ fn write_params(game: &mut DemoGameData, pawn_index: usize, params: &PawnMovePar
 
     match params.new_behaviour {
         Some(new_behaviour) => { 
-            game.world.pathfinding.clear_path(params.pathfinding_state);
+            game.world.pathfinding.free_path(params.pathfinding_state);
             *behaviour = new_behaviour;
         },
         None => { 

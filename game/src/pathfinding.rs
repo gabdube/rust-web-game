@@ -20,7 +20,7 @@ pub struct PathfindingGraph {
 }
 
 pub struct NavMesh {
-    pub terrain_mesh: Vec<Point>,
+    pub terrain_bounds: Vec<Point>,
     pub static_aabbs: Vec<AABB>,
     pub points: Vec<Point>,
     pub triangulation: Triangulation,
@@ -40,7 +40,9 @@ impl PathfindingState {
         points.clear();
 
         // Add the world bounds
-
+        for &point in self.navmesh.terrain_bounds.iter() {
+            points.push(point);
+        }
 
         // Add the static objects
         for &aabb in self.navmesh.static_aabbs.iter() {
@@ -52,38 +54,7 @@ impl PathfindingState {
 
         delaunator::triangulate_from(&mut self.navmesh.triangulation, &points);
     }
-
-    fn find_new_path(&mut self) -> u32 {
-        let graph_id;
-        match self.paths.iter_mut().enumerate().find(|(_,g)| g.free ) {
-            Some((index, graph)) => {
-                graph_id = index as u32;
-                graph.free = false;
-            },
-            None => {
-                graph_id = self.paths.len() as u32;
-                self.paths.push(PathfindingGraph {
-                    nodes: Vec::with_capacity(8),
-                    free: false,
-                });
-            }
-        }
-
-        graph_id
-    }
-
-    pub fn compute_new_path(&mut self, start_position: Position<f32>, final_position: Position<f32>) -> PathFindingData {
-        let graph_id = self.find_new_path();
-        self.paths[graph_id as usize].nodes.push(start_position);
-        self.paths[graph_id as usize].nodes.push(final_position);
-
-        PathFindingData {
-            next_position: start_position,
-            graph_id,
-            graph_node_index: 0,
-        }
-    }
-
+   
     pub fn clear(&mut self) {
         self.navmesh.clear();
 
@@ -93,6 +64,18 @@ impl PathfindingState {
         }
     }
 
+    //
+    // Navmesh generation
+    //
+
+    pub fn clear_terrain_bounds(&mut self) {
+        self.navmesh.terrain_bounds.clear();
+    }
+
+    pub fn add_terrain_bound(&mut self, x: f32, y: f32) {
+        self.navmesh.terrain_bounds.push(Point::from([x, y]));
+    }
+
     pub fn register_static_collision(&mut self, aabb: AABB) {
         self.navmesh.static_aabbs.push(aabb);
     }
@@ -100,6 +83,26 @@ impl PathfindingState {
     pub fn unregister_static_collision(&mut self, aabb1: AABB) {
         if let Some(index) = self.navmesh.static_aabbs.iter().position(|&aabb2| aabb1 == aabb2 ) {
             self.navmesh.static_aabbs.swap_remove(index);
+        }
+    }
+
+    //
+    // Pathing
+    //
+
+    /**
+        Compute the path from `start_position` to `final_position`. Once used,
+        the returned `PathFindingData` must be freed using `free_path`.
+    */
+    pub fn compute_new_path(&mut self, start_position: Position<f32>, final_position: Position<f32>) -> PathFindingData {
+        let graph_id = self.find_new_path();
+        self.paths[graph_id as usize].nodes.push(start_position);
+        self.paths[graph_id as usize].nodes.push(final_position);
+
+        PathFindingData {
+            next_position: start_position,
+            graph_id,
+            graph_node_index: 0,
         }
     }
 
@@ -122,10 +125,33 @@ impl PathfindingState {
         false
     }
 
-    pub fn clear_path(&mut self, path_data: PathFindingData) {
+    /**
+        Free up `path_data`. Allocated memory will be reused by by the next call
+        to `compute_new_path`
+    */
+    pub fn free_path(&mut self, path_data: PathFindingData) {
         let graph = &mut self.paths[path_data.graph_id as usize];
         graph.nodes.clear();
         graph.free = true;
+    }
+ 
+    fn find_new_path(&mut self) -> u32 {
+        let graph_id;
+        match self.paths.iter_mut().enumerate().find(|(_,g)| g.free ) {
+            Some((index, graph)) => {
+                graph_id = index as u32;
+                graph.free = false;
+            },
+            None => {
+                graph_id = self.paths.len() as u32;
+                self.paths.push(PathfindingGraph {
+                    nodes: Vec::with_capacity(8),
+                    free: false,
+                });
+            }
+        }
+
+        graph_id
     }
 
     //
@@ -190,10 +216,15 @@ impl PathfindingState {
         }
     }
 
+    pub fn debug_pathfinding(&self, debug: &mut crate::debug::DebugState, start: Position<f32>, end: Position<f32>) {
+
+    }
+
 }
 
 impl NavMesh {
     fn clear(&mut self) {
+        self.terrain_bounds.clear();
         self.static_aabbs.clear();
         self.points.clear();
         self.triangulation.triangles.clear();
@@ -205,7 +236,7 @@ impl NavMesh {
 impl Default for NavMesh {
     fn default() -> Self {
         NavMesh {
-            terrain_mesh: Vec::with_capacity(64),
+            terrain_bounds: Vec::with_capacity(64),
             static_aabbs: Vec::with_capacity(64),
             points: Vec::with_capacity(400),
             triangulation: Triangulation {
@@ -245,14 +276,14 @@ impl crate::store::SaveAndLoad for PathfindingState {
 impl crate::store::SaveAndLoad for NavMesh {
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let terrain_mesh = reader.read_vec();
+        let terrain_bounds = reader.read_vec();
         let static_aabbs = reader.read_vec();
         let points = reader.read_vec();
         let triangles = reader.read_vec();
         let halfedges = reader.read_vec();
         let hull = reader.read_vec();
         NavMesh { 
-            terrain_mesh,
+            terrain_bounds,
             static_aabbs,
             points,
             triangulation: Triangulation { triangles, halfedges, hull }
@@ -260,7 +291,7 @@ impl crate::store::SaveAndLoad for NavMesh {
     }
 
     fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        writer.write_slice(&self.terrain_mesh);
+        writer.write_slice(&self.terrain_bounds);
         writer.write_slice(&self.static_aabbs);
         writer.write_slice(&self.points);
         writer.write_slice(&self.triangulation.triangles);

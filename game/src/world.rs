@@ -1,6 +1,8 @@
 mod terrain;
 use terrain::Terrain;
 
+mod terrain_navmesh;
+
 mod extra_data;
 pub use extra_data::*;
 
@@ -180,6 +182,7 @@ impl World {
     }
 
     pub fn generate_navmesh(&mut self) {
+        terrain_navmesh::generate_terrain_navmesh(&self.terrain, &mut self.pathfinding);
         self.pathfinding.generate_navmesh();
     }
 

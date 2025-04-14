@@ -74,6 +74,14 @@ impl Terrain {
         }
     }
 
+    pub fn max_width_pixel(&self) -> usize {
+        (self.chunk_width as usize) *  (TERRAIN_CELL_SIZE_PX as usize) * CHUNK_STRIDE
+    }
+
+    pub fn max_height_pixel(&self) -> usize {
+        (self.chunk_height as usize) * (TERRAIN_CELL_SIZE_PX as usize) * CHUNK_STRIDE
+    }
+
 }
 
 impl crate::store::SaveAndLoad for Terrain {

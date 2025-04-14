@@ -143,47 +143,47 @@ fn init_pathfinding_ai(data: &mut DemoGameData) {
     // world.create_tower_with_data(pos(600.0, 600.0), tower_data);
     // world.create_tower_with_data(pos(400.0, 650.0), tower_data);
 
-    let house_data = crate::world::StructureHouseData { hp: crate::world::MAX_HOUSE_HP, building: false, destroyed: false };
-    world.create_house_with_data(pos(750.0, 750.0), house_data);
-    world.create_house_with_data(pos(850.0, 750.0), house_data);
-    world.create_house_with_data(pos(950.0, 750.0), house_data);
-    world.create_house_with_data(pos(1050.0, 750.0), house_data);
+    // let house_data = crate::world::StructureHouseData { hp: crate::world::MAX_HOUSE_HP, building: false, destroyed: false };
+    // world.create_house_with_data(pos(750.0, 750.0), house_data);
+    // world.create_house_with_data(pos(850.0, 750.0), house_data);
+    // world.create_house_with_data(pos(950.0, 750.0), house_data);
+    // world.create_house_with_data(pos(1050.0, 750.0), house_data);
 
-    world.create_house_with_data(pos(500.0, 850.0), house_data);
-    world.create_house_with_data(pos(500.0, 950.0), house_data);
-    world.create_house_with_data(pos(500.0, 1050.0), house_data);
-    world.create_house_with_data(pos(500.0, 1150.0), house_data);
+    // world.create_house_with_data(pos(500.0, 850.0), house_data);
+    // world.create_house_with_data(pos(500.0, 950.0), house_data);
+    // world.create_house_with_data(pos(500.0, 1050.0), house_data);
+    // world.create_house_with_data(pos(500.0, 1150.0), house_data);
 
-    world.create_house_with_data(pos(900.0, 1200.0), house_data);
-    world.create_house_with_data(pos(1000.0, 1200.0), house_data);
-    world.create_house_with_data(pos(1100.0, 1200.0), house_data);
-    world.create_house_with_data(pos(1200.0, 1200.0), house_data);
+    // world.create_house_with_data(pos(900.0, 1200.0), house_data);
+    // world.create_house_with_data(pos(1000.0, 1200.0), house_data);
+    // world.create_house_with_data(pos(1100.0, 1200.0), house_data);
+    // world.create_house_with_data(pos(1200.0, 1200.0), house_data);
 
-    world.create_house_with_data(pos(1200.0, 900.0), house_data);
-    world.create_house_with_data(pos(1200.0, 1000.0), house_data);
-    world.create_house_with_data(pos(1200.0, 1100.0), house_data);
+    // world.create_house_with_data(pos(1200.0, 900.0), house_data);
+    // world.create_house_with_data(pos(1200.0, 1000.0), house_data);
+    // world.create_house_with_data(pos(1200.0, 1100.0), house_data);
 
-    world.create_goblin_hut(pos(1550.0, 250.0));
-    world.create_goblin_hut(pos(1550.0, 350.0));
-    world.create_goblin_hut(pos(1550.0, 450.0));
-    world.create_goblin_hut(pos(1550.0, 550.0));
-    world.create_goblin_hut(pos(1550.0, 650.0));
-    world.create_goblin_hut(pos(1550.0, 750.0));
-    world.create_goblin_hut(pos(1550.0, 850.0));
-    world.create_goblin_hut(pos(1550.0, 950.0));
-    world.create_goblin_hut(pos(1550.0, 1050.0));
+    // world.create_goblin_hut(pos(1550.0, 250.0));
+    // world.create_goblin_hut(pos(1550.0, 350.0));
+    // world.create_goblin_hut(pos(1550.0, 450.0));
+    // world.create_goblin_hut(pos(1550.0, 550.0));
+    // world.create_goblin_hut(pos(1550.0, 650.0));
+    // world.create_goblin_hut(pos(1550.0, 750.0));
+    // world.create_goblin_hut(pos(1550.0, 850.0));
+    // world.create_goblin_hut(pos(1550.0, 950.0));
+    // world.create_goblin_hut(pos(1550.0, 1050.0));
 
-    world.create_tree(pos(1000.0, 300.0));
-    world.create_tree(pos(1000.0, 400.0));
-    world.create_tree(pos(1000.0, 500.0));
-    world.create_tree(pos(1100.0, 300.0));
-    world.create_tree(pos(1100.0, 400.0));
-    world.create_tree(pos(1100.0, 500.0));
-    world.create_tree(pos(1200.0, 300.0));
-    world.create_tree(pos(1200.0, 400.0));
-    world.create_tree(pos(1200.0, 500.0));
+    // world.create_tree(pos(1000.0, 300.0));
+    // world.create_tree(pos(1000.0, 400.0));
+    // world.create_tree(pos(1000.0, 500.0));
+    // world.create_tree(pos(1100.0, 300.0));
+    // world.create_tree(pos(1100.0, 400.0));
+    // world.create_tree(pos(1100.0, 500.0));
+    // world.create_tree(pos(1200.0, 300.0));
+    // world.create_tree(pos(1200.0, 400.0));
+    // world.create_tree(pos(1200.0, 500.0));
 
-    world.create_gold_mine(pos(200.0, 800.0));
+    // world.create_gold_mine(pos(200.0, 800.0));
 
     world.generate_navmesh();
 }
@@ -195,6 +195,7 @@ fn init_pathfinding_ai(data: &mut DemoGameData) {
 
 pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
     use crate::inputs::{MouseButton, ButtonState};
+    use crate::shared::AABB;
     
     let state = get_state(state);
 
@@ -210,6 +211,23 @@ pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
         }
     }
     
+    let mouse_position = data.inputs.mouse_position + data.global.view_offset;
+    let pawn_position = data.world.pawns[0].position;
+
+    data.debug.debug_rect(data.world.pawns[0].aabb(), [255, 255, 255, 255]);
+    data.debug.debug_rect(
+        AABB { 
+            left: mouse_position.x - 15.0,
+            top: mouse_position.y - 15.0,
+            right: mouse_position.x + 15.0,
+            bottom: mouse_position.y + 15.0,
+        },
+        [255, 255, 255, 255]
+    );
+
+
+    let debug_point = data.world.pathfinding.debug_pathfinding(&mut data.debug, pawn_position, mouse_position);
+
     data.world.pathfinding.debug_navmesh(&mut data.debug);
     // data.world.pathfinding.debug_static_collisions(&mut data.debug);
 
