@@ -195,8 +195,6 @@ fn init_pathfinding_ai(data: &mut DemoGameData) {
 
 pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
     use crate::inputs::{MouseButton, ButtonState};
-    use crate::shared::AABB;
-    
     let state = get_state(state);
 
     match data.inputs.mouse_button_state(MouseButton::Center) {
@@ -214,23 +212,10 @@ pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
     let mouse_position = data.inputs.mouse_position + data.global.view_offset;
     let pawn_position = data.world.pawns[0].position;
 
-    data.debug.debug_rect(data.world.pawns[0].aabb(), [255, 255, 255, 255]);
-    data.debug.debug_rect(
-        AABB { 
-            left: mouse_position.x - 15.0,
-            top: mouse_position.y - 15.0,
-            right: mouse_position.x + 15.0,
-            bottom: mouse_position.y + 15.0,
-        },
-        [255, 255, 255, 255]
-    );
-
-
-    let debug_point = data.world.pathfinding.debug_pathfinding(&mut data.debug, pawn_position, mouse_position);
-
     data.world.pathfinding.debug_navmesh(&mut data.debug);
-    // data.world.pathfinding.debug_static_collisions(&mut data.debug);
+    data.world.pathfinding.debug_pathfinding(&mut data.debug, mouse_position, pawn_position);
 
+    // data.world.pathfinding.debug_static_collisions(&mut data.debug);
     // for structure in data.world.structures.iter() {
     //     data.debug.debug_rect(structure.aabb(), [255, 0, 0, 255]);
     // }

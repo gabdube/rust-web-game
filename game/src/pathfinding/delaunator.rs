@@ -3,7 +3,7 @@
 /*!
 ////////////////////////////////////////////////////
 
-THIS IS A VENDORED VERSION BECAUSE I WANT TO CHANGED A FIEW THINGS:
+VENDORED VERSION. CHANGES:
 
 * Reduced precision (`f32` instead of `f64`)
 * Implement `Copy` on Point

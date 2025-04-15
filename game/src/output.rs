@@ -628,7 +628,7 @@ fn render_debug(game: &mut DemoGame) {
     use crate::debug::DebugElement;
     use crate::shared::{AABB, aabb, pos, size};
 
-    fn debug_aabb(vertex: &mut Vec<DebugVertex>, aabb: &AABB, color: [u8; 4]) {
+    fn debug_rect(vertex: &mut Vec<DebugVertex>, aabb: &AABB, color: [u8; 4]) {
         vertex.push(DebugVertex { position: [aabb.left, aabb.top],     color });
         vertex.push(DebugVertex { position: [aabb.left, aabb.bottom],  color });
         vertex.push(DebugVertex { position: [aabb.right, aabb.bottom], color });
@@ -660,12 +660,11 @@ fn render_debug(game: &mut DemoGame) {
 
     for element in elements.iter() {
         match *element {
-            DebugElement::Rect { base, color } => {
-                let rect_size = base.size();
-                debug_aabb(vertex, &aabb(pos(base.left, base.top), size(rect_size.width, 2.0)), color);         // Top
-                debug_aabb(vertex, &aabb(pos(base.left, base.bottom-2.0), size(rect_size.width, 2.0)), color);  // Bottom
-                debug_aabb(vertex, &aabb(pos(base.left, base.top), size(2.0, rect_size.height)), color);        // Left
-                debug_aabb(vertex, &aabb(pos(base.right-2.0, base.top), size(2.0, rect_size.height)), color);   // Right
+            DebugElement::Point { pt, size: size_value, color } => {
+                let half_size = size_value / 2.0;
+                let position = pos(pt.x - half_size, pt.y-half_size);
+                let size = size(size_value, size_value);
+                debug_rect(vertex, &aabb(position, size), color);
             },
             DebugElement::Line { start, end, color } => {
                 debug_line(vertex, start, end, color);
@@ -675,6 +674,13 @@ fn render_debug(game: &mut DemoGame) {
                 debug_line(vertex, v1, v2, color);
                 debug_line(vertex, v0, v2, color);
             }
+            DebugElement::Rect { base, color } => {
+                let rect_size = base.size();
+                debug_rect(vertex, &aabb(pos(base.left, base.top), size(rect_size.width, 2.0)), color);         // Top
+                debug_rect(vertex, &aabb(pos(base.left, base.bottom-2.0), size(rect_size.width, 2.0)), color);  // Bottom
+                debug_rect(vertex, &aabb(pos(base.left, base.top), size(2.0, rect_size.height)), color);        // Left
+                debug_rect(vertex, &aabb(pos(base.right-2.0, base.top), size(2.0, rect_size.height)), color);   // Right
+            },
         }
     }
 

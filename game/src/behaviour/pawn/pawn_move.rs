@@ -40,7 +40,7 @@ pub fn process(game: &mut DemoGameData, pawn_index: usize) {
         _ => {},
     }
 
-    game.world.pathfinding.debug_path(&mut game.debug, &params.pathfinding_state);
+    //game.world.pathfinding.debug_path(&mut game.debug, &params.pathfinding_state);
 
     write_params(game, pawn_index, &params);
 }

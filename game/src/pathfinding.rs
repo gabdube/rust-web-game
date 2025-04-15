@@ -1,7 +1,9 @@
 mod delaunator;
-use delaunator::{Triangulation, Point};
 
-use crate::shared::{pos, Position, AABB};
+mod navmesh;
+use navmesh::NavMesh;
+
+use crate::shared::{pos, Position};
 
 /// Computed pathfinding data for a single unit 
 #[derive(Copy, Clone)]
@@ -19,13 +21,6 @@ pub struct PathfindingGraph {
     pub free: bool,
 }
 
-pub struct NavMesh {
-    pub terrain_bounds: Vec<Point>,
-    pub static_aabbs: Vec<AABB>,
-    pub points: Vec<Point>,
-    pub triangulation: Triangulation,
-}
-
 /// Global pathfinding state
 pub struct PathfindingState {
     pub navmesh: NavMesh,
@@ -34,27 +29,6 @@ pub struct PathfindingState {
 
 impl PathfindingState {
 
-    pub fn generate_navmesh(&mut self) {
-        let points = &mut self.navmesh.points;
-    
-        points.clear();
-
-        // Add the world bounds
-        for &point in self.navmesh.terrain_bounds.iter() {
-            points.push(point);
-        }
-
-        // Add the static objects
-        for &aabb in self.navmesh.static_aabbs.iter() {
-            points.push(Point::from([aabb.left, aabb.top]));
-            points.push(Point::from([aabb.left, aabb.bottom]));
-            points.push(Point::from([aabb.right, aabb.top]));
-            points.push(Point::from([aabb.right, aabb.bottom]));
-        }
-
-        delaunator::triangulate_from(&mut self.navmesh.triangulation, &points);
-    }
-   
     pub fn clear(&mut self) {
         self.navmesh.clear();
 
@@ -64,27 +38,6 @@ impl PathfindingState {
         }
     }
 
-    //
-    // Navmesh generation
-    //
-
-    pub fn clear_terrain_bounds(&mut self) {
-        self.navmesh.terrain_bounds.clear();
-    }
-
-    pub fn add_terrain_bound(&mut self, x: f32, y: f32) {
-        self.navmesh.terrain_bounds.push(Point::from([x, y]));
-    }
-
-    pub fn register_static_collision(&mut self, aabb: AABB) {
-        self.navmesh.static_aabbs.push(aabb);
-    }
-
-    pub fn unregister_static_collision(&mut self, aabb1: AABB) {
-        if let Some(index) = self.navmesh.static_aabbs.iter().position(|&aabb2| aabb1 == aabb2 ) {
-            self.navmesh.static_aabbs.swap_remove(index);
-        }
-    }
 
     //
     // Pathing
@@ -160,15 +113,6 @@ impl PathfindingState {
 
     #[cfg(feature="debug")]
     #[allow(dead_code)]
-    pub fn debug_static_collisions(&self, debug: &mut crate::debug::DebugState) {
-        let color = [0, 255, 0, 255];
-        for &aabb in self.navmesh.static_aabbs.iter() {
-            debug.debug_rect(aabb, color);
-        }
-    }
-
-    #[cfg(feature="debug")]
-    #[allow(dead_code)]
     pub fn debug_navmesh(&self, debug: &mut crate::debug::DebugState) {
         let points = &self.navmesh.points;
         let triangles = &self.navmesh.triangulation.triangles;
@@ -216,37 +160,16 @@ impl PathfindingState {
         }
     }
 
+    #[cfg(feature="debug")]
+    #[allow(dead_code)]
     pub fn debug_pathfinding(&self, debug: &mut crate::debug::DebugState, start: Position<f32>, end: Position<f32>) {
-
+        debug.debug_point(start, 15.0, [255, 255, 255, 255]);
+        debug.debug_line(start, end, [0, 255, 0, 255]);
+        debug.debug_point(end, 15.0, [255, 255, 255, 255]);
     }
 
 }
 
-impl NavMesh {
-    fn clear(&mut self) {
-        self.terrain_bounds.clear();
-        self.static_aabbs.clear();
-        self.points.clear();
-        self.triangulation.triangles.clear();
-        self.triangulation.halfedges.clear();
-        self.triangulation.hull.clear();
-    } 
-}
-
-impl Default for NavMesh {
-    fn default() -> Self {
-        NavMesh {
-            terrain_bounds: Vec::with_capacity(64),
-            static_aabbs: Vec::with_capacity(64),
-            points: Vec::with_capacity(400),
-            triangulation: Triangulation {
-                triangles: Vec::new(),
-                halfedges: Vec::new(),
-                hull: Vec::new(),
-            }
-        }
-    }
-}
 
 impl Default for PathfindingState {
     fn default() -> Self {
@@ -273,32 +196,6 @@ impl crate::store::SaveAndLoad for PathfindingState {
     }
 }
 
-impl crate::store::SaveAndLoad for NavMesh {
-
-    fn load(reader: &mut crate::store::SaveFileReader) -> Self {
-        let terrain_bounds = reader.read_vec();
-        let static_aabbs = reader.read_vec();
-        let points = reader.read_vec();
-        let triangles = reader.read_vec();
-        let halfedges = reader.read_vec();
-        let hull = reader.read_vec();
-        NavMesh { 
-            terrain_bounds,
-            static_aabbs,
-            points,
-            triangulation: Triangulation { triangles, halfedges, hull }
-        }
-    }
-
-    fn save(&self, writer: &mut crate::store::SaveFileWriter) {
-        writer.write_slice(&self.terrain_bounds);
-        writer.write_slice(&self.static_aabbs);
-        writer.write_slice(&self.points);
-        writer.write_slice(&self.triangulation.triangles);
-        writer.write_slice(&self.triangulation.halfedges);
-        writer.write_slice(&self.triangulation.hull);
-    }
-}
 
 impl crate::store::SaveAndLoad for PathfindingGraph {
 

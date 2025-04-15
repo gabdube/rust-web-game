@@ -1,10 +1,10 @@
 mod terrain;
 use terrain::Terrain;
 
-mod terrain_navmesh;
-
 mod extra_data;
 pub use extra_data::*;
+
+mod generate_navmesh;
 
 
 use std::hint::unreachable_unchecked;
@@ -182,8 +182,7 @@ impl World {
     }
 
     pub fn generate_navmesh(&mut self) {
-        terrain_navmesh::generate_terrain_navmesh(&self.terrain, &mut self.pathfinding);
-        self.pathfinding.generate_navmesh();
+        generate_navmesh::generate(self);
     }
 
     pub fn reset(&mut self) {
@@ -265,7 +264,6 @@ impl World {
         aabb.top = aabb.bottom - 40.0;
         aabb.left += 20.0;
         aabb.right -= 20.0;
-        self.pathfinding.register_static_collision(aabb);
 
         self.trees_data.push(TreeData::default());
         self.trees.push(tree);
@@ -276,8 +274,6 @@ impl World {
         let sprite = self.assets().structures.gold_mine_inactive;
         let mine = BaseStatic { position, sprite, selected: false };
 
-        self.pathfinding.register_static_collision(mine.aabb());
-
         self.structures.push(mine);
         self.structures_data.push(StructureData::GoldMine(Default::default()));
         self.total_sprite_count += 1;
@@ -286,8 +282,6 @@ impl World {
     pub fn create_castle(&mut self, position: Position<f32>) {
         let sprite = self.assets().structures.knights_castle_construction;
         let castle = BaseStatic { position, sprite, selected: false };
-
-        self.pathfinding.register_static_collision(castle.aabb());
 
         self.structures.push(castle);
         self.structures_data.push(StructureData::Castle(StructureCastleData { hp: 0, building: true, destroyed: false }));
@@ -304,8 +298,6 @@ impl World {
 
         let castle = BaseStatic { position, sprite, selected: false };
 
-        self.pathfinding.register_static_collision(castle.aabb());
-
         self.structures.push(castle);
         self.structures_data.push(StructureData::Castle(data));
         self.total_sprite_count += 1;
@@ -314,8 +306,6 @@ impl World {
     pub fn create_tower(&mut self, position: Position<f32>) {
         let sprite = self.assets().structures.knights_tower_construction;
         let tower = BaseStatic { position, sprite, selected: false };
-
-        self.pathfinding.register_static_collision(tower.aabb());
 
         self.structures.push(tower);
         self.structures_data.push(StructureData::Tower(StructureTowerData { hp: 0, building: true, destroyed: false }));
@@ -332,8 +322,6 @@ impl World {
 
         let tower = BaseStatic { position, sprite, selected: false };
 
-        self.pathfinding.register_static_collision(tower.aabb());
-
         self.structures.push(tower);
         self.structures_data.push(StructureData::Tower(data));
         self.total_sprite_count += 1;
@@ -343,9 +331,7 @@ impl World {
         let sprite = self.assets().structures.knights_house_construction;
         let house = BaseStatic { position, sprite, selected: false };
 
-        self.pathfinding.register_static_collision(house.aabb());
-
-        self.structures.push(BaseStatic { position, sprite, selected: false });
+        self.structures.push(house);
         self.structures_data.push(StructureData::House(StructureHouseData { hp: 0, building: true, destroyed: false }));
         self.total_sprite_count += 1;
     }
@@ -360,9 +346,7 @@ impl World {
 
         let house = BaseStatic { position, sprite, selected: false };
 
-        self.pathfinding.register_static_collision(house.aabb());
-
-        self.structures.push(BaseStatic { position, sprite, selected: false });
+        self.structures.push(house);
         self.structures_data.push(StructureData::House(data));
         self.total_sprite_count += 1;
     }
@@ -370,8 +354,6 @@ impl World {
     pub fn create_goblin_hut(&mut self, position: Position<f32>) {
         let sprite = self.assets().structures.goblin_house;
         let house = BaseStatic { position, sprite, selected: false };
-        
-        self.pathfinding.register_static_collision(house.aabb());
 
         self.structures.push(house);
         self.structures_data.push(StructureData::GoblinHut(GobinHutData { hp: MAX_GOBIN_HUT_LIFE, destroyed: false }));
