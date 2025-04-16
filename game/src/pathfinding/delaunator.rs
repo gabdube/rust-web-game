@@ -6,7 +6,7 @@
 VENDORED VERSION. CHANGES:
 
 * Reduced precision (`f32` instead of `f64`)
-* Implement `Copy` on Point
+* Use this crate "Position" instead of Point
 * Changed "triangulate" to reuse memory from previous call
 
 ////////////////////////////////////////////////////
@@ -40,12 +40,8 @@ use robust::orient2d;
 /// will not be included in the triangulation for robustness.
 pub const EPSILON: f32 = f32::EPSILON * 2.0;
 
-/// Represents a 2D point in the input vector.
-#[derive(Copy, Clone, PartialEq, Default)]
-pub struct Point {
-    pub x: f32,
-    pub y: f32,
-}
+/// Represents a 2D point in the input vector
+pub type Point = crate::shared::Position<f32>;
 
 impl From<&Point> for robust::Coord<f32> {
     fn from(p: &Point) -> robust::Coord<f32> {
@@ -53,29 +49,13 @@ impl From<&Point> for robust::Coord<f32> {
     }
 }
 
-impl From<(f32, f32)> for Point {
-    fn from((x, y): (f32, f32)) -> Self {
-        Point { x, y }
+impl From<Point> for robust::Coord<f32> {
+    fn from(p: Point) -> robust::Coord<f32> {
+        robust::Coord::<f32> { x: p.x, y: p.y }
     }
 }
 
-impl From<[f32; 2]> for Point {
-    fn from([x, y]: [f32; 2]) -> Self {
-        Point { x, y }
-    }
-}
 
-impl From<Point> for (f32, f32) {
-    fn from(pt: Point) -> Self {
-        (pt.x, pt.y)
-    }
-}
-
-impl From<Point> for [f32; 2] {
-    fn from(pt: Point) -> Self {
-        [pt.x, pt.y]
-    }
-}
 
 impl Point {
     fn dist2(&self, p: &Self) -> f32 {
@@ -146,6 +126,7 @@ impl Point {
 pub const EMPTY: usize = usize::MAX;
 
 /// Next halfedge in a triangle.
+#[inline(always)]
 pub fn next_halfedge(i: usize) -> usize {
     if i % 3 == 2 {
         i - 2
@@ -155,6 +136,7 @@ pub fn next_halfedge(i: usize) -> usize {
 }
 
 /// Previous halfedge in a triangle.
+#[inline(always)]
 pub fn prev_halfedge(i: usize) -> usize {
     if i % 3 == 0 {
         i + 2

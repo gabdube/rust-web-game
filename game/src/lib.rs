@@ -112,14 +112,19 @@ impl DemoGame {
     }
 
     pub fn on_reload(&mut self) -> bool {
-        #[cfg(feature="editor")]
-        if let Err(e) = state::editor::init(self, crate::state::TestId::PathfindingAi) {
-            set_last_error(e);
-            return false;
-        }
+        // #[cfg(feature="editor")]
+        // if let Err(e) = state::editor::init(self, crate::state::TestId::PathfindingAi) {
+        //     set_last_error(e);
+        //     return false;
+        // }
 
         // #[cfg(not(feature="editor"))]
         // state::gameplay::init(&mut self.data);
+
+        // dbg!("{:?}", self.data.world.pathfinding.navmesh.triangulation.triangles.len());
+        // dbg!("{:?}", &self.data.world.pathfinding.navmesh.triangulation.triangles);
+        // dbg!("{:?}", self.data.world.pathfinding.navmesh.triangulation.halfedges.len());
+        // dbg!("{:?}", &self.data.world.pathfinding.navmesh.triangulation.halfedges);
 
         return true;
     }
@@ -212,11 +217,13 @@ impl Default for DemoGame {
 impl store::SaveAndLoad for DemoGame {
     fn save(&self, writer: &mut store::SaveFileWriter) {
         writer.save(&self.data);
+        writer.save(&self.state);
     }
 
     fn load(reader: &mut store::SaveFileReader) -> Self {
         let mut demo_app = DemoGame::default();
         demo_app.data = reader.load();
+        demo_app.state = reader.load();
         demo_app
     }
 }

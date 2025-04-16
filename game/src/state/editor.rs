@@ -33,6 +33,7 @@ pub struct EditorState {
     gui: GameplayGuiState,
     current_test: TestId,
     dragging_view: bool,
+    count: u32,
 }
 
 //
@@ -44,6 +45,7 @@ pub fn init(game: &mut DemoGame, test: TestId) -> Result<(), Error> {
         gui: Default::default(),
         current_test: test,
         dragging_view: false,
+        count: 0,
     };
 
     game.data.init_terrain(32, 32);
@@ -213,12 +215,16 @@ pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
     let pawn_position = data.world.pawns[0].position;
 
     data.world.pathfinding.debug_navmesh(&mut data.debug);
-    data.world.pathfinding.debug_pathfinding(&mut data.debug, mouse_position, pawn_position);
+    
+    if data.inputs.space.just_pressed() {
+        state.count += 1;
 
-    // data.world.pathfinding.debug_static_collisions(&mut data.debug);
-    // for structure in data.world.structures.iter() {
-    //     data.debug.debug_rect(structure.aabb(), [255, 0, 0, 255]);
-    // }
+        if (state.count as usize) * 3 >= data.world.pathfinding.navmesh.triangulation.triangles.len() {
+            state.count = 0;
+        }
+    }
+
+    data.world.pathfinding.debug_pathfinding(&mut data.debug, mouse_position, pawn_position);
 }
 
 //
@@ -338,17 +344,20 @@ impl crate::store::SaveAndLoad for EditorState {
         writer.write(&self.gui);
         writer.write_u32(self.current_test as u32);
         writer.write_u32(self.dragging_view as u32);
+        writer.write_u32(self.count);
     }
 
     fn load(reader: &mut crate::store::SaveFileReader) -> Self {
         let gui = reader.read();
         let current_test = TestId::from_u32(reader.read_u32());
         let dragging_view = reader.read_u32() == 1;
+        let count = reader.read_u32();
         
         EditorState {
             gui,
             current_test,
-            dragging_view
+            dragging_view,
+            count,
         }
     }
 }

@@ -1,4 +1,5 @@
 //! Generate the navmesh for the terrain
+
 use crate::pathfinding::PathfindingState;
 use crate::world::Terrain;
 use super::World;

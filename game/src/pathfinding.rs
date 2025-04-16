@@ -162,10 +162,26 @@ impl PathfindingState {
 
     #[cfg(feature="debug")]
     #[allow(dead_code)]
-    pub fn debug_pathfinding(&self, debug: &mut crate::debug::DebugState, start: Position<f32>, end: Position<f32>) {
-        debug.debug_point(start, 15.0, [255, 255, 255, 255]);
-        debug.debug_line(start, end, [0, 255, 0, 255]);
-        debug.debug_point(end, 15.0, [255, 255, 255, 255]);
+    pub fn debug_pathfinding(
+        &self,
+        debug: &mut crate::debug::DebugState,
+        start: Position<f32>,
+        end: Position<f32>,
+    ) {
+        let green = [0, 255, 0, 255];
+        let blue = [0, 0, 255, 255];
+        let white = [255, 255, 255, 255];
+        let nav = &self.navmesh;
+
+        // let [v0, v1, v2] = nav.triangle(triangle_id as usize);
+        // debug.debug_triangle(v0, v1, v2, green);
+
+
+        debug.debug_point(start, 10.0,  blue);
+        debug.debug_point(end, 10.0,  green);
+
+        let point = nav.find_nearest_point(start);
+        debug.debug_point(point, 10.0, white);
     }
 
 }
@@ -195,7 +211,6 @@ impl crate::store::SaveAndLoad for PathfindingState {
         writer.save_slice(&self.paths);
     }
 }
-
 
 impl crate::store::SaveAndLoad for PathfindingGraph {
 

@@ -149,6 +149,7 @@ function init_handlers(engine: Engine) {
         input_state.updates |= UPDATE_KEYS;
     });
     window.addEventListener("keyup", (event) => {
+        // console.log(event.code);
         input_state.keys.set(event.code, false);
         input_state.updates |= UPDATE_KEYS;
     });

@@ -23,7 +23,7 @@ unicode-segmentation = "1.12.0"
 # Std hashmap replacement
 fnv = "1.0.7"
 
-# Global state mutex
+# Global state mutex to return the last error
 parking_lot = "0.12.3"
 
 # Random number generation

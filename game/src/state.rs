@@ -64,6 +64,7 @@ fn clear_inputs_after_state_process(inputs: &mut InputState) {
         state.flip();
     }
     
+    inputs.space.flip();
     inputs.left_ctrl.flip();
 }
 
