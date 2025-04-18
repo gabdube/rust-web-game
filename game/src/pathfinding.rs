@@ -167,6 +167,7 @@ impl PathfindingState {
         debug: &mut crate::debug::DebugState,
         start: Position<f32>,
         end: Position<f32>,
+        steps: u32,
     ) {
         let green = [0, 255, 0, 255];
         let blue = [0, 0, 255, 255];
@@ -174,8 +175,7 @@ impl PathfindingState {
         let nav = &self.navmesh;
 
         // let [v0, v1, v2] = nav.triangle(triangle_id as usize);
-        // debug.debug_triangle(v0, v1, v2, green);
-
+        // debug.debug_triangle(v0, v1, v2, green)
 
         debug.debug_point(start, 10.0,  blue);
         debug.debug_point(end, 10.0,  green);

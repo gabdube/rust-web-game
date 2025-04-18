@@ -137,7 +137,9 @@ fn init_pathfinding_ai(data: &mut DemoGameData) {
     world.create_archer(pos(300.0, 100.0));
 
     world.create_castle_with_data(pos(400.0, 480.0), crate::world::StructureCastleData { hp: crate::world::MAX_CASTLE_HP, building: false, destroyed: false });
+    world.create_castle_with_data(pos(800.0, 580.0), crate::world::StructureCastleData { hp: crate::world::MAX_CASTLE_HP, building: false, destroyed: false });
     
+
     // let tower_data = crate::world::StructureTowerData { hp: crate::world::MAX_TOWER_HP, building: false, destroyed: false };
     // world.create_tower_with_data(pos(200.0, 600.0), tower_data);
     // world.create_tower_with_data(pos(200.0, 380.0), tower_data);
@@ -224,7 +226,7 @@ pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
         }
     }
 
-    data.world.pathfinding.debug_pathfinding(&mut data.debug, mouse_position, pawn_position);
+    data.world.pathfinding.debug_pathfinding(&mut data.debug, mouse_position, pawn_position, state.count);
 }
 
 //
