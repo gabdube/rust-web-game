@@ -6,6 +6,7 @@ pub enum DebugElement {
     Rect { base: AABB, color: [u8; 4] },
     Line { start: Position<f32>, end: Position<f32>, color: [u8; 4] },
     Triangle { v0: Position<f32>, v1: Position<f32>, v2: Position<f32>, color: [u8; 4] },
+    FillTriangle { v0: Position<f32>, v1: Position<f32>, v2: Position<f32>, color: [u8; 4] },
     Point { pt: Position<f32>, size: f32, color: [u8; 4] }
 }
 
@@ -24,6 +25,10 @@ impl DebugState {
 
     pub fn debug_triangle(&mut self, v0: Position<f32>, v1: Position<f32>, v2: Position<f32>, color: [u8; 4]) {
         self.elements.push(DebugElement::Triangle { v0, v1, v2, color })
+    }
+
+    pub fn debug_triangle_fill(&mut self, v0: Position<f32>, v1: Position<f32>, v2: Position<f32>, color: [u8; 4]) {
+        self.elements.push(DebugElement::FillTriangle { v0, v1, v2, color })
     }
 
     pub fn debug_line(&mut self, start: Position<f32>, end: Position<f32>, color: [u8; 4]) {

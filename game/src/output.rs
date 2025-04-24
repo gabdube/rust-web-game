@@ -674,6 +674,11 @@ fn render_debug(game: &mut DemoGame) {
                 debug_line(vertex, v1, v2, color);
                 debug_line(vertex, v0, v2, color);
             }
+            DebugElement::FillTriangle { v0, v1, v2, color } => {
+                vertex.push(DebugVertex { position: [v0.x, v0.y], color });
+                vertex.push(DebugVertex { position: [v1.x, v1.y], color });
+                vertex.push(DebugVertex { position: [v2.x, v2.y], color });
+            },
             DebugElement::Rect { base, color } => {
                 let rect_size = base.size();
                 debug_rect(vertex, &aabb(pos(base.left, base.top), size(rect_size.width, 2.0)), color);         // Top

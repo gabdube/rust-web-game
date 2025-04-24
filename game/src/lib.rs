@@ -125,7 +125,7 @@ impl DemoGame {
         // dbg!("{:?}", &self.data.world.pathfinding.navmesh.triangulation.triangles);
         // dbg!("{:?}", self.data.world.pathfinding.navmesh.triangulation.halfedges.len());
         // dbg!("{:?}", &self.data.world.pathfinding.navmesh.triangulation.halfedges);
-        dbg!("{:?}", &self.data.world.pathfinding.navmesh.triangulation.hull);
+        // dbg!("{:?}", &self.data.world.pathfinding.navmesh.triangulation.hull);
 
         return true;
     }

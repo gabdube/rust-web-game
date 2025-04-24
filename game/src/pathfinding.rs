@@ -3,14 +3,14 @@ mod delaunator;
 mod navmesh;
 use navmesh::NavMesh;
 
-use crate::shared::{pos, Position};
+use crate::shared::Position;
 
 /// Computed pathfinding data for a single unit 
 #[derive(Copy, Clone)]
 pub struct PathFindingData {
     pub next_position: Position<f32>,
-    pub graph_id: u32,
-    pub graph_node_index: u32,
+    pub path_id: u32,
+    pub current_node_index: u32,
 }
 
 /**
@@ -44,19 +44,26 @@ impl PathfindingState {
     //
 
     /**
-        Compute the path from `start_position` to `final_position`. Once used,
+        Compute the path from `start` to `end`. Once used,
         the returned `PathFindingData` must be freed using `free_path`.
     */
-    pub fn compute_new_path(&mut self, start_position: Position<f32>, final_position: Position<f32>) -> PathFindingData {
-        let graph_id = self.find_new_path();
-        self.paths[graph_id as usize].nodes.push(start_position);
-        self.paths[graph_id as usize].nodes.push(final_position);
-
-        PathFindingData {
-            next_position: start_position,
-            graph_id,
-            graph_node_index: 0,
+    pub fn compute_new_path(&mut self, start: Position<f32>, end: Position<f32>) -> Option<PathFindingData> {
+        let path_id = self.new_path();
+        let path = &mut self.paths[path_id as usize];
+        let nodes = &mut path.nodes;
+        let valid = self.navmesh.build_path(start, end, nodes);
+        if !valid {
+            path.free = true;
+            return None;
         }
+
+        let path_data = PathFindingData {
+            next_position: start,
+            path_id,
+            current_node_index: 0,
+        };
+
+        Some(path_data)
     }
 
     /**
@@ -65,15 +72,15 @@ impl PathfindingState {
         Returns `true` if the last node was reached.
     */
     pub fn compute_path(&self, path_data: &mut PathFindingData) -> bool {
-        let graph = &self.paths[path_data.graph_id as usize];
-        let next_node_index = (path_data.graph_node_index + 1) as usize;
+        let graph = &self.paths[path_data.path_id as usize];
+        let next_node_index = (path_data.current_node_index + 1) as usize;
 
         if next_node_index >= graph.nodes.len() {
             return true
         }
 
         path_data.next_position = graph.nodes[next_node_index];
-        path_data.graph_node_index = next_node_index as u32;
+        path_data.current_node_index = next_node_index as u32;
 
         false
     }
@@ -83,12 +90,12 @@ impl PathfindingState {
         to `compute_new_path`
     */
     pub fn free_path(&mut self, path_data: PathFindingData) {
-        let graph = &mut self.paths[path_data.graph_id as usize];
+        let graph = &mut self.paths[path_data.path_id as usize];
         graph.nodes.clear();
         graph.free = true;
     }
  
-    fn find_new_path(&mut self) -> u32 {
+    fn new_path(&mut self) -> u32 {
         let graph_id;
         match self.paths.iter_mut().enumerate().find(|(_,g)| g.free ) {
             Some((index, graph)) => {
@@ -114,22 +121,15 @@ impl PathfindingState {
     #[cfg(feature="debug")]
     #[allow(dead_code)]
     pub fn debug_navmesh(&self, debug: &mut crate::debug::DebugState) {
-        let points = &self.navmesh.points;
         let triangles = &self.navmesh.triangulation.triangles;
         let triangle_count = triangles.len();
         let color = [255, 0, 0, 255];
 
         let mut i = 0;
         while i < triangle_count {
-            let p1 = points[triangles[i]];
-            let p2 = points[triangles[i+1]];
-            let p3 = points[triangles[i+2]];
-            debug.debug_triangle(
-                pos(p1.x, p1.y),
-                pos(p2.x, p2.y),
-                pos(p3.x, p3.y),
-                color
-            );
+            let triangle = self.navmesh.triangle_of_edge(i);
+            let [p1, p2, p3] = self.navmesh.triangle_points(triangle); 
+            debug.debug_triangle(p1, p2, p3, color);
             i += 3;
         }
     }
@@ -137,7 +137,7 @@ impl PathfindingState {
     #[cfg(feature="debug")]
     #[allow(dead_code)]
     pub fn debug_path(&self, debug: &mut crate::debug::DebugState, path_data: &PathFindingData) {
-        let graph = &self.paths[path_data.graph_id as usize];
+        let graph = &self.paths[path_data.path_id as usize];
         if graph.nodes.len() < 2 {
             return;
         }
@@ -166,26 +166,30 @@ impl PathfindingState {
         &self,
         debug: &mut crate::debug::DebugState,
         start: Position<f32>,
-        end: Position<f32>,
-        steps: u32,
+        end: Position<f32>
     ) {
         let green = [0, 255, 0, 255];
         let blue = [0, 0, 255, 255];
-        let white = [255, 255, 255, 255];
-        let nav = &self.navmesh;
+        let mut nodes = Vec::with_capacity(8);
 
-        // let [v0, v1, v2] = nav.triangle(triangle_id as usize);
-        // debug.debug_triangle(v0, v1, v2, green)
+        // let start_triangle = self.navmesh.find_triangle(start, 0);
+        // let [p0, p1, p2] = self.navmesh.triangle_points(start_triangle);
+        // debug.debug_triangle_fill(p0, p1, p2, [255,255,255, 50]);
 
-        debug.debug_point(start, 10.0,  blue);
-        debug.debug_point(end, 10.0,  green);
+        self.navmesh.build_path(start, end, &mut nodes);
 
-        let point = nav.find_nearest_point(start);
-        debug.debug_point(point, 10.0, white);
+        if nodes.len() >= 2 {
+            let mut last = nodes.first().copied().unwrap();
+            for i in 1..nodes.len() {
+                debug.debug_line(last, nodes[i], green);
+                debug.debug_point(nodes[i], 10.0, blue);
+                last = nodes[i];
+            }
+        }
     }
 
 }
-
+ 
 
 impl Default for PathfindingState {
     fn default() -> Self {

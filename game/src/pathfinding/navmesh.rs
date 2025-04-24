@@ -2,7 +2,35 @@ use crate::shared::{pos, Position, AABB};
 use super::delaunator::{Point, Triangulation};
 
 /// The identifier of a triangle in the navmesh
-struct Triangle(pub u32);
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct NavTriangle(u32);
+
+impl NavTriangle {
+    pub fn outside(&self) -> bool {
+        self.0 == u32::MAX
+    }
+    
+    pub fn edge(&self) -> u32 {
+        self.0 * 3
+    }
+}
+
+#[derive(Copy, Clone)]
+struct StepState {
+    target: Position<f32>,
+    edge: usize,
+    done: bool,
+}
+
+impl StepState {
+    fn init(target: Position<f32>, start: u32) -> Self {
+        StepState {
+            target,
+            edge: start as usize,
+            done: false,
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct NavMesh {
@@ -41,6 +69,57 @@ impl NavMesh {
         ]);
     }
 
+    fn build_path_inner(&self, start: Position<f32>, end: Position<f32>, start_triangle: NavTriangle, nodes: &mut Vec<Position<f32>>) -> NavTriangle {
+        let mut out_triangle = NavTriangle(u32::MAX);
+        let mut triangle = start_triangle;
+
+        loop {
+            let [p1, p2, p3] = self.triangle_points(triangle);
+            if inside_triangle(end, p1, p2, p3) {
+                out_triangle = triangle;
+                break;
+            }
+
+            if let Some(i) = intersection(start, end, p1, p2) {
+                nodes.push(i);
+            }
+
+            if let Some(i) = intersection(start, end, p2, p3) {
+                nodes.push(i);
+            }
+
+            if let Some(i) = intersection(start, end, p3, p1) {
+                nodes.push(i);
+            }
+
+            out_triangle = triangle;
+            break;
+        }
+
+        out_triangle
+    }
+
+    // Returns `true` if a path was found from `start` to `end`, or false if the target is blocked or out of the navmesh
+    pub fn build_path(&self, start: Position<f32>, end: Position<f32>, nodes: &mut Vec<Position<f32>>) -> bool  {
+        let start_triangle = self.find_triangle(start, 0);
+        if start_triangle.outside() {
+            nodes.clear();
+            return false
+        }
+
+        nodes.push(start);
+
+        let end_triangle = self.build_path_inner(start, end, start_triangle, nodes);
+        if end_triangle.outside() {
+            nodes.clear();
+            return false;
+        }
+
+        nodes.push(end);
+
+        true
+    }
+
     /// Find the nearest point on the hull from `point`
     pub fn find_nearest_hull_point(&self, point: Position<f32>) -> Position<f32> {
         let mut distance = f32::INFINITY;
@@ -58,84 +137,131 @@ impl NavMesh {
         nearest_point
     }
 
-    pub fn find_nearest_point(&self, point: Position<f32>) -> Position<f32> {
-        struct StepState {
-            target: Position<f32>,
-            edge: usize,
-            done: bool,
-        }
-
-        fn init_step(point: Position<f32>) -> StepState {
-            let start = 0; // First halfedge in the triangulation
-            StepState {
-                target: point,
-                edge: start,
-                done: false,
-            }
-        }
-        
-        fn step(nav: &NavMesh, step: &mut StepState) {
-            let sibling = super::delaunator::next_halfedge(step.edge);
-            let last_sibling = super::delaunator::next_halfedge(sibling);
-            let point1 = nav.point_of_edge(step.edge);
-            let point2 = nav.point_of_edge(sibling);
-            let point3 = nav.point_of_edge(last_sibling);
-
-            // If `target` is not counterclockwise (cc), this means the point is in another triangle.
-            // If so we test the opposite half edge in the next iteration
-            let mut next_edge = None;
-            if orient_point(point1, point2, step.target) > 0.0 {
-                next_edge = Some(nav.triangulation.halfedges[step.edge]);
-            }
-            else if orient_point(point2, point3, step.target) > 0.0 {
-                next_edge = Some(nav.triangulation.halfedges[sibling]);
-            }
-            else if orient_point(point3, point1, step.target) > 0.0 {
-                next_edge = Some(nav.triangulation.halfedges[last_sibling]);
-            }
-
-            if let Some(next_edge) = next_edge {
-                step.edge = next_edge;
-                return;
-            }
-
-            // If the point is counterclockwise to all halfedge in the current triangle
-            // this means the point is inside the current triangle, so we pick 
-            // the closest point to the target
-            let d1 = step.target.distance(point1);
-            let d2 = step.target.distance(point2);
-            let d3 = step.target.distance(point3);
-
-            if d1 < d2 && d1 < d3 {
-                step.edge = step.edge
-            } else if d2 < d1 && d2 < d3 {
-                step.edge = sibling
-            } else {
-                step.edge = last_sibling
-            }
-
-            step.done = true;
-        }
-
-        let mut state = init_step(point);
+    /// Find the triangle containing `point` and return the nearest point
+    /// If the point is outside the mesh, return the nearest point on the hull
+    pub fn find_nearest_point(&self, point: Position<f32>, start_edge: u32) -> Position<f32> {
+        let mut state = StepState::init(point, start_edge);
         loop {
-            step(self, &mut state);
+            self.step(&mut state);
             if state.done || state.edge == usize::MAX {
                 break;
             }
         }
 
+        // Point is outside the hull
         if state.edge == usize::MAX {
-            self.find_nearest_hull_point(point)   // Point is outside the hull
-        } else {
-            self.point_of_edge(state.edge)
+            return self.find_nearest_hull_point(point);   
         }
+
+        let triangle = self.triangle_of_edge(state.edge);
+        let [e1, e2, e3] = self.triangle_edges(triangle);
+        let [p1, p2, p3] = self.triangle_points(triangle);
+
+        let d1 = point.distance(p1);
+        let d2 = point.distance(p2);
+        let d3 = point.distance(p3);
+
+        let min;
+        if d1 < d2 && d1 < d3 {
+            min = e1;
+        } else if d2 < d1 && d2 < d3 {
+            min = e2;
+        } else {
+            min = e3;
+        }
+
+        self.point_of_edge(min)
     }
 
+    /// Find the triangle containing `point` in the navmesh. 
+    /// If the point is outside the nav mesh, `triangle.outside` will return true
+    pub fn find_triangle(&self, point: Position<f32>, start_edge: u32) -> NavTriangle {
+        let mut state = StepState::init(point, start_edge);
+        loop {
+            self.step(&mut state);
+            if state.done || state.edge == usize::MAX {
+                break;
+            }
+        }
+
+        self.triangle_of_edge(state.edge)
+    }
+
+    pub fn iter_path<CB>(&self, start_point: Position<f32>, stop_point: Position<f32>, start_edge: u32, mut on_step: CB) 
+        where CB: FnMut(NavTriangle)
+    {
+        let start_triangle = self.find_triangle(start_point, start_edge);
+        if start_triangle.outside() {
+            return;
+        }
+
+        on_step(start_triangle);
+
+        let edge = 3 * start_triangle.0;
+        let mut state = StepState::init(stop_point, edge);
+        loop {
+            self.step(&mut state);
+            if state.done || state.edge == usize::MAX {
+                break;
+            }
+
+            on_step(self.triangle_of_edge(state.edge));
+        }
+    }
 
     //
     // Helpers methods
     //
+
+    fn step(&self, step: &mut StepState) {
+        let sibling = super::delaunator::next_halfedge(step.edge);
+        let last_sibling = super::delaunator::next_halfedge(sibling);
+        let point1 = self.point_of_edge(step.edge);
+        let point2 = self.point_of_edge(sibling);
+        let point3 = self.point_of_edge(last_sibling);
+
+        // If `target` is not counterclockwise (cc), this means the point is in another triangle.
+        // If so we test the opposite half edge in the next iteration
+        let mut next_edge = None;
+        if orient_point(point1, point2, step.target) > 0.0 {
+            next_edge = Some(self.triangulation.halfedges[step.edge]);
+        }
+        else if orient_point(point2, point3, step.target) > 0.0 {
+            next_edge = Some(self.triangulation.halfedges[sibling]);
+        }
+        else if orient_point(point3, point1, step.target) > 0.0 {
+            next_edge = Some(self.triangulation.halfedges[last_sibling]);
+        }
+
+        if let Some(next_edge) = next_edge {
+            step.edge = next_edge;
+            return;
+        }
+
+        step.done = true;
+    }
+
+    pub fn triangle_edges(&self, triangle: NavTriangle) -> [usize; 3] {
+        let edge = triangle.0 as usize;
+        if edge == (u32::MAX as usize) {
+            return [Default::default(); 3];
+        }
+        
+        [ 3*edge+0, 3*edge+1, 3*edge+2 ]
+    }
+
+    pub fn triangle_points(&self, triangle: NavTriangle) -> [Position<f32>; 3] {
+        let edge = triangle.0 as usize;
+        if edge == (u32::MAX as usize) {
+            return [Default::default(); 3];
+        }
+
+        [
+            self.point_of_edge(3*edge+0),
+            self.point_of_edge(3*edge+1),
+            self.point_of_edge(3*edge+2),
+        ]
+    }
 
     /// Return the starting point associated with halfedge `e`
     #[inline(always)]
@@ -143,22 +269,14 @@ impl NavMesh {
         self.points[self.triangulation.triangles[e]]
     }
 
-    // pub fn edges_of_triangle(&self, triangle: usize) -> [usize; 3] {
-    //     [3*triangle+0, 3*triangle+1, 3*triangle+2]
-    // }
-
-    // pub fn triangle_of_edge(&self, edge: usize) -> Triangle {
-    //     Triangle((edge / 3) as u32)
-    // }
-
-    // pub fn triangle_points(&self, triangle: usize) -> [Position<f32>; 3] {
-    //     let [e0, e1, e2] = self.edges_of_triangle(triangle);
-    //     let tris = &self.triangulation.triangles;
-    //     let p0 = self.points[tris[e0]];
-    //     let p1 = self.points[tris[e1]];
-    //     let p2 = self.points[tris[e2]];
-    //     [p0, p1, p2]
-    // }
+    #[inline(always)]
+    pub fn triangle_of_edge(&self, edge: usize) -> NavTriangle {
+        if edge == usize::MAX {
+            NavTriangle(u32::MAX)
+        } else {
+            NavTriangle((edge / 3) as u32)
+        }
+    }
 
 }
 
@@ -168,6 +286,36 @@ impl NavMesh {
 fn orient_point(p1: Position<f32>, p2: Position<f32>, p3: Position<f32>) -> f32 {
     // robust-rs orients Y-axis upwards, our convention is Y downwards. This means that the interpretation of the result must be flipped
     robust::orient2d(p1.into(), p2.into(), p3.into()) as f32
+}
+
+fn inside_triangle(point: Position<f32>, p1: Position<f32>, p2: Position<f32>, p3: Position<f32>) -> bool {
+    orient_point(p1, p2, point) < 0.0 && orient_point(p2, p3, point) < 0.0 && orient_point(p3, p1, point) < 0.0
+}
+
+fn intersection(p1: Position<f32>, p2: Position<f32>, p3: Position<f32>, p4: Position<f32>) -> Option<Position<f32>> {
+    let x1 = p1.x; let y1 = p1.y;
+    let x2 = p2.x; let y2 = p2.y;
+    let x3 = p3.x; let y3 = p3.y;
+    let x4 = p4.x; let y4 = p4.y;
+
+    let denominator = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+    if denominator == 0.0 {
+        return None;
+    }
+
+    let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
+    if ua < 0.0 {
+        return None;
+    }
+
+    let x = x1 + ua * (x2 - x1);
+    let y = y1 + ua * (y2 - y1);
+
+    if x < f32::max(f32::min(x1, x2), f32::min(x3, x4)) || x > f32::min(f32::max(x1, x2), f32::max(x3, x4)) {
+        return None;
+    }
+
+    Some(pos(x, y))
 }
 
 impl crate::store::SaveAndLoad for NavMesh {

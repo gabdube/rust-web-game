@@ -212,21 +212,12 @@ pub fn on_update(state: &mut GameState, data: &mut DemoGameData) {
             data.set_view_offset(data.global.view_offset - delta);
         }
     }
-    
+
     let mouse_position = data.inputs.mouse_position + data.global.view_offset;
     let pawn_position = data.world.pawns[0].position;
 
     data.world.pathfinding.debug_navmesh(&mut data.debug);
-    
-    if data.inputs.space.just_pressed() {
-        state.count += 1;
-
-        if (state.count as usize) * 3 >= data.world.pathfinding.navmesh.triangulation.triangles.len() {
-            state.count = 0;
-        }
-    }
-
-    data.world.pathfinding.debug_pathfinding(&mut data.debug, mouse_position, pawn_position, state.count);
+    data.world.pathfinding.debug_pathfinding(&mut data.debug, pawn_position, mouse_position);
 }
 
 //
