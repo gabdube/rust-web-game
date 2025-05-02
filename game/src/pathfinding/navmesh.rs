@@ -2,7 +2,7 @@ use crate::shared::{pos, Position, AABB};
 use super::delaunator::{Point, Triangulation};
 
 /// The identifier of a triangle in the navmesh
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct NavTriangle(u32);
 
 impl NavTriangle {
@@ -98,7 +98,8 @@ impl NavMesh {
     // Returns `true` if a path was found from `start` to `end`, or false if the target is blocked or out of the navmesh
     pub fn build_path(&self, start: Position<f32>, end: Position<f32>, nodes: &mut Vec<Position<f32>>) -> bool  {
         let start_triangle = self.find_triangle(start, 0);
-        
+
+        // If end is outside the navmesh, we just cancel the pathfinding
         if start_triangle.outside() {
             nodes.clear();
             return false
@@ -244,24 +245,43 @@ impl NavMesh {
     }
 
     pub fn triangle_edges(&self, triangle: NavTriangle) -> [usize; 3] {
-        let edge = triangle.0 as usize;
-        if edge == (u32::MAX as usize) {
+        let triangle_index = triangle.0 as usize;
+        if triangle_index == (u32::MAX as usize) {
             return [Default::default(); 3];
         }
         
-        [ 3*edge+0, 3*edge+1, 3*edge+2 ]
+        [ 3*triangle_index+0, 3*triangle_index+1, 3*triangle_index+2 ]
     }
 
     pub fn triangle_points(&self, triangle: NavTriangle) -> [Position<f32>; 3] {
-        let edge = triangle.0 as usize;
-        if edge == (u32::MAX as usize) {
+        let triangle_index = triangle.0 as usize;
+        if triangle_index == (u32::MAX as usize) {
             return [Default::default(); 3];
         }
 
         [
-            self.point_of_edge(3*edge+0),
-            self.point_of_edge(3*edge+1),
-            self.point_of_edge(3*edge+2),
+            self.point_of_edge(3*triangle_index+0),
+            self.point_of_edge(3*triangle_index+1),
+            self.point_of_edge(3*triangle_index+2),
+        ]
+    }
+
+    pub fn neighbors_of_triangle(&self, triangle: NavTriangle) -> [NavTriangle; 3] {
+        let edges = self.triangle_edges(triangle);
+        let halfedges = &self.triangulation.halfedges;
+
+        let mut h1 = halfedges[edges[0]] as u32;
+        let mut h2 = halfedges[edges[1]] as u32;
+        let mut h3 = halfedges[edges[2]] as u32;
+
+        if h1 != u32::MAX {  h1 = h1 / 3; }
+        if h2 != u32::MAX {  h2 = h2 / 3; }
+        if h3 != u32::MAX {  h3 = h3 / 3; }
+
+        [
+            NavTriangle(h1),
+            NavTriangle(h2),
+            NavTriangle(h3),
         ]
     }
 

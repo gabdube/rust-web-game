@@ -178,6 +178,21 @@ impl PathfindingState {
         // let [p0, p1, p2] = self.navmesh.triangle_points(start_triangle);
         // debug.debug_triangle_fill(p0, p1, p2, [255,255,255, 50]);
 
+        let start_triangle = self.navmesh.find_triangle(start, 0);
+        let end_triangle = self.navmesh.find_triangle(end, 0);
+        let mut triangles = Vec::with_capacity(16);
+        navmesh_astar::find_triangle_strip(
+            &self.navmesh,
+            start_triangle,
+            end_triangle,
+            &mut triangles,
+        );
+
+        for &triangle in triangles.iter() {
+            let [p1, p2, p3] = self.navmesh.triangle_points(triangle);
+            debug.debug_triangle_fill(p1, p2, p3, [0, 0, 255, 50]);
+        }
+
         self.navmesh.build_path(start, end, &mut nodes);
 
         if nodes.len() >= 2 {
