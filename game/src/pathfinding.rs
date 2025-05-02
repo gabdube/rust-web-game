@@ -3,6 +3,8 @@ mod delaunator;
 mod navmesh;
 use navmesh::NavMesh;
 
+mod navmesh_astar;
+
 use crate::shared::Position;
 
 /// Computed pathfinding data for a single unit 

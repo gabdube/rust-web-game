@@ -2,7 +2,7 @@ use crate::shared::{pos, Position, AABB};
 use super::delaunator::{Point, Triangulation};
 
 /// The identifier of a triangle in the navmesh
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct NavTriangle(u32);
 
 impl NavTriangle {
@@ -69,55 +69,57 @@ impl NavMesh {
         ]);
     }
 
-    fn build_path_inner(&self, start: Position<f32>, end: Position<f32>, start_triangle: NavTriangle, nodes: &mut Vec<Position<f32>>) -> NavTriangle {
-        let mut out_triangle = NavTriangle(u32::MAX);
-        let mut triangle = start_triangle;
+    // `start`` and `end` are in the same triangle
+    fn same_triangle_path(&self, start_triangle: NavTriangle, end: Position<f32>) -> bool {
+        let [p1, p2, p3] = self.triangle_points(start_triangle);
+        if inside_triangle(end, p1, p2, p3) {
+            true
+        } else {
+            false
+        }
+    }
 
-        loop {
-            let [p1, p2, p3] = self.triangle_points(triangle);
-            if inside_triangle(end, p1, p2, p3) {
-                out_triangle = triangle;
-                break;
-            }
+    // If end is in a neighboring triangle from `start`
+    // Triangle are considered neighboring if they share a border (aka two points)
+    fn neighbors_path(&self, start_triangle: NavTriangle, end_triangle: NavTriangle) -> bool {
+        let points1 = self.triangle_points(start_triangle);
+        let points2 = self.triangle_points(end_triangle);
 
-            if let Some(i) = intersection(start, end, p1, p2) {
-                nodes.push(i);
-            }
-
-            if let Some(i) = intersection(start, end, p2, p3) {
-                nodes.push(i);
-            }
-
-            if let Some(i) = intersection(start, end, p3, p1) {
-                nodes.push(i);
-            }
-
-            out_triangle = triangle;
-            break;
+        let mut same_points = 0;
+        for p1 in points1 {
+            same_points += (p1 == points2[0]) as u32;
+            same_points += (p1 == points2[1]) as u32;
+            same_points += (p1 == points2[2]) as u32;
         }
 
-        out_triangle
+        same_points > 1
     }
 
     // Returns `true` if a path was found from `start` to `end`, or false if the target is blocked or out of the navmesh
     pub fn build_path(&self, start: Position<f32>, end: Position<f32>, nodes: &mut Vec<Position<f32>>) -> bool  {
         let start_triangle = self.find_triangle(start, 0);
+        
         if start_triangle.outside() {
             nodes.clear();
             return false
         }
 
-        nodes.push(start);
-
-        let end_triangle = self.build_path_inner(start, end, start_triangle, nodes);
-        if end_triangle.outside() {
-            nodes.clear();
-            return false;
+        if self.same_triangle_path(start_triangle, end) {
+            nodes.push(start);
+            nodes.push(end);
+            return true;
         }
 
-        nodes.push(end);
+        let start_edge = self.triangle_edges(start_triangle)[0] as u32;
+        let end_triangle = self.find_triangle(end, start_edge);
 
-        true
+        if self.neighbors_path(start_triangle, end_triangle) {
+            nodes.push(start);
+            nodes.push(end);
+            return true;
+        }
+
+        super::navmesh_astar::find_path(self, nodes, start_triangle, end_triangle)
     }
 
     /// Find the nearest point on the hull from `point`
@@ -292,6 +294,7 @@ fn inside_triangle(point: Position<f32>, p1: Position<f32>, p2: Position<f32>, p
     orient_point(p1, p2, point) < 0.0 && orient_point(p2, p3, point) < 0.0 && orient_point(p3, p1, point) < 0.0
 }
 
+
 fn intersection(p1: Position<f32>, p2: Position<f32>, p3: Position<f32>, p4: Position<f32>) -> Option<Position<f32>> {
     let x1 = p1.x; let y1 = p1.y;
     let x2 = p2.x; let y2 = p2.y;
@@ -304,10 +307,6 @@ fn intersection(p1: Position<f32>, p2: Position<f32>, p3: Position<f32>, p4: Pos
     }
 
     let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
-    if ua < 0.0 {
-        return None;
-    }
-
     let x = x1 + ua * (x2 - x1);
     let y = y1 + ua * (y2 - y1);
 
