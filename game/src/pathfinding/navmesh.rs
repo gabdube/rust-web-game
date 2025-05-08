@@ -9,9 +9,13 @@ impl NavTriangle {
     pub fn outside(&self) -> bool {
         self.0 == u32::MAX
     }
-    
-    pub fn edge(&self) -> u32 {
-        self.0 * 3
+
+    pub fn inside(&self) -> bool {
+        self.0 != u32::MAX
+    }
+
+    pub fn index(&self) -> usize {
+        self.0 as usize
     }
 }
 
@@ -120,7 +124,12 @@ impl NavMesh {
             return true;
         }
 
-        super::navmesh_astar::find_path(self, nodes, start_triangle, end_triangle)
+        super::navmesh_astar::find_path(
+            self,
+            nodes,
+            start_triangle, end_triangle,
+            start, end,
+        )
     }
 
     /// Find the nearest point on the hull from `point`
@@ -244,6 +253,11 @@ impl NavMesh {
         step.done = true;
     }
 
+    pub fn edge_points(&self, edge1: usize) -> [Position<f32>; 2] {
+        let edge2 = super::delaunator::next_halfedge(edge1);
+        [self.point_of_edge(edge1), self.point_of_edge(edge2)]
+    }
+
     pub fn triangle_edges(&self, triangle: NavTriangle) -> [usize; 3] {
         let triangle_index = triangle.0 as usize;
         if triangle_index == (u32::MAX as usize) {
@@ -266,23 +280,14 @@ impl NavMesh {
         ]
     }
 
-    pub fn neighbors_of_triangle(&self, triangle: NavTriangle) -> [NavTriangle; 3] {
-        let edges = self.triangle_edges(triangle);
-        let halfedges = &self.triangulation.halfedges;
+    #[inline(always)]
+    pub fn previous_edge(&self, edge: usize) -> usize {
+        super::delaunator::prev_halfedge(edge)
+    }
 
-        let mut h1 = halfedges[edges[0]] as u32;
-        let mut h2 = halfedges[edges[1]] as u32;
-        let mut h3 = halfedges[edges[2]] as u32;
-
-        if h1 != u32::MAX {  h1 = h1 / 3; }
-        if h2 != u32::MAX {  h2 = h2 / 3; }
-        if h3 != u32::MAX {  h3 = h3 / 3; }
-
-        [
-            NavTriangle(h1),
-            NavTriangle(h2),
-            NavTriangle(h3),
-        ]
+    #[inline(always)]
+    pub fn next_edge(&self, edge: usize) -> usize {
+        super::delaunator::next_halfedge(edge)
     }
 
     /// Return the starting point associated with halfedge `e`

@@ -170,39 +170,50 @@ impl PathfindingState {
         start: Position<f32>,
         end: Position<f32>
     ) {
-        let green = [0, 255, 0, 255];
-        let blue = [0, 0, 255, 255];
-        let mut nodes = Vec::with_capacity(8);
+        debug.debug_line(start, end, [0,0,255,255]);
 
-        // let start_triangle = self.navmesh.find_triangle(start, 0);
-        // let [p0, p1, p2] = self.navmesh.triangle_points(start_triangle);
-        // debug.debug_triangle_fill(p0, p1, p2, [255,255,255, 50]);
 
         let start_triangle = self.navmesh.find_triangle(start, 0);
         let end_triangle = self.navmesh.find_triangle(end, 0);
-        let mut triangles = Vec::with_capacity(16);
-        navmesh_astar::find_triangle_strip(
+        if start_triangle.outside() || end_triangle.outside() {
+            return;
+        }
+
+        let mut edges = Vec::with_capacity(16);
+        navmesh_astar::debug_path(
+            debug,
+            &mut edges,
             &self.navmesh,
             start_triangle,
             end_triangle,
-            &mut triangles,
+            start,
         );
 
-        for &triangle in triangles.iter() {
-            let [p1, p2, p3] = self.navmesh.triangle_points(triangle);
-            debug.debug_triangle_fill(p1, p2, p3, [0, 0, 255, 50]);
-        }
 
-        self.navmesh.build_path(start, end, &mut nodes);
-
-        if nodes.len() >= 2 {
-            let mut last = nodes.first().copied().unwrap();
-            for i in 1..nodes.len() {
-                debug.debug_line(last, nodes[i], green);
-                debug.debug_point(nodes[i], 10.0, blue);
-                last = nodes[i];
+        for &edge in edges.iter() {
+            if edge == u32::MAX {
+                continue;
             }
+
+            let edge = edge as usize;
+            let [p1, p2] = self.navmesh.edge_points(edge);
+            debug.debug_line(p1, p2, [255, 255, 255, 255]);
+
+            let triangle = self.navmesh.triangle_of_edge(edge);
+            let [p3, p4, p5] = self.navmesh.triangle_points(triangle);
+            debug.debug_triangle_fill(p3, p4, p5, [0, 0, 255, 50]);
         }
+
+        // self.navmesh.build_path(start, end, &mut nodes);
+
+        // if nodes.len() >= 2 {
+        //     let mut last = nodes.first().copied().unwrap();
+        //     for i in 1..nodes.len() {
+        //         debug.debug_line(last, nodes[i], green);
+        //         debug.debug_point(nodes[i], 10.0, blue);
+        //         last = nodes[i];
+        //     }
+        // }
     }
 
 }
