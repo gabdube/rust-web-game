@@ -5,9 +5,19 @@ use std::cmp::Ord;
 use crate::shared::Position;
 use super::navmesh::{NavMesh, NavTriangle};
 
+#[derive(Copy, Clone, Default)]
+struct EdgeHeuristic {
+    point: Position<f32>,
+    cost: f32,
+    heuristic: f32,
+    edge: usize,
+}
+
 struct NavCell {
     triangle: NavTriangle,
-    point: Position<f32>,
+    edge: u32,
+    position: Position<f32>,
+    estimated_cost: f32,
     cost: f32,
 }
 
@@ -25,45 +35,12 @@ pub(super) fn find_path<'a>(
     true
 }
 
-struct NavCell2 {
-    triangle: NavTriangle,
-    edge: u32,
-    position: Position<f32>,
-    cost: f32,
-}
-
-impl Ord for NavCell2 {
-    #[inline(always)]
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.cost.total_cmp(&self.cost)
-    }
-}
-
-impl PartialOrd for NavCell2 {
-    #[inline(always)]
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for NavCell2 {
-    fn eq(&self, other: &Self) -> bool {
-        self.cost == other.cost
-    }
-}
-
-impl Eq for NavCell2 {}
-
-fn reverse_path2(
+fn reverse_path(
     parents: &FnvHashMap<NavTriangle, (NavTriangle, u32, f32)>,
     edges: &mut Vec<u32>,
     start: NavTriangle,
     start_edge: u32,
 ) {
-    edges.push(start_edge);
-
-    let mut count = 0;
-
     let mut last = start;
     loop {
         let (triangle, edge, _) = match parents.get(&last).copied() {
@@ -75,63 +52,71 @@ fn reverse_path2(
             break;
         }
 
-        if count > 10 {
-            dbg!("ERROR");
-            break;
-        }
-
         edges.push(edge);
 
         last = triangle;
-        count += 1;
     }
 
     edges.reverse();
 }
 
 pub(super) fn debug_path(
-    debug: &mut crate::debug::DebugState,
     edges: &mut Vec<u32>,
     nav: &NavMesh,
     start_triangle: NavTriangle,
     end_triangle: NavTriangle,
     start: Position<f32>,
+    end: Position<f32>
 ) -> bool  {
     use std::collections::hash_map::Entry;
 
-    let mut to_see: BinaryHeap<NavCell2> = BinaryHeap::new();
+    let mut to_see: BinaryHeap<NavCell> = BinaryHeap::new();
     let mut parents = FnvHashMap::default();
 
-    to_see.push(NavCell2 { triangle: start_triangle, edge: u32::MAX, position: start, cost: 0.0 });
+    to_see.push(NavCell { triangle: start_triangle, edge: u32::MAX, position: start, estimated_cost: 0.0, cost: 0.0 });
     parents.insert(start_triangle, (start_triangle, u32::MAX, 0.0)); // triangle: (parent triangle, connecting_edge, min_distance)
 
     while let Some(cell) = to_see.pop() {
         if cell.triangle == end_triangle {
-            reverse_path2(&parents, edges, cell.triangle, cell.edge);
+            reverse_path(&parents, edges, cell.triangle, cell.edge);
             return true;
         }
 
-        let edges = sort_edges(nav, cell.triangle, cell.position);
-        for (distance, position, edge) in edges {
-            let neighbor_edge = nav.triangulation.halfedges[edge as usize] as u32;
-            if neighbor_edge != u32::MAX && edge != cell.edge {
-                let neigbours_triangle = nav.triangle_of_edge(neighbor_edge as usize);
-                let cost = cell.cost + distance;
-                match parents.entry(neigbours_triangle) {
-                    Entry::Vacant(e) => {
-                        e.insert((cell.triangle, neighbor_edge, cost));
-                    }
-                    Entry::Occupied(mut e) => {
-                        if e.get().2 > cost {
-                            e.insert((cell.triangle, neighbor_edge, cost));
-                        } else {
-                            continue;
-                        }
+        let mut edges: [EdgeHeuristic; 3] = Default::default();
+        build_edges(nav, cell.triangle, cell.cost, start, end, &mut edges);
+        choose_edges(nav, &mut edges);
+
+        for h_edge in edges {
+            if cell.edge == (h_edge.edge as u32) {
+                continue;
+            }
+
+            let neighbor_edge = nav.triangulation.halfedges[h_edge.edge];
+            if neighbor_edge == usize::MAX {
+                continue;
+            }
+
+            let neigbours_triangle = nav.triangle_of_edge(neighbor_edge);
+            match parents.entry(neigbours_triangle) {
+                Entry::Vacant(e) => {
+                    e.insert((cell.triangle, neighbor_edge as u32, h_edge.cost));
+                }
+                Entry::Occupied(mut e) => {
+                    if e.get().2 > h_edge.cost {
+                        e.insert((cell.triangle, neighbor_edge as u32, h_edge.cost));
+                    } else {
+                        continue;
                     }
                 }
-
-                to_see.push(NavCell2 { triangle: neigbours_triangle, edge: neighbor_edge, position, cost });
             }
+
+            to_see.push(NavCell {
+                triangle: neigbours_triangle,
+                edge: neighbor_edge as u32,
+                position: h_edge.point,
+                estimated_cost: h_edge.heuristic,
+                cost: h_edge.cost
+            });
         }
     }
 
@@ -142,70 +127,58 @@ pub(super) fn debug_path(
 // Helpers
 //
 
-/// Sort edges of `triangle` by their distance from `position`. /// Returns an array of `(distance, point, edge)`
-/// The distance is computed from either endings of the edge. Because each edge share a point, distance and point at index `0` and `1` will always be the same.
-fn sort_edges(nav: &NavMesh, triangle: NavTriangle, position: Position<f32>) -> [(f32, Position<f32>, u32); 3] {
-    #[derive(Copy, Clone)]
-    struct EdgePoint {
-        distance: f32,
-        point: Position<f32>,
-        edge: usize,
-    }
-    
+fn build_edges(nav: &NavMesh, triangle: NavTriangle, base_cost: f32, start: Position<f32>, end: Position<f32>, edges: &mut [EdgeHeuristic; 3]) {
     let triangle_index = triangle.index();
     let [e1, e2, e3] = [3*triangle_index+0, 3*triangle_index+1, 3*triangle_index+2];
     let [p1, p2, p3] = [nav.point_of_edge(e1), nav.point_of_edge(e2), nav.point_of_edge(e3)];
-    let [d1, d2, d3] = [
-        f32::abs(position.x - p1.x) + f32::abs(position.y - p1.y),
-        f32::abs(position.x - p2.x) + f32::abs(position.y - p2.y),
-        f32::abs(position.x - p3.x) + f32::abs(position.y - p3.y),
+    let [c1, c2, c3] = [base_cost + heuristic(start, p1), base_cost + heuristic(start, p2), base_cost + heuristic(start, p3)];
+    let [h1, h2, h3] = [c1 + heuristic(end, p1), c2 + heuristic(end, p2), c3 + heuristic(end, p3)];
+    *edges = [
+        EdgeHeuristic { point: p1, cost: c1, heuristic: h1, edge: e1 },
+        EdgeHeuristic { point: p2, cost: c2, heuristic: h2, edge: e2 },
+        EdgeHeuristic { point: p3, cost: c3, heuristic: h3, edge: e3 },
     ];
+} 
 
-    let mut values = [
-        EdgePoint { distance: d1, point: p1, edge: e1 },
-        EdgePoint { distance: d2, point: p2, edge: e2 },
-        EdgePoint { distance: d3, point: p3, edge: e3 },
+fn choose_edges(nav: &NavMesh, edges: &mut [EdgeHeuristic; 3]) {
+    if edges[0].heuristic > edges[1].heuristic {
+        edges.swap(0, 1);
+    }
+
+    if edges[1].heuristic > edges[2].heuristic {
+        edges.swap(1, 2);
+    }
+
+    if edges[0].heuristic > edges[1].heuristic {
+        edges.swap(0, 1);
+    }
+
+    let nearest = edges[0];
+    let opposed = edges[1];
+
+    *edges = [
+        EdgeHeuristic { point: nearest.point, cost: nearest.cost, heuristic: nearest.heuristic, edge: nearest.edge },
+        EdgeHeuristic { point: nearest.point, cost: nearest.cost, heuristic: nearest.heuristic, edge: nav.previous_edge(nearest.edge)},
+        EdgeHeuristic { point: opposed.point, cost: opposed.cost, heuristic: opposed.heuristic, edge: nav.next_edge(nearest.edge) },
     ];
-
-    if values[0].distance > values[1].distance {
-        values.swap(0, 1);
-    }
-
-    if values[1].distance > values[2].distance {
-        values.swap(1, 2);
-    }
-
-    if values[0].distance > values[1].distance {
-        values.swap(0, 1);
-    }
-
-    let nearest = values[0];
-    let furthest = values[2];
-    [
-        (nearest.distance, nearest.point, nearest.edge as u32),
-        (nearest.distance, nearest.point, nav.previous_edge(nearest.edge) as u32),
-        (furthest.distance, furthest.point, nav.next_edge(nearest.edge) as u32),
-    ]
 }
 
-fn orient2d(p1: Position<f32>, p2: Position<f32>, p3: Position<f32>) -> f64 {
-    use robust::Coord;
-    robust::orient2d(
-        Coord { x: p1.x, y: p1.y },
-        Coord { x: p2.x, y: p2.y },
-        Coord { x: p3.x, y: p3.y },
-    )
+#[inline(always)]
+fn heuristic(p1: Position<f32>, p2: Position<f32>) -> f32 {
+    f32::abs(p1.x - p2.x) + f32::abs(p1.y - p2.y)
 }
 
 //
 // Other Impl
 //
 
-
 impl Ord for NavCell {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.cost.total_cmp(&self.cost)
+        match other.estimated_cost.total_cmp(&self.estimated_cost) {
+            std::cmp::Ordering::Equal => self.cost.total_cmp(&other.cost),
+            s => s,
+        }
     }
 }
 
@@ -223,4 +196,3 @@ impl PartialEq for NavCell {
 }
 
 impl Eq for NavCell {}
-

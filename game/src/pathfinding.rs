@@ -181,14 +181,13 @@ impl PathfindingState {
 
         let mut edges = Vec::with_capacity(16);
         navmesh_astar::debug_path(
-            debug,
             &mut edges,
             &self.navmesh,
             start_triangle,
             end_triangle,
             start,
+            end,
         );
-
 
         for &edge in edges.iter() {
             if edge == u32::MAX {
